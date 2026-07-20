@@ -1,6 +1,6 @@
 ---
 name: source-driven-development
-description: Grounds every implementation decision in official documentation. Use when you want authoritative, source-cited code free from outdated patterns. Use when building with any framework or library where correctness matters.
+description: 将每个实现决策根植于官方文档。适用于需要权威、有出处引用、不受过期模式影响的代码。适用于使用任何需要正确性的框架或库进行构建时。
 ---
 
 # Source-Driven Development

@@ -1,6 +1,6 @@
 ---
 name: interview-me
-description: Extracts what the user actually wants instead of what they think they should want. Achieves this through one-question-at-a-time interview until ~95% confidence about the underlying intent. Use when an ask is underspecified ("build me X" without "for whom" or "why now"), when the user explicitly invokes ("interview me", "grill me", "are we sure?", "stress-test my thinking"), or when you catch yourself silently filling in ambiguous requirements before any plan, spec, or code exists.
+description: 挖掘用户真正想要的东西，而非他们自以为想要的。通过每次一问的访谈方式逐步推进，直至对潜在意图达到约95%的把握。适用于需求描述不充分时（"帮我做个X"但没说"给谁用"或"为什么现在做"）、用户明确调用时（"访谈我"、"拷问我"、"我们确定吗？"、"压力测试我的想法"），或发现自己正在默默填补模糊需求时——在任何计划、规格说明或代码存在之前。
 ---
 
 # Interview Me

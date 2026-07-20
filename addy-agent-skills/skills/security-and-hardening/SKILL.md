@@ -1,6 +1,6 @@
 ---
 name: security-and-hardening
-description: Hardens code against vulnerabilities. Use when handling user input, authentication, data storage, or external integrations. Use when building any feature that accepts untrusted data, manages user sessions, or interacts with third-party services.
+description: 加固代码以抵御漏洞。适用于处理用户输入、身份认证、数据存储或外部集成时。适用于构建任何接收不受信任数据、管理用户会话、或与第三方服务交互的功能时。
 ---
 
 # Security and Hardening

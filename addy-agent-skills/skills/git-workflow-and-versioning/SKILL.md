@@ -1,6 +1,6 @@
 ---
 name: git-workflow-and-versioning
-description: Structures git workflow practices. Use when making any code change. Use when committing, branching, resolving conflicts, or when you need to organize work across multiple parallel streams. Use when cutting a release, choosing a semantic version bump, tagging, or writing a changelog.
+description: 规范 git 工作流实践。适用于任何代码变更时。适用于提交、分支、解决冲突时，或需要组织跨多个并行流的工作时。适用于发布版本、选择语义化版本号升级、打标签或编写更新日志时。
 ---
 
 # Git Workflow and Versioning

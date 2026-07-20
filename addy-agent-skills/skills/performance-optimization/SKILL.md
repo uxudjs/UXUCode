@@ -1,6 +1,6 @@
 ---
 name: performance-optimization
-description: Optimizes application performance across frontend, backend, queries, and databases. Use when performance requirements exist, when you suspect performance regressions, when Core Web Vitals or load times need improvement, when N+1 query patterns need fixing, or when profiling reveals bottlenecks.
+description: 优化前后端、查询和数据库的应用性能。适用于存在性能需求时、怀疑性能回退时、Core Web Vitals 或加载时间需要改进时、N+1 查询模式需要修复时、或性能分析揭示瓶颈时。
 ---
 
 # Performance Optimization

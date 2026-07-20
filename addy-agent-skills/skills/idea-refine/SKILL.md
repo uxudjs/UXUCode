@@ -1,6 +1,6 @@
 ---
 name: idea-refine
-description: Refines raw ideas into sharp, actionable concepts through structured divergent and convergent thinking. Use when an idea is still vague, when you need to stress-test assumptions before committing to a plan, or when you want to expand options before converging on one. Triggers on "ideate", "refine this idea", or "stress-test my plan".
+description: 通过结构化的发散与收敛思维将原始想法精炼为清晰可操作的方案。适用于想法仍模糊时、需要在投入计划前压力测试假设时、或想在收敛前扩展选项时。触发词："创想"、"精炼这个想法"、"压力测试我的计划"。
 ---
 
 # Idea Refine

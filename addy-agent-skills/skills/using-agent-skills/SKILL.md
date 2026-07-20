@@ -1,6 +1,6 @@
 ---
 name: using-agent-skills
-description: Discovers and invokes agent skills. Use when starting a session or when you need to discover which skill applies to the current task. This is the meta-skill that governs how all other skills are discovered and invoked.
+description: 发现并调用 agent 技能。适用于启动会话时或需要发现哪个技能适用于当前任务时。这是一个元技能，管理所有其他技能的发现和调用机制。
 ---
 
 # Using Agent Skills
