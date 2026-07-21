@@ -49,19 +49,55 @@ UXUCode/
 └── Codex/
 ```
 
-## 安装方式
+## 安装
+
+先克隆仓库：
+
+``` bash
+git clone https://github.com/uxudjs/UXUCode.git
+cd UXUCode
+```
 
 ### Claude Code
+
+临时加载并验证：
 
 ``` bash
 claude --plugin-dir ./Claude
 ```
 
+持久安装：
+
+``` text
+/plugin marketplace add ./Claude
+/plugin install uxu-code@uxu-code-claude
+```
+
+重启 Claude Code，或执行 `/reload-plugins`。技能调用格式为 `/uxu-code:<skill-name>`，例如 `/uxu-code:plan`。
+
 ### Codex CLI
+
+注册本地 Marketplace 并安装：
 
 ``` text
 /plugin marketplace add ./Codex
 /plugin install uxu-code@uxu-code-codex
+```
+
+重启 Codex。技能调用格式为 `@<skill-name>`，例如 `@plan`；可用 `/hooks` 检查 Hook 状态。
+
+本地 Marketplace 记录依赖克隆目录，请不要在安装后立即删除仓库。更新时执行 `git pull`，再按对应 CLI 的插件更新流程刷新。
+
+### 使用示例
+
+``` text
+# Claude Code
+/uxu-code:spec 为登录限流功能编写规格
+/uxu-code:ponytail ultra
+
+# Codex CLI
+@spec 为登录限流功能编写规格
+@ponytail ultra
 ```
 
 ## 校验
@@ -117,19 +153,55 @@ UXUCode/
 └── Codex/
 ```
 
-## 安裝方式
+## 安裝
+
+先複製倉庫：
+
+``` bash
+git clone https://github.com/uxudjs/UXUCode.git
+cd UXUCode
+```
 
 ### Claude Code
+
+臨時載入並驗證：
 
 ``` bash
 claude --plugin-dir ./Claude
 ```
 
+持久安裝：
+
+``` text
+/plugin marketplace add ./Claude
+/plugin install uxu-code@uxu-code-claude
+```
+
+重啟 Claude Code，或執行 `/reload-plugins`。技能呼叫格式為 `/uxu-code:<skill-name>`，例如 `/uxu-code:plan`。
+
 ### Codex CLI
+
+註冊本地 Marketplace 並安裝：
 
 ``` text
 /plugin marketplace add ./Codex
 /plugin install uxu-code@uxu-code-codex
+```
+
+重啟 Codex。技能呼叫格式為 `@<skill-name>`，例如 `@plan`；可用 `/hooks` 檢查 Hook 狀態。
+
+本地 Marketplace 記錄依賴複製目錄，請不要在安裝後立即刪除倉庫。更新時執行 `git pull`，再按對應 CLI 的插件更新流程重新整理。
+
+### 使用範例
+
+``` text
+# Claude Code
+/uxu-code:spec 為登入限流功能編寫規格
+/uxu-code:ponytail ultra
+
+# Codex CLI
+@spec 為登入限流功能編寫規格
+@ponytail ultra
 ```
 
 ## 驗證
@@ -189,17 +261,53 @@ UXUCode/
 
 ## Installation
 
+Clone the repository first:
+
+``` bash
+git clone https://github.com/uxudjs/UXUCode.git
+cd UXUCode
+```
+
 ### Claude Code
+
+Load temporarily for verification:
 
 ``` bash
 claude --plugin-dir ./Claude
 ```
 
+Persistent install:
+
+``` text
+/plugin marketplace add ./Claude
+/plugin install uxu-code@uxu-code-claude
+```
+
+Restart Claude Code, or run `/reload-plugins`. Invoke skills as `/uxu-code:<skill-name>`, e.g. `/uxu-code:plan`.
+
 ### Codex CLI
+
+Register the local Marketplace and install:
 
 ``` text
 /plugin marketplace add ./Codex
 /plugin install uxu-code@uxu-code-codex
+```
+
+Restart Codex. Invoke skills as `@<skill-name>`, e.g. `@plan`; use `/hooks` to check Hook status.
+
+Local Marketplace entries reference the cloned directory — do not delete the repo immediately after installation. To update, run `git pull` then refresh plugins per your CLI's update flow.
+
+### Usage Examples
+
+``` text
+# Claude Code
+/uxu-code:spec Write a spec for login rate-limiting
+/uxu-code:ponytail ultra
+
+# Codex CLI
+@spec Write a spec for login rate-limiting
+@ponytail ultra
 ```
 
 ## Validation
