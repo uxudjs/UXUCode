@@ -94,17 +94,17 @@ CodeSkillHook 結合軟體工程生命週期技能與 Ponytail
 
 ## 主要功能
 
-  🧠 完整工程工作流技能   🪶 Ponytail 極簡工程模式       🔒 完全隔離架構
-  ----------------------- ------------------------------ --------------------------------
-  需求分析                避免過度設計                   Claude 與 Codex 不共享執行目錄
-  技術規格                優先解決真實需求               不使用符號連結
-  專案規劃                保持程式碼簡單、可靠、易維護   可獨立升級維護
-  程式實作                                               
-  測試驗證                                               
-  Code Review                                            
-  效能最佳化                                             
-  安全檢查                                               
-  發布與遷移                                             
+| 🧠 完整工程工作流技能 | 🪶 Ponytail 極簡工程模式 | 🔒 完全隔離架構 |
+|----------------------|--------------------------|------------------|
+| 需求分析 | 避免過度設計 | Claude 與 Codex 不共享執行目錄 |
+| 技術規格 | 優先解決真實需求 | 不使用符號連結 |
+| 專案規劃 | 保持程式碼簡單、可靠、易維護 | 可獨立升級維護 |
+| 程式實作 | | |
+| 測試驗證 | | |
+| Code Review | | |
+| 效能最佳化 | | |
+| 安全檢查 | | |
+| 發布與遷移 | | |                                           
 
 ## 致謝
 
@@ -126,34 +126,17 @@ independent distributions.
 
 ## Features
 
-  -----------------------------------------------------------------------
-  🧠 Complete Engineering 🪶 Ponytail Minimal     🔒 Fully Isolated
-  Workflow Skills         Engineering Mode        Architecture
-  ----------------------- ----------------------- -----------------------
-  Requirement Analysis    Avoid over-engineering  Claude and Codex do not
-                                                  share runtime
-                                                  directories
-
-  Technical Specification Solve real problems     No symbolic links
-                          first                   
-
-  Project Planning        Keep code simple,       Independent upgrade and
-                          reliable, and           maintenance
-                          maintainable            
-
-  Implementation                                  
-
-  Testing & Validation                            
-
-  Code Review                                     
-
-  Performance                                     
-  Optimization                                    
-
-  Security Review                                 
-
-  Release & Migration                             
-  -----------------------------------------------------------------------
+| 🧠 Complete Engineering Workflow Skills | 🪶 Ponytail Minimal Engineering Mode | 🔒 Fully Isolated Architecture |
+|----------------------------------------|--------------------------------------|--------------------------------|
+| Requirement Analysis | Avoid over-engineering | Claude and Codex do not share runtime directories |
+| Technical Specification | Solve real problems first | No symbolic links |
+| Project Planning | Keep code simple, reliable, and maintainable | Independent upgrade and maintenance |
+| Implementation | | |
+| Testing & Validation | | |
+| Code Review | | |
+| Performance Optimization | | |
+| Security Review | | |
+| Release & Migration | | |
 
 ## Acknowledgements
 
