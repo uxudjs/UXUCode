@@ -1,0 +1,52 @@
+{
+  "description": "Load the unified engineering workflow and Ponytail mode.",
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume|clear|compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node",
+            "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/agent-skills-session.js"],
+            "timeout": 5,
+            "statusMessage": "Loading engineering workflows..."
+          },
+          {
+            "type": "command",
+            "command": "node",
+            "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/ponytail-activate.js"],
+            "timeout": 5,
+            "statusMessage": "Loading Ponytail mode..."
+          }
+        ]
+      }
+    ],
+    "SubagentStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node",
+            "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/ponytail-subagent.js"],
+            "timeout": 5,
+            "statusMessage": "Loading Ponytail mode..."
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node",
+            "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/ponytail-mode-tracker.js"],
+            "timeout": 5,
+            "statusMessage": "Tracking Ponytail mode..."
+          }
+        ]
+      }
+    ]
+  }
+}

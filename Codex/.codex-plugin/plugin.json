@@ -1,0 +1,29 @@
+{
+  "name": "code-skill-hook",
+  "version": "2.0.0",
+  "description": "Codex-native engineering workflows with Ponytail's minimal senior-developer mode.",
+  "author": {
+    "name": "uxudjs",
+    "url": "https://github.com/uxudjs"
+  },
+  "homepage": "https://github.com/uxudjs/CodeSkillHook",
+  "repository": "https://github.com/uxudjs/CodeSkillHook",
+  "license": "MIT",
+  "keywords": ["coding", "engineering", "skills", "hooks", "minimalism"],
+  "skills": "./skills/",
+  "hooks": "./hooks/hooks.json",
+  "interface": {
+    "displayName": "Code Skill Hook",
+    "shortDescription": "Engineering workflows with minimal senior-dev guardrails",
+    "longDescription": "Use Codex-native engineering workflows from specification through launch while Ponytail keeps implementations small, direct, and maintainable.",
+    "developerName": "uxudjs",
+    "category": "Productivity",
+    "capabilities": ["Instructions", "Lifecycle hooks"],
+    "websiteURL": "https://github.com/uxudjs/CodeSkillHook",
+    "defaultPrompt": [
+      "Use the appropriate engineering workflow skills to implement this task.",
+      "Review this change for correctness and over-engineering.",
+      "Find the smallest correct implementation and verify it."
+    ]
+  }
+}
