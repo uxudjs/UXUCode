@@ -92,6 +92,8 @@ CodeSkillHook 結合軟體工程生命週期技能與 Ponytail
 -   獨立 Hook 生命週期
 -   獨立執行環境
 
+避免兩個 CLI 因架構差異產生相容性問題。
+
 ## 主要功能
 
 | 🧠 完整工程工作流技能 | 🪶 Ponytail 極簡工程模式 | 🔒 完全隔離架構 |
@@ -106,9 +108,38 @@ CodeSkillHook 結合軟體工程生命週期技能與 Ponytail
 | 安全檢查 | | |
 | 發布與遷移 | | |                                           
 
-## 致謝
+## 專案結構
 
-感謝：
+``` text
+CodeSkillHook/
+├── README.md
+├── Claude/
+└── Codex/
+```
+
+## 安裝方式
+
+### Claude Code
+
+``` bash
+claude --plugin-dir ./Claude
+```
+
+### Codex CLI
+
+``` text
+/plugin marketplace add ./Codex
+/plugin install code-skill-hook@code-skill-hook-codex
+```
+
+## 驗證
+
+``` bash
+node Claude/scripts/validate-plugin.js
+node Codex/scripts/validate-plugin.js
+```
+
+## 致謝
 
 -   DietrichGebert/ponytail
 -   addyosmani/agent-skills
@@ -122,7 +153,16 @@ CodeSkillHook combines full software engineering lifecycle skills with
 Ponytail's senior-engineer minimalism.
 
 Since `v2.0.0`, Claude Code and Codex CLI are maintained as completely
-independent distributions.
+independent distributions:
+
+-   Independent directories
+-   Independent plugin configurations
+-   Independent skill systems
+-   Independent Hook lifecycles
+-   Independent runtime environments
+
+This avoids compatibility issues caused by architectural differences
+between the two CLIs.
 
 ## Features
 
@@ -137,6 +177,37 @@ independent distributions.
 | Performance Optimization | | |
 | Security Review | | |
 | Release & Migration | | |
+
+## Project Structure
+
+``` text
+CodeSkillHook/
+├── README.md
+├── Claude/
+└── Codex/
+```
+
+## Installation
+
+### Claude Code
+
+``` bash
+claude --plugin-dir ./Claude
+```
+
+### Codex CLI
+
+``` text
+/plugin marketplace add ./Codex
+/plugin install code-skill-hook@code-skill-hook-codex
+```
+
+## Validation
+
+``` bash
+node Claude/scripts/validate-plugin.js
+node Codex/scripts/validate-plugin.js
+```
 
 ## Acknowledgements
 
