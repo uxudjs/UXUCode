@@ -1,7 +1,7 @@
 {
   "name": "uxu-code-codex",
   "interface": {
-    "displayName": "Code Skill Hook"
+    "displayName": "UXUCode"
   },
   "plugins": [
     {

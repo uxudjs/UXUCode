@@ -13,7 +13,7 @@
   "skills": "./skills/",
   "hooks": "./hooks/hooks.json",
   "interface": {
-    "displayName": "Code Skill Hook",
+    "displayName": "UXUCode",
     "shortDescription": "Engineering workflows with minimal senior-dev guardrails",
     "longDescription": "Use Codex-native engineering workflows from specification through launch while Ponytail keeps implementations small, direct, and maintainable.",
     "developerName": "uxudjs",
