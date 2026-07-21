@@ -1,0 +1,107 @@
+#!/usr/bin/env node
+// ponytail — UserPromptSubmit hook to track which ponytail mode is active
+// Inspects user input for /ponytail commands and writes mode to flag file
+
+const { getDefaultMode, isDeactivationCommand, writeDefaultMode } = require('./ponytail-config');
+const { clearMode, readMode, setMode, writeHookOutput } = require('./ponytail-runtime');
+
+let input = '';
+let done = false;
+
+function finish() {
+  if (done) return;
+  done = true;
+  try {
+    // Strip UTF-8 BOM some shells prepend when piping (breaks JSON.parse)
+    const data = JSON.parse(input.replace(/^\uFEFF/, ''));
+    const prompt = (data.prompt || '').trim().toLowerCase();
+
+    // Match Codex @ponytail invocations (legacy slash forms remain accepted).
+    let modeSwitched = false;
+    let deactivated = false;
+    if (/^[/@$]ponytail/.test(prompt) || prompt.startsWith('/code-skill-hook:ponytail')) {
+      const parts = prompt.split(/\s+/);
+      const cmd = parts[0].replace(/^[@$]/, '/');
+      const arg = parts[1] || '';
+
+      let mode = null;
+      let isReportOnly = false;
+
+      if (
+        cmd === '/ponytail-review' ||
+        cmd === '/ponytail:ponytail-review' ||
+        cmd === '/code-skill-hook:ponytail-review'
+      ) {
+        mode = 'review';
+      } else if (
+        cmd === '/ponytail' ||
+        cmd === '/ponytail:ponytail' ||
+        cmd === '/code-skill-hook:ponytail'
+      ) {
+        // `/ponytail default <mode>` persists the default to config (survives
+        // restarts). Plain switches stay session-scoped ("sticks until session
+        // end"), so this is the only path that writes config. review is not a
+        // valid default (#377), so only off/lite/full/ultra are accepted.
+        if (arg === 'default') {
+          const dmode = parts[2];
+          if (dmode === 'off' || dmode === 'lite' || dmode === 'full' || dmode === 'ultra') {
+            writeDefaultMode(dmode);
+            writeHookOutput('UserPromptSubmit', dmode, 'PONYTAIL DEFAULT SET — new sessions start in ' + dmode + '.');
+          }
+          return; // don't fall through to the session-mode switch
+        }
+        if (arg === 'lite') mode = 'lite';
+        else if (arg === 'full') mode = 'full';
+        else if (arg === 'ultra') mode = 'ultra';
+        else if (arg === 'off') mode = 'off';
+        else if (arg === '') {
+          isReportOnly = true;
+          mode = readMode() || getDefaultMode();
+        } else {
+          mode = getDefaultMode();
+        }
+      }
+
+      if (isReportOnly) {
+        writeHookOutput(
+          'UserPromptSubmit',
+          mode,
+          'PONYTAIL MODE ACTIVE — level: ' + mode,
+        );
+      } else if (mode && mode !== 'off') {
+        setMode(mode);
+        modeSwitched = true;
+        writeHookOutput(
+          'UserPromptSubmit',
+          mode,
+          'PONYTAIL MODE CHANGED — level: ' + mode,
+        );
+      } else if (mode === 'off') {
+        clearMode();
+        deactivated = true;
+        writeHookOutput('UserPromptSubmit', 'off', 'PONYTAIL MODE OFF');
+      }
+    }
+
+    // Detect deactivation
+    if (!modeSwitched && !deactivated && isDeactivationCommand(prompt)) {
+      clearMode();
+      deactivated = true;
+      writeHookOutput('UserPromptSubmit', 'off', 'PONYTAIL MODE OFF');
+    }
+
+  } catch (e) {
+    // Silent fail
+  }
+}
+
+process.stdin.on('data', chunk => { input += chunk; });
+process.stdin.on('end', finish);
+
+// Never hang a Codex session if stdin closes unexpectedly or arrives without EOF.
+// On error, or after a short fallback, process whatever arrived (recovering the
+// mode if data came without EOF) and exit. unref() keeps the timer from adding
+// latency to the normal path, where 'end' fires first. Mirrors the best-effort,
+// never-block contract the other lifecycle hooks already follow.
+process.stdin.on('error', () => { finish(); process.exit(0); });
+setTimeout(() => { finish(); process.exit(0); }, 1000).unref();
