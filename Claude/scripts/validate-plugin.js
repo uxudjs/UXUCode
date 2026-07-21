@@ -25,12 +25,12 @@ const marketplace = readJson('.claude-plugin/marketplace.json');
 const hooks = readJson('hooks/hooks.json');
 
 if (manifest) {
-  if (manifest.name !== 'code-skill-hook') fail('manifest: unexpected plugin name');
+  if (manifest.name !== 'uxu-code') fail('manifest: unexpected plugin name');
   if (manifest.version !== '2.0.0') fail('manifest: expected version 2.0.0');
   if (manifest.skills !== './skills/') fail('manifest: skills must be ./skills/');
   if (manifest.hooks !== './hooks/hooks.json') fail('manifest: hooks must be ./hooks/hooks.json');
 }
-if (marketplace?.name !== 'code-skill-hook-claude') fail('marketplace: unexpected name');
+if (marketplace?.name !== 'uxu-code-claude') fail('marketplace: unexpected name');
 if (marketplace?.plugins?.[0]?.source !== './') fail('marketplace: plugin source must be ./');
 if (JSON.stringify(hooks).includes('PLUGIN_ROOT') && !JSON.stringify(hooks).includes('CLAUDE_PLUGIN_ROOT')) {
   fail('hooks: Claude hooks must use CLAUDE_PLUGIN_ROOT');

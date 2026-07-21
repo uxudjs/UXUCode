@@ -1,13 +1,13 @@
 {
-  "name": "code-skill-hook",
+  "name": "uxu-code",
   "version": "2.0.0",
   "description": "Claude Code-native engineering workflows with Ponytail's minimal senior-developer mode.",
   "author": {
     "name": "uxudjs",
     "url": "https://github.com/uxudjs"
   },
-  "homepage": "https://github.com/uxudjs/CodeSkillHook",
-  "repository": "https://github.com/uxudjs/CodeSkillHook",
+  "homepage": "https://github.com/uxudjs/UXUCode",
+  "repository": "https://github.com/uxudjs/UXUCode",
   "license": "MIT",
   "keywords": ["coding", "engineering", "skills", "hooks", "minimalism"],
   "skills": "./skills/",

@@ -20,7 +20,7 @@ function finish() {
     // Match /ponytail commands
     let modeSwitched = false;
     let deactivated = false;
-    if (/^[/@$]ponytail/.test(prompt) || prompt.startsWith('/code-skill-hook:ponytail')) {
+    if (/^[/@$]ponytail/.test(prompt) || prompt.startsWith('/uxu-code:ponytail')) {
       const parts = prompt.split(/\s+/);
       const cmd = parts[0].replace(/^[@$]/, '/');
       const arg = parts[1] || '';
@@ -31,13 +31,13 @@ function finish() {
       if (
         cmd === '/ponytail-review' ||
         cmd === '/ponytail:ponytail-review' ||
-        cmd === '/code-skill-hook:ponytail-review'
+        cmd === '/uxu-code:ponytail-review'
       ) {
         mode = 'review';
       } else if (
         cmd === '/ponytail' ||
         cmd === '/ponytail:ponytail' ||
-        cmd === '/code-skill-hook:ponytail'
+        cmd === '/uxu-code:ponytail'
       ) {
         // `/ponytail default <mode>` persists the default to config (survives
         // restarts). Plain switches stay session-scoped ("sticks until session

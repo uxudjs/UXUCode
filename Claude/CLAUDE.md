@@ -2,7 +2,7 @@
 
 Behavioral guidelines to reduce common LLM coding mistakes. Merge with project-specific instructions as needed.
 
-Claude Code integration: invoke plugin skills as `/code-skill-hook:<skill-name>`. Hooks use `CLAUDE_PLUGIN_ROOT`, emit Claude-native output, and may use Claude-specific session and subagent events.
+Claude Code integration: invoke plugin skills as `/uxu-code:<skill-name>`. Hooks use `CLAUDE_PLUGIN_ROOT`, emit Claude-native output, and may use Claude-specific session and subagent events.
 
 **Tradeoff:** These guidelines bias toward caution over speed. For trivial tasks, use judgment.
 

@@ -3,7 +3,7 @@ const path = require('path');
 const os = require('os');
 
 const STATE_FILE = '.ponytail-active';
-const stateDir = process.env.PLUGIN_DATA || path.join(os.homedir(), '.codex', 'plugins', 'code-skill-hook');
+const stateDir = process.env.PLUGIN_DATA || path.join(os.homedir(), '.codex', 'plugins', 'uxu-code');
 const statePath = path.join(stateDir, STATE_FILE);
 
 function setMode(mode) {

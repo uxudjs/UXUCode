@@ -58,7 +58,7 @@ Resolution: env var > config file > `full`.
 
 ## Update
 
-Update the cloned repository with `git pull`, then refresh or reinstall `code-skill-hook@code-skill-hook-codex` through Codex's plugin UI. Use `/hooks` after a hook update to review its trust state.
+Update the cloned repository with `git pull`, then refresh or reinstall `uxu-code@uxu-code-codex` through Codex's plugin UI. Use `/hooks` after a hook update to review its trust state.
 
 ## More
 

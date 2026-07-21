@@ -1,11 +1,11 @@
 {
-  "name": "code-skill-hook-codex",
+  "name": "uxu-code-codex",
   "interface": {
     "displayName": "Code Skill Hook"
   },
   "plugins": [
     {
-      "name": "code-skill-hook",
+      "name": "uxu-code",
       "source": {
         "source": "local",
         "path": "./"

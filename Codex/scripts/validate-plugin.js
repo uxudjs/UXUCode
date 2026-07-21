@@ -25,12 +25,12 @@ const marketplace = readJson('.agents/plugins/marketplace.json');
 const hooks = readJson('hooks/hooks.json');
 
 if (manifest) {
-  if (manifest.name !== 'code-skill-hook') fail('manifest: unexpected plugin name');
+  if (manifest.name !== 'uxu-code') fail('manifest: unexpected plugin name');
   if (manifest.version !== '2.0.0') fail('manifest: expected version 2.0.0');
   if (manifest.skills !== './skills/') fail('manifest: skills must be ./skills/');
   if (manifest.hooks !== './hooks/hooks.json') fail('manifest: hooks must be ./hooks/hooks.json');
 }
-if (marketplace?.name !== 'code-skill-hook-codex') fail('marketplace: unexpected name');
+if (marketplace?.name !== 'uxu-code-codex') fail('marketplace: unexpected name');
 if (marketplace?.plugins?.[0]?.source?.path !== './') fail('marketplace: local plugin path must be ./');
 const serializedHooks = JSON.stringify(hooks);
 if (!serializedHooks.includes('PLUGIN_ROOT') || serializedHooks.includes('CLAUDE_PLUGIN_ROOT')) {

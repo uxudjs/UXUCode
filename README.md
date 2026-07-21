@@ -1,4 +1,4 @@
-# CodeSkillHook
+# UXUCode
 
 > 为 Claude Code 与 Codex CLI 分别构建的工程工作流技能与 Ponytail
 > 极简主义 Hook。
@@ -13,7 +13,7 @@
 
 # 🇨🇳 简体中文
 
-CodeSkillHook 将软件工程全生命周期技能与 Ponytail
+UXUCode 将软件工程全生命周期技能与 Ponytail
 的「资深工程师极简模式」结合。
 
 自 `v2.0.0` 起，Claude Code 与 Codex CLI 完全独立维护：
@@ -43,7 +43,7 @@ CodeSkillHook 将软件工程全生命周期技能与 Ponytail
 ## 项目结构
 
 ``` text
-CodeSkillHook/
+UXUCode/
 ├── README.md
 ├── Claude/
 └── Codex/
@@ -61,7 +61,7 @@ claude --plugin-dir ./Claude
 
 ``` text
 /plugin marketplace add ./Codex
-/plugin install code-skill-hook@code-skill-hook-codex
+/plugin install uxu-code@uxu-code-codex
 ```
 
 ## 校验
@@ -81,7 +81,7 @@ node Codex/scripts/validate-plugin.js
 
 # 🇹🇼 繁體中文
 
-CodeSkillHook 結合軟體工程生命週期技能與 Ponytail
+UXUCode 結合軟體工程生命週期技能與 Ponytail
 的「資深工程師極簡模式」。
 
 自 `v2.0.0` 起，Claude Code 與 Codex CLI 完全獨立維護：
@@ -111,7 +111,7 @@ CodeSkillHook 結合軟體工程生命週期技能與 Ponytail
 ## 專案結構
 
 ``` text
-CodeSkillHook/
+UXUCode/
 ├── README.md
 ├── Claude/
 └── Codex/
@@ -129,7 +129,7 @@ claude --plugin-dir ./Claude
 
 ``` text
 /plugin marketplace add ./Codex
-/plugin install code-skill-hook@code-skill-hook-codex
+/plugin install uxu-code@uxu-code-codex
 ```
 
 ## 驗證
@@ -149,7 +149,7 @@ node Codex/scripts/validate-plugin.js
 
 # 🇺🇸 English
 
-CodeSkillHook combines full software engineering lifecycle skills with
+UXUCode combines full software engineering lifecycle skills with
 Ponytail's senior-engineer minimalism.
 
 Since `v2.0.0`, Claude Code and Codex CLI are maintained as completely
@@ -181,7 +181,7 @@ between the two CLIs.
 ## Project Structure
 
 ``` text
-CodeSkillHook/
+UXUCode/
 ├── README.md
 ├── Claude/
 └── Codex/
@@ -199,7 +199,7 @@ claude --plugin-dir ./Claude
 
 ``` text
 /plugin marketplace add ./Codex
-/plugin install code-skill-hook@code-skill-hook-codex
+/plugin install uxu-code@uxu-code-codex
 ```
 
 ## Validation
@@ -222,4 +222,4 @@ Thanks to:
 ## Star History
 
 [![Star History
-Chart](https://api.star-history.com/svg?repos=uxudjs/CodeSkillHook&type=Date)](https://star-history.com/#uxudjs/CodeSkillHook&Date)
+Chart](https://api.star-history.com/svg?repos=uxudjs/UXUCode&type=Date)](https://star-history.com/#uxudjs/UXUCode&Date)

@@ -1,12 +1,12 @@
 {
-  "name": "code-skill-hook-claude",
+  "name": "uxu-code-claude",
   "owner": {
     "name": "uxudjs"
   },
   "description": "Claude Code-native engineering workflows and Ponytail hooks.",
   "plugins": [
     {
-      "name": "code-skill-hook",
+      "name": "uxu-code",
       "source": "./",
       "description": "Engineering workflow skills with Ponytail minimalism.",
       "version": "2.0.0",
