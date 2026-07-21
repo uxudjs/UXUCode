@@ -80,8 +80,8 @@ claude --plugin-dir ./Claude
 注册本地 Marketplace 并安装：
 
 ``` text
-/plugin marketplace add ./Codex
-/plugin install uxu-code@uxu-code-codex
+codex plugin marketplace add ./Codex
+codex plugin add uxu-code@uxu-code-codex
 ```
 
 重启 Codex。技能调用格式为 `@<skill-name>`，例如 `@plan`；可用 `/hooks` 检查 Hook 状态。
@@ -184,8 +184,8 @@ claude --plugin-dir ./Claude
 註冊本地 Marketplace 並安裝：
 
 ``` text
-/plugin marketplace add ./Codex
-/plugin install uxu-code@uxu-code-codex
+codex plugin marketplace add ./Codex
+codex plugin add uxu-code@uxu-code-codex
 ```
 
 重啟 Codex。技能呼叫格式為 `@<skill-name>`，例如 `@plan`；可用 `/hooks` 檢查 Hook 狀態。
@@ -290,8 +290,8 @@ Restart Claude Code, or run `/reload-plugins`. Invoke skills as `/uxu-code:<skil
 Register the local Marketplace and install:
 
 ``` text
-/plugin marketplace add ./Codex
-/plugin install uxu-code@uxu-code-codex
+codex plugin marketplace add ./Codex
+codex plugin add uxu-code@uxu-code-codex
 ```
 
 Restart Codex. Invoke skills as `@<skill-name>`, e.g. `@plan`; use `/hooks` to check Hook status.
