@@ -49,7 +49,22 @@ definitions.forEach((definition, index) => {
   if (count(readme, definition.guide) !== 1) {
     failures.push(definition.guide + ': expected exactly one README link');
   }
-  for (const required of ['v3.0.0', '/uxu-code:spec', '/uxu-code:mode full', '@spec', '@mode full']) {
+  for (const required of [
+    'v3.0.0',
+    '/uxu-code:spec',
+    '/uxu-code:mode full',
+    '@spec',
+    '@mode full',
+    'git pull origin main',
+    '/plugin marketplace update uxu-code-claude',
+    '/plugin update uxu-code@uxu-code-claude',
+    '/plugin uninstall uxu-code@uxu-code-claude --keep-data',
+    '/plugin install uxu-code@uxu-code-claude',
+    '/reload-plugins',
+    'codex plugin remove uxu-code@uxu-code-codex',
+    'codex plugin add uxu-code@uxu-code-codex',
+    'https://github.com/colbymchenry/codegraph'
+  ]) {
     if (!section.includes(required)) failures.push(definition.marker + ': missing synchronized value ' + required);
   }
 });
