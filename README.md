@@ -104,7 +104,7 @@ Claude Code（在 Claude Code 会话中执行）：
 
 Codex CLI：
 
-`uxu-code-codex` 是指向 `./Codex` 的本地 Marketplace，不需要也不能执行 `marketplace upgrade`。完成 `git pull --ff-only` 后直接重启 Codex，即可从更新后的本地目录加载插件。
+完成 `git pull --ff-only` 后直接重启 Codex，即可从更新后的本地目录加载插件。
 
 ### 使用示例
 
@@ -227,7 +227,7 @@ Claude Code（在 Claude Code 工作階段中執行）：
 
 Codex CLI：
 
-`uxu-code-codex` 是指向 `./Codex` 的本機 Marketplace，不需要也不能執行 `marketplace upgrade`。完成 `git pull --ff-only` 後直接重新啟動 Codex，即可從更新後的本機目錄載入插件。
+完成 `git pull --ff-only` 後直接重新啟動 Codex，即可從更新後的本機目錄載入插件。
 
 ### 使用範例
 
@@ -351,7 +351,7 @@ Claude Code (run inside a Claude Code session):
 
 Codex CLI:
 
-`uxu-code-codex` is a local Marketplace pointing to `./Codex`, so it neither needs nor supports `marketplace upgrade`. After `git pull --ff-only` completes, restart Codex to load the plugin from the updated local directory.
+After `git pull --ff-only` completes, restart Codex to load the plugin from the updated local directory.
 
 ### Usage Examples
 
