@@ -1,11 +1,16 @@
 ---
 name: spec
-description: "Start spec-driven development: write a structured specification before writing code."
+description: "Explicit UXUCode spec command: define and confirm a verifiable specification before non-trivial implementation."
 ---
 
-用户输入 "spec" 时，加载 `spec-driven-development`。
+# Specification
 
-流程：
-1. 理解用户想构建什么，提出澄清性问题（目标用户、核心功能、技术栈、约束边界）
-2. 生成结构化 spec：objective / commands / project structure / code style / testing strategy / boundaries
-3. 保存为 SPEC.md 并请用户确认后再进入实现
+Use for new features, cross-module behavior changes, unclear acceptance criteria, or material interface and risk decisions. Skip for obvious one-line fixes or when an approved `SPEC.md` already covers the work.
+
+1. Clarify the goal, users, scenarios, constraints, non-goals, interfaces, risks, testing strategy, and acceptance criteria.
+2. Resolve material ambiguity before implementation.
+3. Write a structured `SPEC.md`.
+4. Ask for confirmation when choices would materially change scope or behavior.
+5. Do not modify business code in this workflow.
+
+Apply `implementation-policy` and `output-policy`.

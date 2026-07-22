@@ -2,7 +2,7 @@
 
 Behavioral guidelines to reduce common LLM coding mistakes. Merge with project-specific instructions as needed.
 
-Codex integration: invoke plugin skills as `@<skill-name>`. Do not assume Claude slash commands, Claude agents, or `CLAUDE_PLUGIN_ROOT`; hooks use Codex's `PLUGIN_ROOT` and `PLUGIN_DATA` contract.
+Codex integration: invoke UXUCode commands as `@<command>`. Do not assume Claude slash commands, Claude agents, or `CLAUDE_PLUGIN_ROOT`; hooks use Codex's `PLUGIN_ROOT` contract. Use `@help` for the command list and `@mode standard|lite|full|ultra|off` for the unified implementation and output policy.
 
 **Tradeoff:** These guidelines bias toward caution over speed. For trivial tasks, use judgment.
 

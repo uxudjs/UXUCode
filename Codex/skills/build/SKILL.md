@@ -1,11 +1,19 @@
 ---
 name: build
-description: Shortcut for incremental-implementation + test-driven-development. "build" = next task, "build auto" = run whole plan.
+description: "Explicit UXUCode build command: implement the next approved task, or the full stable plan only with the auto argument."
 ---
 
-当用户输入 "build" 或 "build auto" 时，委托给完整技能：
+# Build
 
-- `build`（无参数）→ 加载 `incremental-implementation`，执行 plan 中下一个待办任务（逐片实现 → 测试 → 验证 → 提交 → 停止）
-- `build auto` / `build all` → 加载 `incremental-implementation` 自主模式：先确保有 spec 和 plan，获用户批准后自动执行全部任务，每任务一个 commit
+Without arguments, execute exactly the next incomplete task:
 
-配合 `test-driven-development` 和 `planning-and-task-breakdown` 使用。
+1. Read `SPEC.md`, `tasks/plan.md`, and `tasks/todo.md`.
+2. Implement the smallest complete vertical slice.
+3. Add or update relevant tests.
+4. Run focused checks, then broader checks proportional to risk.
+5. Update task state and report evidence.
+6. Stop after one task.
+
+Use `references/testing-patterns.md` and `references/definition-of-done.md` as applicable. For security, performance, accessibility, or observability-sensitive changes, also apply the matching checklist.
+
+With `auto`, continue through the approved plan only when requirements are stable, acceptance criteria are clear, tests are reliable, and the user has authorized continuous execution. Stop on ambiguity, failing validation, risky migration, or external behavior that cannot be verified. Each task must remain independently reviewable and reversible.

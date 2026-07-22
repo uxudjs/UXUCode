@@ -1,13 +1,18 @@
 ---
 name: ship
-description: "Pre-launch checklist: combine code quality, security, and test readiness into a go/no-go decision."
+description: "Explicit UXUCode ship command: run the final merge or release readiness gate and return GO or NO-GO."
 ---
 
-用户输入 "ship" 时，加载 `shipping-and-launch`。
+# Ship
 
-执行三阶段审查工作流：
-1. **审查**：分别加载 `code-review-and-quality`、`security-and-hardening`、`test-driven-development`；宿主支持并行 Agent 时可并行执行，否则顺序执行
-2. **合并**：在主上下文中综合三份报告，去重，归类为 Blocker / Recommended / Acknowledged
-3. **决策**：输出 GO/NO-GO 判定 + 回滚计划
+`ship` is a readiness check after development is complete. It is not a normal commit command and does not deploy production.
 
-若改动 ≤2 文件且 ≤50 行且不涉及认证/支付/数据/配置，可跳过扇出直接判定。否则默认启用并行审查。
+1. Review code quality, security, test and build readiness, migration impact, observability, deployment steps, and rollback preparation.
+2. Use internal reviewer, security-reviewer, and test-reviewer roles in parallel when the host supports it; otherwise run the checks sequentially.
+3. Deduplicate findings into `Blocker`, `Recommended`, and `Acknowledged`.
+4. Return `GO` only when no blocker remains and required evidence exists; otherwise return `NO-GO`.
+5. Include release steps, rollback plan, and explicitly unverified items.
+
+Never take a fast path for authentication, payment, permissions, data migration, production configuration, security fixes, or public API compatibility.
+
+Apply `references/definition-of-done.md` plus every domain checklist relevant to the release. Use `references/orchestration-patterns.md` when coordinating internal review roles.
