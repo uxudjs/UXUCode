@@ -90,6 +90,47 @@ codex plugin add uxu-code@uxu-code-codex
 
 本地 Marketplace 记录依赖克隆目录，请不要在安装后立即删除仓库。更新时执行 `git pull`，再按对应 CLI 的插件更新流程刷新。
 
+## 更新
+
+先进入克隆的 UXUCode 目录并拉取最新版本：
+
+``` bash
+git pull origin main
+```
+
+### Claude Code
+
+在 Claude Code 中依次执行：
+
+``` text
+/plugin marketplace update uxu-code-claude
+/plugin update uxu-code@uxu-code-claude
+/reload-plugins
+```
+
+如果已拉取新提交但 `/plugin update` 提示已是最新版本，说明本地缓存仍在使用未变更的插件版本号；可保留插件数据并强制重新安装：
+
+``` text
+/plugin uninstall uxu-code@uxu-code-claude --keep-data
+/plugin install uxu-code@uxu-code-claude
+/reload-plugins
+```
+
+### Codex CLI
+
+Codex 会把本地 Marketplace 插件复制到缓存中。拉取最新提交后，重新安装以更新缓存：
+
+``` bash
+codex plugin remove uxu-code@uxu-code-codex
+codex plugin add uxu-code@uxu-code-codex
+```
+
+然后退出并重新启动 Codex。`codex plugin marketplace upgrade` 用于刷新 Marketplace 来源；对于此本地 Marketplace，重新安装才会更新已缓存的插件内容。
+
+## 推荐搭配
+
+建议配合 [CodeGraph](https://github.com/colbymchenry/codegraph) 使用：先用 CodeGraph 浏览仓库结构与依赖关系，再用 UXUCode 的 `spec`、`plan`、`build`、`review` 等工作流完成实现与验证。CodeGraph 需单独安装。
+
 ### 使用示例
 
 ``` text
@@ -196,6 +237,47 @@ codex plugin add uxu-code@uxu-code-codex
 重啟 Codex。技能呼叫格式為 `@<skill-name>`，例如 `@plan`；可用 `/hooks` 檢查 Hook 狀態。
 
 本地 Marketplace 記錄依賴複製目錄，請不要在安裝後立即刪除倉庫。更新時執行 `git pull`，再按對應 CLI 的插件更新流程重新整理。
+
+## 更新
+
+先進入複製的 UXUCode 目錄並拉取最新版本：
+
+``` bash
+git pull origin main
+```
+
+### Claude Code
+
+在 Claude Code 中依序執行：
+
+``` text
+/plugin marketplace update uxu-code-claude
+/plugin update uxu-code@uxu-code-claude
+/reload-plugins
+```
+
+如果已拉取新提交但 `/plugin update` 顯示已是最新版本，表示本機快取仍在使用未變更的插件版本號；可保留插件資料並強制重新安裝：
+
+``` text
+/plugin uninstall uxu-code@uxu-code-claude --keep-data
+/plugin install uxu-code@uxu-code-claude
+/reload-plugins
+```
+
+### Codex CLI
+
+Codex 會將本機 Marketplace 插件複製到快取中。拉取最新提交後，請重新安裝以更新快取：
+
+``` bash
+codex plugin remove uxu-code@uxu-code-codex
+codex plugin add uxu-code@uxu-code-codex
+```
+
+接著退出並重新啟動 Codex。`codex plugin marketplace upgrade` 用於重新整理 Marketplace 來源；對這個本機 Marketplace 而言，重新安裝才會更新已快取的插件內容。
+
+## 建議搭配
+
+建議搭配 [CodeGraph](https://github.com/colbymchenry/codegraph) 使用：先用 CodeGraph 瀏覽倉庫結構與相依關係，再用 UXUCode 的 `spec`、`plan`、`build`、`review` 等工作流完成實作與驗證。CodeGraph 需另外安裝。
 
 ### 使用範例
 
@@ -305,6 +387,47 @@ codex plugin add uxu-code@uxu-code-codex
 Restart Codex. Invoke skills as `@<skill-name>`, e.g. `@plan`; use `/hooks` to check Hook status.
 
 Local Marketplace entries reference the cloned directory — do not delete the repo immediately after installation. To update, run `git pull` then refresh plugins per your CLI's update flow.
+
+## Updating
+
+From the cloned UXUCode directory, pull the latest release:
+
+``` bash
+git pull origin main
+```
+
+### Claude Code
+
+Run these commands in Claude Code:
+
+``` text
+/plugin marketplace update uxu-code-claude
+/plugin update uxu-code@uxu-code-claude
+/reload-plugins
+```
+
+If you pulled new commits but `/plugin update` reports that the plugin is current, the local cache is still using an unchanged plugin version. Preserve plugin data and force a reinstall:
+
+``` text
+/plugin uninstall uxu-code@uxu-code-claude --keep-data
+/plugin install uxu-code@uxu-code-claude
+/reload-plugins
+```
+
+### Codex CLI
+
+Codex copies local Marketplace plugins into its cache. After pulling new commits, reinstall the plugin to refresh that cache:
+
+``` bash
+codex plugin remove uxu-code@uxu-code-codex
+codex plugin add uxu-code@uxu-code-codex
+```
+
+Then exit and restart Codex. `codex plugin marketplace upgrade` refreshes Marketplace sources; for this local Marketplace, reinstalling is what refreshes the cached plugin contents.
+
+## Recommended Companion
+
+We recommend using [CodeGraph](https://github.com/colbymchenry/codegraph) alongside UXUCode: use CodeGraph to explore repository structure and dependencies first, then use UXUCode workflows such as `spec`, `plan`, `build`, and `review` to implement and verify the change. Install CodeGraph separately.
 
 ### Usage Examples
 
