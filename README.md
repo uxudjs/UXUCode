@@ -13,10 +13,12 @@
 
 # 🇨🇳 简体中文
 
+📖 [查看完整简体中文使用指南](docs/USAGE.zh-CN.md)
+
 UXUCode 将软件工程全生命周期技能与 Ponytail
 的「资深工程师极简模式」结合。
 
-自 `v2.0.0` 起，Claude Code 与 Codex CLI 完全独立维护：
+自 `v3.0.0` 起，Claude Code 与 Codex CLI 完全独立维护：
 
 -   独立目录
 -   独立插件配置
@@ -93,11 +95,11 @@ codex plugin add uxu-code@uxu-code-codex
 ``` text
 # Claude Code
 /uxu-code:spec 为登录限流功能编写规格
-/uxu-code:ponytail ultra
+/uxu-code:mode full
 
 # Codex CLI
 @spec 为登录限流功能编写规格
-@ponytail ultra
+@mode full
 ```
 
 ## 校验
@@ -118,10 +120,12 @@ node Codex/scripts/validate-plugin.js
 
 # 🇹🇼 繁體中文
 
+📖 [查看完整繁體中文使用指南](docs/USAGE.zh-TW.md)
+
 UXUCode 結合軟體工程生命週期技能與 Ponytail
 的「資深工程師極簡模式」。
 
-自 `v2.0.0` 起，Claude Code 與 Codex CLI 完全獨立維護：
+自 `v3.0.0` 起，Claude Code 與 Codex CLI 完全獨立維護：
 
 -   獨立目錄
 -   獨立插件設定
@@ -198,11 +202,11 @@ codex plugin add uxu-code@uxu-code-codex
 ``` text
 # Claude Code
 /uxu-code:spec 為登入限流功能編寫規格
-/uxu-code:ponytail ultra
+/uxu-code:mode full
 
 # Codex CLI
 @spec 為登入限流功能編寫規格
-@ponytail ultra
+@mode full
 ```
 
 ## 驗證
@@ -223,10 +227,12 @@ node Codex/scripts/validate-plugin.js
 
 # 🇺🇸 English
 
+📖 [Read the complete English usage guide](docs/USAGE.en.md)
+
 UXUCode combines full software engineering lifecycle skills with
 Ponytail's senior-engineer minimalism.
 
-Since `v2.0.0`, Claude Code and Codex CLI are maintained as completely
+Since `v3.0.0`, Claude Code and Codex CLI are maintained as completely
 independent distributions:
 
 -   Independent directories
@@ -305,11 +311,11 @@ Local Marketplace entries reference the cloned directory — do not delete the r
 ``` text
 # Claude Code
 /uxu-code:spec Write a spec for login rate-limiting
-/uxu-code:ponytail ultra
+/uxu-code:mode full
 
 # Codex CLI
 @spec Write a spec for login rate-limiting
-@ponytail ultra
+@mode full
 ```
 
 ## Validation
