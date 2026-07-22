@@ -1,11 +1,13 @@
 ---
 name: build
-description: Shortcut for incremental-implementation + test-driven-development. "build" = next task, "build auto" = run whole plan.
+description: Implement the next approved task, or execute a stable plan with the explicit auto argument.
+argument-hint: "[auto]"
 ---
 
-当用户输入 "build" 或 "build auto" 时，委托给完整技能：
+# Build
 
-- `build`（无参数）→ 加载 `incremental-implementation`，执行 plan 中下一个待办任务（逐片实现 → 测试 → 验证 → 提交 → 停止）
-- `build auto` / `build all` → 加载 `incremental-implementation` 自主模式：先确保有 spec 和 plan，获用户批准后自动执行全部任务，每任务一个 commit
+Without arguments, complete exactly the next unchecked task: read the plan, implement the smallest complete vertical slice, test it, verify it, update task state, create an intentional commit when authorized, then stop and report evidence.
 
-配合 `test-driven-development` 和 `planning-and-task-breakdown` 使用。
+With `auto`, continue across the approved plan only when requirements are stable, acceptance criteria are clear, automated tests are reliable, and the user explicitly allowed continuous execution. Keep tasks independently verifiable and reversible. Stop on ambiguity, failed validation, high-risk migration, or an external dependency that has not been verified.
+
+Select only relevant internal references from `references/workflows/`: `incremental-implementation`, `test-driven-development`, `api-and-interface-design`, `frontend-ui-engineering`, `ci-cd-and-automation`, `git-workflow-and-versioning`, `observability-and-instrumentation`, and `deprecation-and-migration`.

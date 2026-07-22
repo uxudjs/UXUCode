@@ -110,6 +110,7 @@ node Codex/scripts/validate-plugin.js
 ## 鸣谢
 
 -   DietrichGebert/ponytail
+-   JuliusBrussee/caveman
 -   addyosmani/agent-skills
 -   multica-ai/andrej-karpathy-skills
 
@@ -214,6 +215,7 @@ node Codex/scripts/validate-plugin.js
 ## 致謝
 
 -   DietrichGebert/ponytail
+-   JuliusBrussee/caveman
 -   addyosmani/agent-skills
 -   multica-ai/andrej-karpathy-skills
 
@@ -322,6 +324,7 @@ node Codex/scripts/validate-plugin.js
 Thanks to:
 
 -   DietrichGebert/ponytail
+-   JuliusBrussee/caveman
 -   addyosmani/agent-skills
 -   multica-ai/andrej-karpathy-skills
 

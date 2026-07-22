@@ -1,11 +1,12 @@
 ---
 name: spec
-description: "Start spec-driven development: write a structured specification before writing code."
+description: Define a verifiable specification before implementation.
 ---
 
-用户输入 "spec" 时，加载 `spec-driven-development`。
+# Specification
 
-流程：
-1. 理解用户想构建什么，提出澄清性问题（目标用户、核心功能、技术栈、约束边界）
-2. 生成结构化 spec：objective / commands / project structure / code style / testing strategy / boundaries
-3. 保存为 SPEC.md 并请用户确认后再进入实现
+Use for new features, cross-module behavior changes, unclear acceptance criteria, or meaningful interface and risk decisions. Skip for obvious one-line fixes or when an approved `SPEC.md` already exists.
+
+Clarify the objective, users, scope, non-goals, constraints, interfaces, risks, test strategy, and measurable acceptance criteria. Do not implement business code. Save the agreed result as `SPEC.md` and stop for approval when material questions remain.
+
+Load only the internal references needed for the request: `references/workflows/idea-refine/`, `spec-driven-development/`, `api-and-interface-design/`, `frontend-ui-engineering/`, and `documentation-and-adrs/`.

@@ -1,8 +1,10 @@
 # AGENTS.md
 
-Behavioral guidelines to reduce common LLM coding mistakes. Merge with project-specific instructions as needed.
+Unified UXUCode behavioral guidelines. Merge with project-specific instructions as needed.
 
-Codex integration: invoke plugin skills as `@<skill-name>`. Do not assume Claude slash commands, Claude agents, or `CLAUDE_PLUGIN_ROOT`; hooks use Codex's `PLUGIN_ROOT` and `PLUGIN_DATA` contract.
+Codex integration: invoke public skills only as `@<skill-name>`. Do not assume Claude slash commands, Claude agents, or `CLAUDE_PLUGIN_ROOT`; hooks use Codex's `PLUGIN_ROOT` contract and `.uxucode-state.json` plus the shared UXUCode configuration path.
+
+Default to UXUCode `standard` mode. Apply the internal `implementation-policy` and `output-policy`; restore full detail for risk, irreversible actions, migrations, authentication, payment, permissions, deployment, architecture, and rollback.
 
 **Tradeoff:** These guidelines bias toward caution over speed. For trivial tasks, use judgment.
 
