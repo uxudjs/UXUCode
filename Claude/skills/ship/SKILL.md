@@ -1,13 +1,14 @@
 ---
 name: ship
-description: "Pre-launch checklist: combine code quality, security, and test readiness into a go/no-go decision."
+description: Perform the final merge or release gate and return GO or NO-GO; never deploy merely because this skill was invoked.
 ---
 
-用户输入 "ship" 时，加载 `shipping-and-launch`。
+# Ship Gate
 
-执行三阶段审查工作流：
-1. **审查**：分别加载 `code-review-and-quality`、`security-and-hardening`、`test-driven-development`；宿主支持并行 Agent 时可并行执行，否则顺序执行
-2. **合并**：在主上下文中综合三份报告，去重，归类为 Blocker / Recommended / Acknowledged
-3. **决策**：输出 GO/NO-GO 判定 + 回滚计划
+Use only after development is complete and a merge, version, or release decision is needed. This is not a normal commit command and does not directly deploy production.
 
-若改动 ≤2 文件且 ≤50 行且不涉及认证/支付/数据/配置，可跳过扇出直接判定。否则默认启用并行审查。
+Review code quality, security, tests/builds, compatibility, operational readiness, migration impact, and rollback readiness. Never shortcut authentication, payment, permissions, data migration, production configuration, security fixes, or public API compatibility.
+
+Deduplicate results into `Blocker`, `Recommended`, and `Acknowledged`. Return `GO` only when no blocker remains and required evidence exists; otherwise return `NO-GO`. Include release steps, rollback steps, and anything not verified.
+
+Use `references/workflows/shipping-and-launch/`, `ci-cd-and-automation/`, `git-workflow-and-versioning/`, `deprecation-and-migration/`, `observability-and-instrumentation/`, `security-and-hardening/`, and `test-driven-development/` according to release risk.

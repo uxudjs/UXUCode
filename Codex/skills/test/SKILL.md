@@ -1,10 +1,12 @@
 ---
 name: test
-description: "TDD workflow: write failing tests, implement, verify. For bugs use the Prove-It pattern."
+description: Design, add, or run tests with explicit evidence.
 ---
 
-用户输入 "test" 时，加载 `test-driven-development`。
+# Testing
 
-- **新功能**：先写失败测试（RED）→ 最小实现使其通过（GREEN）→ 在保持通过的前提下重构
-- **Bug 修复**（Prove-It 模式）：写一个复现 bug 的测试（必须失败）→ 确认失败 → 实现修复 → 确认通过 → 跑全量回归测试
-- 浏览器相关问题还需加载 `browser-testing-with-devtools`
+For new behavior use RED → GREEN → REFACTOR: first prove the test fails for the expected reason, implement the minimum change, then refactor only while tests remain green. For bugs, add a reproducer that fails before the fix and passes after it.
+
+Choose unit, integration, contract, end-to-end, security, performance, or accessibility checks according to risk. Never claim a test passed unless its output was observed. Report commands, scope, results, and untested areas.
+
+Use `references/workflows/test-driven-development/`, `browser-testing-with-devtools/`, `security-and-hardening/`, `performance-optimization/`, and the checklists under `references/` as appropriate.

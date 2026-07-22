@@ -1,5 +1,5 @@
 {
-  "description": "Load the unified engineering workflow and Ponytail mode.",
+  "description": "Load the unified UXUCode workflow, policies, mode, and prompt router.",
   "hooks": {
     "SessionStart": [
       {
@@ -8,16 +8,9 @@
           {
             "type": "command",
             "command": "node",
-            "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/agent-skills-session.js"],
+            "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/uxu-session-start.js"],
             "timeout": 5,
-            "statusMessage": "Loading engineering workflows..."
-          },
-          {
-            "type": "command",
-            "command": "node",
-            "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/ponytail-activate.js"],
-            "timeout": 5,
-            "statusMessage": "Loading Ponytail mode..."
+            "statusMessage": "Loading UXUCode..."
           }
         ]
       }
@@ -28,9 +21,9 @@
           {
             "type": "command",
             "command": "node",
-            "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/ponytail-subagent.js"],
+            "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/uxu-subagent-start.js"],
             "timeout": 5,
-            "statusMessage": "Loading Ponytail mode..."
+            "statusMessage": "Loading UXUCode policies..."
           }
         ]
       }
@@ -41,12 +34,13 @@
           {
             "type": "command",
             "command": "node",
-            "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/ponytail-mode-tracker.js"],
+            "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/uxu-prompt-router.js"],
             "timeout": 5,
-            "statusMessage": "Tracking Ponytail mode..."
+            "statusMessage": "Routing UXUCode command..."
           }
         ]
       }
     ]
   }
 }
+
