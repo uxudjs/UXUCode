@@ -1,7 +1,7 @@
 # UXUCode
 
-> 为 Claude Code 与 Codex CLI 分别构建的工程工作流技能与 Ponytail
-> 极简主义 Hook。
+> 面向 Claude Code 与 Codex CLI 的统一软件工程工作流。
+> 双端原生适配，技能语义同步，并以最小正确实现与明确发布门禁贯穿开发全流程。
 
 ### 🌐 选择语言 \| 選擇語言 \| Choose Language
 
@@ -15,10 +15,9 @@
 
 📖 [查看完整简体中文使用指南](docs/USAGE.zh-CN.md)
 
-UXUCode 将软件工程全生命周期技能与 Ponytail
-的「资深工程师极简模式」结合。
+UXUCode 是面向 Claude Code 与 Codex CLI 的统一软件工程工作流系统，覆盖需求澄清、规格设计、项目规划、增量实现、调试测试、代码审查、复杂度治理与发布门禁。
 
-自 `v3.0.0` 起，Claude Code 与 Codex CLI 完全独立维护：
+项目为两个 CLI 提供独立的原生插件包，并同步维护技能、内部工作流参考、Hook、三语言指南与一致性校验脚本。自 `v3.0.0` 起，Claude Code 与 Codex CLI 完全独立维护：
 
 -   独立目录
 -   独立插件配置
@@ -122,10 +121,9 @@ node Codex/scripts/validate-plugin.js
 
 📖 [查看完整繁體中文使用指南](docs/USAGE.zh-TW.md)
 
-UXUCode 結合軟體工程生命週期技能與 Ponytail
-的「資深工程師極簡模式」。
+UXUCode 是面向 Claude Code 與 Codex CLI 的統一軟體工程工作流系統，涵蓋需求釐清、規格設計、專案規劃、增量實作、除錯測試、程式碼審查、複雜度治理與發布門禁。
 
-自 `v3.0.0` 起，Claude Code 與 Codex CLI 完全獨立維護：
+專案為兩個 CLI 提供獨立的原生插件套件，並同步維護技能、內部工作流參考、Hook、三語言指南與一致性校驗腳本。自 `v3.0.0` 起，Claude Code 與 Codex CLI 完全獨立維護：
 
 -   獨立目錄
 -   獨立插件設定
@@ -229,11 +227,9 @@ node Codex/scripts/validate-plugin.js
 
 📖 [Read the complete English usage guide](docs/USAGE.en.md)
 
-UXUCode combines full software engineering lifecycle skills with
-Ponytail's senior-engineer minimalism.
+UXUCode is a unified software engineering workflow system for Claude Code and Codex CLI, covering requirement clarification, specification, planning, incremental implementation, debugging and testing, code review, complexity control, and release gates.
 
-Since `v3.0.0`, Claude Code and Codex CLI are maintained as completely
-independent distributions:
+The project provides a native, independent plugin package for each CLI while keeping skills, internal workflow references, hooks, trilingual guides, and parity checks synchronized. Since `v3.0.0`, Claude Code and Codex CLI are maintained as completely independent distributions:
 
 -   Independent directories
 -   Independent plugin configurations
