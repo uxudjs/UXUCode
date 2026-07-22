@@ -1,12 +1,17 @@
 ---
 name: simplify
-description: Simplify code for clarity without changing behavior. Reduce complexity, eliminate duplication.
+description: "Explicit UXUCode simplify command: reduce verified code complexity without changing external behavior."
 ---
 
-用户输入 "simplify" 或 "code-simplify" 时，加载 `code-simplification`。
+# Simplify
 
-对最近改动或指定范围进行代码简化：
-1. 先理解代码目的、调用方、边缘情况、测试覆盖
-2. 扫描简化机会：深层嵌套 → guard clause/helper、长函数 → 按职责拆分、嵌套三目 → if/switch、泛化命名 → 描述性命名、重复逻辑 → 共享函数、死代码 → 确认后删除
-3. 每次只做一个简化，改完就跑测试
-4. 全量通过后输出干净 diff
+Run only after behavior is correct and relevant tests pass.
+
+1. Identify one concrete source of unnecessary nesting, duplication, indirection, or abstraction.
+2. Establish a passing behavioral baseline.
+3. Make one minimal simplification.
+4. Re-run the relevant checks immediately.
+5. Continue only while each change improves clarity without weakening safety, accessibility, data integrity, or requested behavior.
+6. Present the clean diff and verification evidence.
+
+Do not optimize for fewer lines at the expense of clarity. Do not simplify unverified or actively changing behavior.

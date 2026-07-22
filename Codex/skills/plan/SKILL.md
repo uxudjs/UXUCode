@@ -1,14 +1,17 @@
 ---
 name: plan
-description: Break work into small verifiable tasks with acceptance criteria and dependency ordering.
+description: "Explicit UXUCode plan command: turn an approved specification into dependent, verifiable vertical tasks."
 ---
 
-用户输入 "plan" 或 "planning" 时，加载 `planning-and-task-breakdown`。
+# Plan
 
-基于已有 SPEC.md 进行任务分解：
-1. 只读模式——不修改代码
-2. 识别组件间依赖关系
-3. 纵向切片（每个任务是一条完整路径，非横向分层）
-4. 每个任务含验收标准和验证步骤
-5. 阶段间设置检查点
-6. 保存到 tasks/plan.md 和 tasks/todo.md
+Use after `SPEC.md` is approved and the work needs more than one small change.
+
+1. Read the specification and current repository.
+2. Identify dependencies, risks, and validation gates.
+3. Split work into the smallest useful vertical slices.
+4. Give every task a deliverable, acceptance criteria, test or verification command, and rollback boundary.
+5. Write `tasks/plan.md` and `tasks/todo.md`.
+6. Do not modify business code.
+
+Order tasks so each completed slice is independently reviewable and, where practical, committable.
