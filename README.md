@@ -102,13 +102,9 @@ Claude Code（在 Claude Code 会话中执行）：
 /reload-plugins
 ```
 
-Codex CLI（在终端执行）：
+Codex CLI：
 
-``` text
-codex plugin marketplace upgrade uxu-code-codex
-```
-
-完成后重启 Codex。由于 Codex Marketplace 指向本地克隆目录，`git pull --ff-only` 会更新插件文件，Marketplace 升级会刷新来源记录。
+`uxu-code-codex` 是指向 `./Codex` 的本地 Marketplace，不需要也不能执行 `marketplace upgrade`。完成 `git pull --ff-only` 后直接重启 Codex，即可从更新后的本地目录加载插件。
 
 ### 使用示例
 
@@ -229,13 +225,9 @@ Claude Code（在 Claude Code 工作階段中執行）：
 /reload-plugins
 ```
 
-Codex CLI（在終端機執行）：
+Codex CLI：
 
-``` text
-codex plugin marketplace upgrade uxu-code-codex
-```
-
-完成後重新啟動 Codex。由於 Codex Marketplace 指向本機複製目錄，`git pull --ff-only` 會更新插件檔案，Marketplace 升級會重新整理來源記錄。
+`uxu-code-codex` 是指向 `./Codex` 的本機 Marketplace，不需要也不能執行 `marketplace upgrade`。完成 `git pull --ff-only` 後直接重新啟動 Codex，即可從更新後的本機目錄載入插件。
 
 ### 使用範例
 
@@ -357,13 +349,9 @@ Claude Code (run inside a Claude Code session):
 /reload-plugins
 ```
 
-Codex CLI (run in your terminal):
+Codex CLI:
 
-``` text
-codex plugin marketplace upgrade uxu-code-codex
-```
-
-Restart Codex afterward. Because the Codex Marketplace points to the local clone, `git pull --ff-only` updates the plugin files and the Marketplace upgrade refreshes the registered source.
+`uxu-code-codex` is a local Marketplace pointing to `./Codex`, so it neither needs nor supports `marketplace upgrade`. After `git pull --ff-only` completes, restart Codex to load the plugin from the updated local directory.
 
 ### Usage Examples
 
