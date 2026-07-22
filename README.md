@@ -29,17 +29,13 @@ UXUCode 是面向 Claude Code 与 Codex CLI 的统一软件工程工作流系统
 
 ## 主要功能
 
-| 🧠 完整工程工作流技能 | 🪶 Ponytail 极简工程模式 | 🔒 完全隔离架构 |
-|----------------------|--------------------------|------------------|
-| 需求分析 | 避免过度设计 | Claude 与 Codex 不共享运行目录 |
-| 技术规格 | 优先解决真实需求 | 不使用符号链接 |
-| 项目规划 | 保持代码简单、可靠、可维护 | 可独立升级维护 |
-| 代码实现 | | |
-| 测试验证 | | |
-| Code Review | | |
-| 性能优化 | | |
-| 安全检查 | | |
-| 发布与迁移 | | |                                        
+| 🧭 完整工程工作流 | 🛡️ 验证与发布门禁 | ⚙️ 双 CLI 原生适配 |
+|----------------------|----------------------|----------------------|
+| 需求澄清、规格设计与项目规划 | 测试、构建与运行证据 | Claude Code 与 Codex 独立插件包 |
+| 增量实现、调试与测试 | 正确性、安全、性能与复杂度审查 | 16 个公开命令与工作流语义同步 |
+| Code Review 与最小正确实现 | Blocker、Recommended 与 GO／NO-GO | 独立 Hook、配置与运行环境 |
+| 简化、技术债与上下文压缩 | 高风险操作保护与回滚检查 | 三语言指南与自动一致性校验 |
+| 发布、迁移与状态追踪 | 失败即停止，不以猜测代替验证 | 可分别安装、更新与维护 | 
 
 ## 项目结构
 
@@ -87,7 +83,32 @@ codex plugin add uxu-code@uxu-code-codex
 
 重启 Codex。技能调用格式为 `@<skill-name>`，例如 `@plan`；可用 `/hooks` 检查 Hook 状态。
 
-本地 Marketplace 记录依赖克隆目录，请不要在安装后立即删除仓库。更新时执行 `git pull`，再按对应 CLI 的插件更新流程刷新。
+本地 Marketplace 记录依赖克隆目录，请不要在安装后立即删除仓库。
+
+### 更新
+
+先在克隆目录拉取最新版本：
+
+``` bash
+cd UXUCode
+git pull --ff-only
+```
+
+Claude Code（在 Claude Code 会话中执行）：
+
+``` text
+/plugin marketplace update uxu-code-claude
+/plugin update uxu-code@uxu-code-claude
+/reload-plugins
+```
+
+Codex CLI（在终端执行）：
+
+``` text
+codex plugin marketplace upgrade uxu-code-codex
+```
+
+完成后重启 Codex。由于 Codex Marketplace 指向本地克隆目录，`git pull --ff-only` 会更新插件文件，Marketplace 升级会刷新来源记录。
 
 ### 使用示例
 
@@ -135,17 +156,13 @@ UXUCode 是面向 Claude Code 與 Codex CLI 的統一軟體工程工作流系統
 
 ## 主要功能
 
-| 🧠 完整工程工作流技能 | 🪶 Ponytail 極簡工程模式 | 🔒 完全隔離架構 |
-|----------------------|--------------------------|------------------|
-| 需求分析 | 避免過度設計 | Claude 與 Codex 不共享執行目錄 |
-| 技術規格 | 優先解決真實需求 | 不使用符號連結 |
-| 專案規劃 | 保持程式碼簡單、可靠、易維護 | 可獨立升級維護 |
-| 程式實作 | | |
-| 測試驗證 | | |
-| Code Review | | |
-| 效能最佳化 | | |
-| 安全檢查 | | |
-| 發布與遷移 | | |                                           
+| 🧭 完整工程工作流 | 🛡️ 驗證與發布門禁 | ⚙️ 雙 CLI 原生適配 |
+|----------------------|----------------------|----------------------|
+| 需求釐清、規格設計與專案規劃 | 測試、建置與執行證據 | Claude Code 與 Codex 獨立插件套件 |
+| 增量實作、除錯與測試 | 正確性、安全、效能與複雜度審查 | 16 個公開命令與工作流語意同步 |
+| Code Review 與最小正確實作 | Blocker、Recommended 與 GO／NO-GO | 獨立 Hook、設定與執行環境 |
+| 簡化、技術債與上下文壓縮 | 高風險操作保護與回復檢查 | 三語言指南與自動一致性校驗 |
+| 發布、遷移與狀態追蹤 | 失敗即停止，不以猜測取代驗證 | 可分別安裝、更新與維護 | 
 
 ## 專案結構
 
@@ -193,7 +210,32 @@ codex plugin add uxu-code@uxu-code-codex
 
 重啟 Codex。技能呼叫格式為 `@<skill-name>`，例如 `@plan`；可用 `/hooks` 檢查 Hook 狀態。
 
-本地 Marketplace 記錄依賴複製目錄，請不要在安裝後立即刪除倉庫。更新時執行 `git pull`，再按對應 CLI 的插件更新流程重新整理。
+本地 Marketplace 記錄依賴複製目錄，請不要在安裝後立即刪除倉庫。
+
+### 更新
+
+先在複製目錄拉取最新版本：
+
+``` bash
+cd UXUCode
+git pull --ff-only
+```
+
+Claude Code（在 Claude Code 工作階段中執行）：
+
+``` text
+/plugin marketplace update uxu-code-claude
+/plugin update uxu-code@uxu-code-claude
+/reload-plugins
+```
+
+Codex CLI（在終端機執行）：
+
+``` text
+codex plugin marketplace upgrade uxu-code-codex
+```
+
+完成後重新啟動 Codex。由於 Codex Marketplace 指向本機複製目錄，`git pull --ff-only` 會更新插件檔案，Marketplace 升級會重新整理來源記錄。
 
 ### 使用範例
 
@@ -242,17 +284,13 @@ between the two CLIs.
 
 ## Features
 
-| 🧠 Complete Engineering Workflow Skills | 🪶 Ponytail Minimal Engineering Mode | 🔒 Fully Isolated Architecture |
-|----------------------------------------|--------------------------------------|--------------------------------|
-| Requirement Analysis | Avoid over-engineering | Claude and Codex do not share runtime directories |
-| Technical Specification | Solve real problems first | No symbolic links |
-| Project Planning | Keep code simple, reliable, and maintainable | Independent upgrade and maintenance |
-| Implementation | | |
-| Testing & Validation | | |
-| Code Review | | |
-| Performance Optimization | | |
-| Security Review | | |
-| Release & Migration | | |
+| 🧭 Complete Engineering Workflow | 🛡️ Validation & Release Gates | ⚙️ Native Dual-CLI Support |
+|----------------------------------|--------------------------------|------------------------------|
+| Requirement clarification, specification, and planning | Test, build, and runtime evidence | Independent Claude Code and Codex plugin packages |
+| Incremental implementation, debugging, and testing | Correctness, security, performance, and complexity review | 16 synchronized public commands and workflow semantics |
+| Code review and minimal correct implementation | Blocker, Recommended, and GO/NO-GO decisions | Independent hooks, configuration, and runtimes |
+| Simplification, technical debt, and context compression | High-risk operation safeguards and rollback checks | Trilingual guides and automated parity validation |
+| Release, migration, and status tracking | Stop on failure; never replace verification with guesses | Independent installation, updates, and maintenance |
 
 ## Project Structure
 
@@ -300,7 +338,32 @@ codex plugin add uxu-code@uxu-code-codex
 
 Restart Codex. Invoke skills as `@<skill-name>`, e.g. `@plan`; use `/hooks` to check Hook status.
 
-Local Marketplace entries reference the cloned directory — do not delete the repo immediately after installation. To update, run `git pull` then refresh plugins per your CLI's update flow.
+Local Marketplace entries reference the cloned directory, so do not delete the repository after installation.
+
+### Updating
+
+Pull the latest version in the cloned repository:
+
+``` bash
+cd UXUCode
+git pull --ff-only
+```
+
+Claude Code (run inside a Claude Code session):
+
+``` text
+/plugin marketplace update uxu-code-claude
+/plugin update uxu-code@uxu-code-claude
+/reload-plugins
+```
+
+Codex CLI (run in your terminal):
+
+``` text
+codex plugin marketplace upgrade uxu-code-codex
+```
+
+Restart Codex afterward. Because the Codex Marketplace points to the local clone, `git pull --ff-only` updates the plugin files and the Marketplace upgrade refreshes the registered source.
 
 ### Usage Examples
 
