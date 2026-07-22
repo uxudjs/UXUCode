@@ -131,10 +131,10 @@ node Codex/scripts/validate-plugin.js
 
 ## 鸣谢
 
--   DietrichGebert/ponytail
--   JuliusBrussee/caveman
--   addyosmani/agent-skills
--   multica-ai/andrej-karpathy-skills
+- [DietrichGebert/ponytail](https://github.com/DietrichGebert/ponytail)
+- [JuliusBrussee/caveman](https://github.com/JuliusBrussee/caveman)
+- [addyosmani/agent-skills](https://github.com/addyosmani/agent-skills)
+- [multica-ai/andrej-karpathy-skills](https://github.com/multica-ai/andrej-karpathy-skills)
 
 ------------------------------------------------------------------------
 
@@ -258,10 +258,10 @@ node Codex/scripts/validate-plugin.js
 
 ## 致謝
 
--   DietrichGebert/ponytail
--   JuliusBrussee/caveman
--   addyosmani/agent-skills
--   multica-ai/andrej-karpathy-skills
+- [DietrichGebert/ponytail](https://github.com/DietrichGebert/ponytail)
+- [JuliusBrussee/caveman](https://github.com/JuliusBrussee/caveman)
+- [addyosmani/agent-skills](https://github.com/addyosmani/agent-skills)
+- [multica-ai/andrej-karpathy-skills](https://github.com/multica-ai/andrej-karpathy-skills)
 
 ------------------------------------------------------------------------
 
@@ -388,10 +388,10 @@ node Codex/scripts/validate-plugin.js
 
 Thanks to:
 
--   DietrichGebert/ponytail
--   JuliusBrussee/caveman
--   addyosmani/agent-skills
--   multica-ai/andrej-karpathy-skills
+- [DietrichGebert/ponytail](https://github.com/DietrichGebert/ponytail)
+- [JuliusBrussee/caveman](https://github.com/JuliusBrussee/caveman)
+- [addyosmani/agent-skills](https://github.com/addyosmani/agent-skills)
+- [multica-ai/andrej-karpathy-skills](https://github.com/multica-ai/andrej-karpathy-skills)
 
 ------------------------------------------------------------------------
 
