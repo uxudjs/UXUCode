@@ -61,6 +61,22 @@ test('profile: rejects shared configuration references', () => {
   );
 });
 
+test('profile: requires complete SOUL.md and IDENTITY.md workspace templates', () => {
+  const temporaryRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'uxucode-openclaw-templates-'));
+  try {
+    fs.writeFileSync(path.join(temporaryRoot, 'AGENTS.fragment.md'), canonicalFragment());
+    fs.mkdirSync(path.join(temporaryRoot, 'templates'));
+    fs.writeFileSync(path.join(temporaryRoot, 'templates', 'SOUL.md'), '# SOUL.md\n');
+    fs.writeFileSync(path.join(temporaryRoot, 'templates', 'IDENTITY.md'), '# IDENTITY.md\n');
+
+    const failures = validatePackage(temporaryRoot);
+    assert.ok(failures.some((failure) => failure.includes('SOUL.md is missing required value')));
+    assert.ok(failures.some((failure) => failure.includes('IDENTITY.md is missing required value')));
+  } finally {
+    fs.rmSync(temporaryRoot, { recursive: true, force: true });
+  }
+});
+
 test('profile: rejects plugin, hook, and skill scaffolding', () => {
   const temporaryRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'uxucode-openclaw-profile-'));
   try {

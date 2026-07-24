@@ -46,9 +46,11 @@ codex plugin add uxu-code@uxu-code-codex
 OpenClaw:
 
 ```text
-node OpenClaw/scripts/install-profile.js --workspace <absolute-workspace-path> --mode standard --dry-run
-node OpenClaw/scripts/install-profile.js --workspace <absolute-workspace-path> --mode standard
+node OpenClaw/scripts/install-profile.js --workspace "<replace-with-absolute-openclaw-workspace-path>" --mode standard --dry-run
+node OpenClaw/scripts/install-profile.js --workspace "<replace-with-absolute-openclaw-workspace-path>" --mode standard
 ```
+
+Before running either command, replace the quoted placeholder with the absolute path to the actual OpenClaw workspace.
 
 To update, first run `git pull` in the repository. Refresh Claude Code and Codex through their host plugin flows. For each OpenClaw workspace, run `--dry-run`, then rerun the installer with its selected mode. Do not delete the cloned directory referenced by a local Marketplace or OpenClaw Gateway.
 
@@ -241,6 +243,8 @@ OpenClaw is a general personal-assistant and coordination runtime, not a third c
 ### 12.1 Modes and Boundaries
 
 OpenClaw retains the conceptual modes `standard`, `lite`, `full`, `ultra`, and `off`, but stores the selection per workspace in the managed block. `standard` is the shipped default. `ultra` is an explicit choice for simple, low-risk work. Every mode restores full detail for destructive actions, authentication, privacy, payment, messaging, deployment, migration, rollback, and safety.
+
+The project provides `OpenClaw/templates/SOUL.md` and `OpenClaw/templates/IDENTITY.md` as optional starting templates. `SOUL.md` defines persona, tone, and boundaries; `IDENTITY.md` defines name, role, vibe, emoji, and avatar. Review and customize them before copying them to the workspace root. The installer manages only `AGENTS.md` and never creates or overwrites these files.
 
 ### 12.2 Update, Removal, and Rollback
 

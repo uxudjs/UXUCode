@@ -95,11 +95,11 @@ OpenClaw 使用写入指定 workspace `AGENTS.md` 的策略配置，不安装插
 先预览，再安装默认的 `standard` 模式；`ultra` 仅用于明确选择的简单低风险任务：
 
 ``` text
-node OpenClaw/scripts/install-profile.js --workspace <absolute-workspace-path> --mode standard --dry-run
-node OpenClaw/scripts/install-profile.js --workspace <absolute-workspace-path> --mode standard
+node OpenClaw/scripts/install-profile.js --workspace "<请替换为OpenClaw工作区绝对路径>" --mode standard --dry-run
+node OpenClaw/scripts/install-profile.js --workspace "<请替换为OpenClaw工作区绝对路径>" --mode standard
 ```
 
-启动新的 OpenClaw 会话以重新加载 workspace 文件。MVP 没有运行时模式命令、遥测、会话读取或共享全局配置。
+运行前必须把引号内的占位文字替换为实际 OpenClaw workspace 的绝对路径。项目还提供 `OpenClaw/templates/SOUL.md` 与 `OpenClaw/templates/IDENTITY.md`；仅在审阅并按需定制后复制到 workspace 根目录，安装器不会覆盖它们。启动新的 OpenClaw 会话以重新加载 workspace 文件。MVP 没有运行时模式命令、遥测、会话读取或共享全局配置。
 
 ### 更新
 
@@ -243,11 +243,11 @@ OpenClaw 使用寫入指定 workspace `AGENTS.md` 的策略設定，不安裝插
 先預覽，再安裝預設的 `standard` 模式；`ultra` 僅適用於明確選擇的簡單低風險工作：
 
 ``` text
-node OpenClaw/scripts/install-profile.js --workspace <absolute-workspace-path> --mode standard --dry-run
-node OpenClaw/scripts/install-profile.js --workspace <absolute-workspace-path> --mode standard
+node OpenClaw/scripts/install-profile.js --workspace "<請替換為OpenClaw工作區絕對路徑>" --mode standard --dry-run
+node OpenClaw/scripts/install-profile.js --workspace "<請替換為OpenClaw工作區絕對路徑>" --mode standard
 ```
 
-啟動新的 OpenClaw 工作階段以重新載入 workspace 檔案。MVP 沒有執行期模式命令、遙測、對話讀取或共享全域設定。
+執行前必須把引號內的佔位文字替換為實際 OpenClaw workspace 的絕對路徑。專案另提供 `OpenClaw/templates/SOUL.md` 與 `OpenClaw/templates/IDENTITY.md`；僅在審閱並按需自訂後複製到 workspace 根目錄，安裝器不會覆寫它們。啟動新的 OpenClaw 工作階段以重新載入 workspace 檔案。MVP 沒有執行期模式命令、遙測、對話讀取或共享全域設定。
 
 ### 更新
 
@@ -392,11 +392,11 @@ OpenClaw uses a policy installed into the selected workspace `AGENTS.md`. It ins
 Preview, then install the default `standard` mode. `ultra` is an explicit choice for simple, low-risk work:
 
 ``` text
-node OpenClaw/scripts/install-profile.js --workspace <absolute-workspace-path> --mode standard --dry-run
-node OpenClaw/scripts/install-profile.js --workspace <absolute-workspace-path> --mode standard
+node OpenClaw/scripts/install-profile.js --workspace "<replace-with-absolute-openclaw-workspace-path>" --mode standard --dry-run
+node OpenClaw/scripts/install-profile.js --workspace "<replace-with-absolute-openclaw-workspace-path>" --mode standard
 ```
 
-Start a new OpenClaw session to reload the workspace files. The MVP has no runtime mode command, telemetry, conversation access, or shared global configuration.
+Before running either command, replace the quoted placeholder with the absolute path to the actual OpenClaw workspace. The project also provides `OpenClaw/templates/SOUL.md` and `OpenClaw/templates/IDENTITY.md`; copy them to the workspace root only after review and customization. The installer never overwrites them. Start a new OpenClaw session to reload the workspace files. The MVP has no runtime mode command, telemetry, conversation access, or shared global configuration.
 
 ### Updating
 

@@ -17,14 +17,16 @@ OpenClaw may host multiple agents with different workspaces. Run the installer s
 Preview the default `standard` profile first:
 
 ```text
-node OpenClaw/scripts/install-profile.js --workspace <absolute-workspace-path> --mode standard --dry-run
+node OpenClaw/scripts/install-profile.js --workspace "<replace-with-absolute-openclaw-workspace-path>" --mode standard --dry-run
 ```
 
 Apply it after reviewing the exact target:
 
 ```text
-node OpenClaw/scripts/install-profile.js --workspace <absolute-workspace-path> --mode standard
+node OpenClaw/scripts/install-profile.js --workspace "<replace-with-absolute-openclaw-workspace-path>" --mode standard
 ```
+
+Replace the quoted placeholder with the absolute path to the actual OpenClaw workspace before running either command. Keeping the placeholder quoted prevents PowerShell from parsing `<` as an operator, but the placeholder itself is not a usable path.
 
 The installer:
 
@@ -50,11 +52,20 @@ Start a fresh OpenClaw session after installation so the workspace bootstrap fil
 Change a workspace mode by rerunning the installer, preferably with `--dry-run` first:
 
 ```text
-node OpenClaw/scripts/install-profile.js --workspace <absolute-workspace-path> --mode ultra --dry-run
-node OpenClaw/scripts/install-profile.js --workspace <absolute-workspace-path> --mode ultra
+node OpenClaw/scripts/install-profile.js --workspace "<replace-with-absolute-openclaw-workspace-path>" --mode ultra --dry-run
+node OpenClaw/scripts/install-profile.js --workspace "<replace-with-absolute-openclaw-workspace-path>" --mode ultra
 ```
 
 Every mode restores full ordered detail for destructive actions, authentication, privacy, payment, messaging, deployment, migration, rollback, recovery, and physical safety.
+
+## Native workspace templates
+
+The project includes two optional OpenClaw bootstrap templates:
+
+- `OpenClaw/templates/SOUL.md` for persona, tone, boundaries, and continuity;
+- `OpenClaw/templates/IDENTITY.md` for name, role, vibe, emoji, and avatar.
+
+Review and customize each template before copying it to the selected workspace root under its original filename. The installer manages only `AGENTS.md`; it never creates, edits, or overwrites `SOUL.md` or `IDENTITY.md`. Existing workspace files remain authoritative.
 
 ## Native OpenClaw controls
 
@@ -70,8 +81,8 @@ UXUCode modes do not replace OpenClaw runtime controls. Continue to use OpenClaw
 
 ```text
 node OpenClaw/scripts/validate-profile.js
-node OpenClaw/scripts/install-profile.js --workspace <absolute-workspace-path> --mode standard --dry-run
-node OpenClaw/scripts/install-profile.js --workspace <absolute-workspace-path> --mode standard
+node OpenClaw/scripts/install-profile.js --workspace "<replace-with-absolute-openclaw-workspace-path>" --mode standard --dry-run
+node OpenClaw/scripts/install-profile.js --workspace "<replace-with-absolute-openclaw-workspace-path>" --mode standard
 ```
 
 An update that changes an existing managed block creates and verifies a timestamped backup before writing.

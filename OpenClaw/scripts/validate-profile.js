@@ -7,6 +7,10 @@ const BEGIN_MARKER = '<!-- UXUCODE:OPENCLAW:BEGIN -->';
 const END_MARKER = '<!-- UXUCODE:OPENCLAW:END -->';
 const MODE_PATTERN = /<!-- UXUCODE:MODE ([a-z]+) -->/g;
 const VALID_MODES = ['standard', 'lite', 'full', 'ultra', 'off'];
+const REQUIRED_TEMPLATES = {
+  'SOUL.md': ['# SOUL.md', '## Persona', '## Boundaries', '## Tone', '## Continuity'],
+  'IDENTITY.md': ['# IDENTITY.md', '- Name:', '- Role:', '- Vibe:', '- Emoji:', '- Avatar:']
+};
 
 function count(value, search) {
   return value.split(search).length - 1;
@@ -83,6 +87,17 @@ function validatePackage(root) {
   if (!fs.existsSync(fragmentPath)) return ['AGENTS.fragment.md is missing'];
 
   const failures = validateProfile(fs.readFileSync(fragmentPath, 'utf8'));
+  for (const [name, requiredValues] of Object.entries(REQUIRED_TEMPLATES)) {
+    const templatePath = path.join(root, 'templates', name);
+    if (!fs.existsSync(templatePath)) {
+      failures.push(`templates/${name} is missing`);
+      continue;
+    }
+    const content = fs.readFileSync(templatePath, 'utf8');
+    for (const required of requiredValues) {
+      if (!content.includes(required)) failures.push(`templates/${name} is missing required value: ${required}`);
+    }
+  }
   for (const relative of walk(root)) {
     const segments = relative.toLowerCase().split('/');
     const name = segments.at(-1);
@@ -90,6 +105,12 @@ function validatePackage(root) {
     if (segments.includes('hooks')) failures.push(`${relative}: forbidden hook scaffolding`);
     if (name === 'plugin.json' || name === 'manifest.json' || segments.includes('.claude-plugin') || segments.includes('.codex-plugin')) {
       failures.push(`${relative}: forbidden plugin scaffolding`);
+    }
+    if (name.endsWith('.md')) {
+      const content = fs.readFileSync(path.join(root, relative), 'utf8');
+      if (/--workspace\s+<[^>\r\n]+>/.test(content)) {
+        failures.push(`${relative}: unquoted workspace placeholder is unsafe in PowerShell`);
+      }
     }
   }
   return failures;
@@ -104,7 +125,7 @@ function main() {
     process.exitCode = 1;
     return;
   }
-  console.log('OpenClaw profile validation passed: compact standard-default workspace policy with no plugin, hook, or skill scaffolding.');
+  console.log('OpenClaw profile validation passed: compact standard-default workspace policy, native workspace templates, and no plugin, hook, or skill scaffolding.');
 }
 
 if (require.main === module) main();

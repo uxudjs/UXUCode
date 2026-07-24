@@ -46,9 +46,11 @@ codex plugin add uxu-code@uxu-code-codex
 OpenClaw：
 
 ```text
-node OpenClaw/scripts/install-profile.js --workspace <absolute-workspace-path> --mode standard --dry-run
-node OpenClaw/scripts/install-profile.js --workspace <absolute-workspace-path> --mode standard
+node OpenClaw/scripts/install-profile.js --workspace "<请替换为OpenClaw工作区绝对路径>" --mode standard --dry-run
+node OpenClaw/scripts/install-profile.js --workspace "<请替换为OpenClaw工作区绝对路径>" --mode standard
 ```
+
+执行前必须把引号内的占位文字替换为实际 OpenClaw workspace 的绝对路径。
 
 更新时先在仓库中执行 `git pull`。Claude Code 和 Codex 按宿主插件流程刷新；OpenClaw 针对每个 workspace 先运行 `--dry-run`，再用已选模式重跑安装器。不要在安装后删除本地 Marketplace 或 OpenClaw Gateway 所引用的克隆目录。
 
@@ -241,6 +243,8 @@ OpenClaw 是通用个人助理与协调运行时，不是第三个代码 CLI。M
 ### 12.1 模式与边界
 
 OpenClaw 保留 `standard`、`lite`、`full`、`ultra`、`off` 五个概念模式，但模式按 workspace 写入 managed block。`standard` 是发布默认值；`ultra` 仅是简单低风险任务的明确选择。所有模式在破坏性操作、认证、隐私、支付、消息发送、部署、迁移、回滚与安全场景恢复完整细节。
+
+项目提供 `OpenClaw/templates/SOUL.md` 和 `OpenClaw/templates/IDENTITY.md` 作为可选起始模板。`SOUL.md` 定义 persona、语气与边界；`IDENTITY.md` 定义名称、角色、风格、emoji 和 avatar。审阅并定制后再复制到 workspace 根目录；安装器只管理 `AGENTS.md`，不会创建或覆盖这两个文件。
 
 ### 12.2 更新、移除与回滚
 

@@ -13,7 +13,8 @@ const definitions = [
     guide: 'docs/USAGE.zh-CN.md',
     linkText: '查看完整简体中文使用指南',
     updateHeading: '### 更新',
-    validationHeading: '## 校验'
+    validationHeading: '## 校验',
+    workspacePlaceholder: '<请替换为OpenClaw工作区绝对路径>'
   },
   {
     marker: '# 🇹🇼 繁體中文',
@@ -21,7 +22,8 @@ const definitions = [
     guide: 'docs/USAGE.zh-TW.md',
     linkText: '查看完整繁體中文使用指南',
     updateHeading: '### 更新',
-    validationHeading: '## 驗證'
+    validationHeading: '## 驗證',
+    workspacePlaceholder: '<請替換為OpenClaw工作區絕對路徑>'
   },
   {
     marker: '# 🇺🇸 English',
@@ -29,7 +31,8 @@ const definitions = [
     guide: 'docs/USAGE.en.md',
     linkText: 'Read the complete English usage guide',
     updateHeading: '### Updating',
-    validationHeading: '## Validation'
+    validationHeading: '## Validation',
+    workspacePlaceholder: '<replace-with-absolute-openclaw-workspace-path>'
   }
 ];
 
@@ -62,8 +65,8 @@ definitions.forEach((definition, index) => {
     failures.push(definition.marker + ': OpenClaw install, update, and validation sections are missing or out of order');
   }
   for (const installCommand of [
-    'node OpenClaw/scripts/install-profile.js --workspace <absolute-workspace-path> --mode standard --dry-run',
-    'node OpenClaw/scripts/install-profile.js --workspace <absolute-workspace-path> --mode standard'
+    `node OpenClaw/scripts/install-profile.js --workspace "${definition.workspacePlaceholder}" --mode standard --dry-run`,
+    `node OpenClaw/scripts/install-profile.js --workspace "${definition.workspacePlaceholder}" --mode standard`
   ]) {
     const position = section.indexOf(installCommand);
     if (position < openClawStart || position >= updateStart) {
@@ -99,11 +102,16 @@ definitions.forEach((definition, index) => {
     'OpenClaw/evaluation/README.md',
     'node --test OpenClaw/tests/validate-profile.test.js OpenClaw/tests/evaluation.test.js',
     'node OpenClaw/evaluation/score-results.js <results.json>',
+    'OpenClaw/templates/SOUL.md',
+    'OpenClaw/templates/IDENTITY.md',
     '52',
     '35%',
     '95%'
   ]) {
     if (!section.includes(required)) failures.push(definition.marker + ': missing synchronized value ' + required);
+  }
+  if (/--workspace\s+<[^>\r\n]+>/.test(section)) {
+    failures.push(definition.marker + ': contains an unquoted workspace placeholder that PowerShell cannot parse');
   }
 });
 
