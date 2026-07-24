@@ -43,7 +43,14 @@ codex plugin marketplace add ./Codex
 codex plugin add uxu-code@uxu-code-codex
 ```
 
-To update, run `git pull` in the repository and refresh the plugin through the host's update flow. Do not delete the cloned directory referenced by the local Marketplace.
+OpenClaw:
+
+```text
+node OpenClaw/scripts/install-profile.js --workspace <absolute-workspace-path> --mode standard --dry-run
+node OpenClaw/scripts/install-profile.js --workspace <absolute-workspace-path> --mode standard
+```
+
+To update, first run `git pull` in the repository. Refresh Claude Code and Codex through their host plugin flows. For each OpenClaw workspace, run `--dry-run`, then rerun the installer with its selected mode. Do not delete the cloned directory referenced by a local Marketplace or OpenClaw Gateway.
 
 ## 4. Claude Code and Codex Command Formats
 
@@ -203,7 +210,7 @@ Use the same flow in Codex with `@spec`, `@plan`, `@build`, `@review`, `@simplif
 
 ## 10. Configuration and State
 
-Default configuration:
+The following is the Claude Code and Codex default configuration:
 
 ```json
 {
@@ -215,7 +222,7 @@ Default configuration:
 }
 ```
 
-The configuration path is `%APPDATA%\uxucode\config.json` on Windows and `~/.config/uxucode/config.json` on macOS/Linux. Project state is stored in `.uxucode-state.json`. The status line format is `[UXUCODE:STANDARD] task 3/8 · tests ✓`.
+The shared Claude Code and Codex configuration path is `%APPDATA%\uxucode\config.json` on Windows and `~/.config/uxucode/config.json` on macOS/Linux. Project state for those two hosts is stored in `.uxucode-state.json`. The status line format is `[UXUCODE:STANDARD] task 3/8 · tests ✓`. OpenClaw uses neither this shared configuration nor this project state file.
 
 ## 11. Frequently Asked Questions
 
@@ -226,3 +233,31 @@ The configuration path is `%APPDATA%\uxucode\config.json` on Windows and `~/.con
 **When should I use `build auto`?** Only when a stable plan, reliable tests, explicit authorization, and reversible tasks all exist.
 
 **What happens when compression fails?** The original and backup are preserved, the failure is reported, and the original content is not overwritten.
+
+## 12. OpenClaw Workspace Profile
+
+OpenClaw is a general personal-assistant and coordination runtime, not a third coding CLI. The MVP only writes a compact policy into the selected workspace `AGENTS.md`. It has no plugin, hook, skill, telemetry, conversation access, or shared global configuration, and it is not included in Claude/Codex 16-command or skill parity. See `OpenClaw/README.md` for the complete boundaries.
+
+### 12.1 Modes and Boundaries
+
+OpenClaw retains the conceptual modes `standard`, `lite`, `full`, `ultra`, and `off`, but stores the selection per workspace in the managed block. `standard` is the shipped default. `ultra` is an explicit choice for simple, low-risk work. Every mode restores full detail for destructive actions, authentication, privacy, payment, messaging, deployment, migration, rollback, and safety.
+
+### 12.2 Update, Removal, and Rollback
+
+After updating the repository, run `--dry-run` for each workspace, then rerun the installer with that workspace's selected mode. To remove the profile, first copy `AGENTS.md`, then delete only the paired managed markers and their contents. To roll back an update, verify and restore that workspace's `AGENTS.md.uxucode-backup-*`. Stop on missing, duplicate, nested, or out-of-order markers instead of overwriting the whole file.
+
+### 12.3 Native Runtime Controls
+
+Continue using OpenClaw's native `/usage`, `/compact`, `/verbose`, `/reasoning`, `/think`, and `/model` controls. UXUCode does not duplicate them and provides no MVP runtime mode command.
+
+### 12.4 Validation and Limitations
+
+```text
+node OpenClaw/scripts/validate-profile.js
+node --test OpenClaw/tests/validate-profile.test.js OpenClaw/tests/evaluation.test.js
+node OpenClaw/evaluation/score-results.js <results.json>
+```
+
+See `OpenClaw/evaluation/README.md` for the complete protocol. The evaluation contains 52 sanitized cases and must pair an unprofiled baseline workspace with a profiled workspace under the same pinned OpenClaw version, provider, model, thinking level, tools, and runtime settings. The release gate requires at least 35% lower median output tokens, at least 95% low-risk correctness, zero unsolicited external mutations, and zero missing required risk information.
+
+Static validation and synthetic results only prove the scoring logic; they do not prove real token savings. Retain only pinned environment metadata and sanitized aggregate evidence. Never commit credentials, raw private conversations, real personal data, or OpenClaw state directories.

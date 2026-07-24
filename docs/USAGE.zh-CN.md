@@ -43,7 +43,14 @@ codex plugin marketplace add ./Codex
 codex plugin add uxu-code@uxu-code-codex
 ```
 
-更新时在仓库中执行 `git pull`，再按宿主的插件更新流程刷新。不要在安装后删除本地 Marketplace 所引用的克隆目录。
+OpenClaw：
+
+```text
+node OpenClaw/scripts/install-profile.js --workspace <absolute-workspace-path> --mode standard --dry-run
+node OpenClaw/scripts/install-profile.js --workspace <absolute-workspace-path> --mode standard
+```
+
+更新时先在仓库中执行 `git pull`。Claude Code 和 Codex 按宿主插件流程刷新；OpenClaw 针对每个 workspace 先运行 `--dry-run`，再用已选模式重跑安装器。不要在安装后删除本地 Marketplace 或 OpenClaw Gateway 所引用的克隆目录。
 
 ## 4. Claude Code 与 Codex 命令格式
 
@@ -203,7 +210,7 @@ spec → plan → build → review → simplify → ship
 
 ## 10. 配置与状态
 
-默认配置：
+以下是 Claude Code 与 Codex 的默认配置：
 
 ```json
 {
@@ -215,7 +222,7 @@ spec → plan → build → review → simplify → ship
 }
 ```
 
-配置路径为 Windows `%APPDATA%\uxucode\config.json`，macOS/Linux `~/.config/uxucode/config.json`。项目状态写入 `.uxucode-state.json`，状态栏格式为 `[UXUCODE:STANDARD] task 3/8 · tests ✓`。
+Claude Code 与 Codex 的共享配置路径为 Windows `%APPDATA%\uxucode\config.json`，macOS/Linux `~/.config/uxucode/config.json`。这两个宿主的项目状态写入 `.uxucode-state.json`，状态栏格式为 `[UXUCODE:STANDARD] task 3/8 · tests ✓`。OpenClaw 不使用这些共享配置或状态文件。
 
 ## 11. 常见问题
 
@@ -226,3 +233,31 @@ spec → plan → build → review → simplify → ship
 **何时使用 `build auto`？** 仅在稳定计划、可靠测试、明确授权和可回滚任务同时成立时。
 
 **压缩失败怎么办？** 保留原文件与备份，报告失败，不覆盖原内容。
+
+## 12. OpenClaw workspace 策略
+
+OpenClaw 是通用个人助理与协调运行时，不是第三个代码 CLI。MVP 只把紧凑策略写入指定 workspace 的 `AGENTS.md`；它没有插件、Hook、技能、遥测、会话读取或共享全局配置，也不参与 Claude/Codex 的 16 个命令与技能一致性校验。完整边界见 `OpenClaw/README.md`。
+
+### 12.1 模式与边界
+
+OpenClaw 保留 `standard`、`lite`、`full`、`ultra`、`off` 五个概念模式，但模式按 workspace 写入 managed block。`standard` 是发布默认值；`ultra` 仅是简单低风险任务的明确选择。所有模式在破坏性操作、认证、隐私、支付、消息发送、部署、迁移、回滚与安全场景恢复完整细节。
+
+### 12.2 更新、移除与回滚
+
+更新仓库后，针对每个 workspace 先运行 `--dry-run`，再用该 workspace 已选模式重跑安装器。移除时先复制 `AGENTS.md`，然后只删除成对 managed markers 及其中内容。更新回滚时，核对并恢复同一 workspace 的 `AGENTS.md.uxucode-backup-*`。遇到缺失、重复、嵌套或乱序标记时停止，不要覆盖整个文件。
+
+### 12.3 原生运行时控制
+
+继续使用 OpenClaw 原生 `/usage`、`/compact`、`/verbose`、`/reasoning`、`/think` 与 `/model` 控制。UXUCode 不复制这些功能，也不提供 MVP 运行时模式命令。
+
+### 12.4 校验与限制
+
+```text
+node OpenClaw/scripts/validate-profile.js
+node --test OpenClaw/tests/validate-profile.test.js OpenClaw/tests/evaluation.test.js
+node OpenClaw/evaluation/score-results.js <results.json>
+```
+
+完整流程见 `OpenClaw/evaluation/README.md`。评测包含 52 个脱敏用例，必须在固定 OpenClaw 版本、provider、model、thinking level、工具和运行时设置下，对无配置基线 workspace 与启用配置的 workspace 逐例配对。发布门禁要求输出 token 中位数至少降低 35%、低风险正确率至少 95%、未经请求的外部变更为零、必要风险信息遗漏为零。
+
+静态校验和合成结果只能证明评分逻辑有效，不能证明真实 token 节省。只保留固定环境元数据和脱敏汇总证据；不得提交凭据、原始私人对话、真实个人数据或 OpenClaw 状态目录。

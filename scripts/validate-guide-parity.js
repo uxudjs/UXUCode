@@ -13,6 +13,11 @@ const commands = ['help', 'spec', 'plan', 'build', 'debug', 'test', 'review', 's
 const modes = ['standard', 'lite', 'full', 'ultra', 'off'];
 const baseline = JSON.stringify(structure(guides[0]));
 const tick = String.fromCharCode(96);
+const sectionBetween = (value, start, end) => {
+  const startIndex = value.indexOf(start);
+  const endIndex = end ? value.indexOf(end, startIndex + start.length) : value.length;
+  return startIndex >= 0 && endIndex >= 0 ? value.slice(startIndex, endIndex) : '';
+};
 
 guides.forEach((guide, index) => {
   if (JSON.stringify(structure(guide)) !== baseline) failures.push(files[index] + ': heading structure differs');
@@ -25,6 +30,46 @@ guides.forEach((guide, index) => {
   for (const term of ['Blocker', 'Recommended', 'Acknowledged', 'GO', 'NO-GO']) {
     if (!guide.includes(term)) failures.push(files[index] + ': missing ship term ' + term);
   }
+  for (const required of [
+    'OpenClaw/README.md',
+    'OpenClaw/scripts/install-profile.js',
+    '--mode standard',
+    '--dry-run',
+    'node OpenClaw/scripts/validate-profile.js',
+    'OpenClaw/evaluation/README.md',
+    'node --test OpenClaw/tests/validate-profile.test.js OpenClaw/tests/evaluation.test.js',
+    'node OpenClaw/evaluation/score-results.js <results.json>',
+    '52',
+    '35%',
+    '95%',
+    'AGENTS.md.uxucode-backup-*'
+  ]) {
+    if (!guide.includes(required)) failures.push(files[index] + ': missing OpenClaw value ' + required);
+  }
+  const installSection = sectionBetween(guide, '## 3.', '## 4.');
+  const openClawSection = sectionBetween(guide, '## 12.');
+  const validationSection = sectionBetween(guide, '### 12.4');
+  for (const installCommand of [
+    'node OpenClaw/scripts/install-profile.js --workspace <absolute-workspace-path> --mode standard --dry-run',
+    'node OpenClaw/scripts/install-profile.js --workspace <absolute-workspace-path> --mode standard'
+  ]) {
+    if (!installSection.includes(installCommand)) {
+      failures.push(files[index] + ': OpenClaw installation command is not aligned with the host installation template');
+    }
+    if (openClawSection.includes(installCommand)) {
+      failures.push(files[index] + ': OpenClaw installation command is duplicated in the detailed profile section');
+    }
+  }
+  for (const validationToken of [
+    'node OpenClaw/scripts/validate-profile.js',
+    'OpenClaw/evaluation/README.md',
+    'node --test OpenClaw/tests/validate-profile.test.js OpenClaw/tests/evaluation.test.js',
+    'node OpenClaw/evaluation/score-results.js <results.json>'
+  ]) {
+    if (!validationSection.includes(validationToken)) {
+      failures.push(files[index] + ': OpenClaw evaluation content is outside section 12.4');
+    }
+  }
   if ((guide.match(/\x60{3}/g) || []).length % 2 !== 0) failures.push(files[index] + ': unbalanced code fences');
 });
 
@@ -32,4 +77,4 @@ if (failures.length) {
   console.error(failures.join('\n'));
   process.exit(1);
 }
-console.log('Guide parity passed: structure, commands, modes, and ship gate are aligned.');
+console.log('Guide parity passed: structure, coding commands, modes, ship gate, and OpenClaw profile tokens are aligned.');
