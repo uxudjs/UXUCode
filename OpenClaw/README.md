@@ -2,7 +2,7 @@
 
 UXUCode for OpenClaw is a compact workspace policy for a personal assistant and coordination runtime. It is not a third coding-CLI plugin and does not copy the Claude Code or Codex engineering command set.
 
-The MVP installs one managed policy block into an agent workspace `AGENTS.md`. OpenClaw loads that file when a session starts. The profile adds no OpenClaw plugin, hook, skill, telemetry, conversation access, credential access, or shared global UXUCode configuration.
+The MVP installs one managed policy block into an agent workspace `AGENTS.md` and creates missing native `SOUL.md` and `IDENTITY.md` files from the packaged templates. OpenClaw loads these files when a session starts. The profile adds no OpenClaw plugin, hook, skill, telemetry, conversation access, credential access, or shared global UXUCode configuration.
 
 ## Prerequisites
 
@@ -35,6 +35,8 @@ The installer:
 - preserves existing UTF-8 content outside that block byte-for-byte;
 - rejects duplicate, nested, incomplete, or out-of-order markers;
 - verifies a timestamped `AGENTS.md.uxucode-backup-*` copy before replacing an existing managed block;
+- creates `SOUL.md` and `IDENTITY.md` from the packaged templates when they are missing;
+- preserves any existing `SOUL.md` or `IDENTITY.md` without reading, editing, or overwriting it;
 - makes an identical reinstall a no-op with no unnecessary backup.
 
 Start a fresh OpenClaw session after installation so the workspace bootstrap files are loaded again.
@@ -60,12 +62,12 @@ Every mode restores full ordered detail for destructive actions, authentication,
 
 ## Native workspace templates
 
-The project includes two optional OpenClaw bootstrap templates:
+The project includes two OpenClaw bootstrap templates:
 
 - `OpenClaw/templates/SOUL.md` for persona, tone, boundaries, and continuity;
 - `OpenClaw/templates/IDENTITY.md` for name, role, vibe, emoji, and avatar.
 
-Review and customize each template before copying it to the selected workspace root under its original filename. The installer manages only `AGENTS.md`; it never creates, edits, or overwrites `SOUL.md` or `IDENTITY.md`. Existing workspace files remain authoritative.
+The installer copies each template to the selected workspace root under its original filename only when that file is missing. Review and customize the created files after installation. Existing workspace files remain authoritative and are never read, edited, or overwritten; deleting either file and rerunning the installer restores the packaged starting template.
 
 ## Native OpenClaw controls
 
@@ -121,5 +123,5 @@ The validator enforces the compact profile contract and confirms that the OpenCl
 - The profile influences model behavior; it is not a hard provider token cap or billing control.
 - Token reduction claims require the pinned paired evaluation described by this repository. Static validation alone is not evidence of savings.
 - The MVP has no runtime mode command. Mode is stored per workspace in the managed block.
-- The installer reads only its source fragment and the selected workspace `AGENTS.md`. It never edits `SOUL.md`, `USER.md`, `MEMORY.md`, `HEARTBEAT.md`, OpenClaw configuration, credentials, or sessions.
+- The installer reads its source fragment and templates plus the selected workspace `AGENTS.md`. It checks whether `SOUL.md` and `IDENTITY.md` entries exist, creates either one only when missing, and never reads or edits an existing copy. It never edits `USER.md`, `MEMORY.md`, `HEARTBEAT.md`, OpenClaw configuration, credentials, or sessions.
 - Keep workspaces and backups private when they contain personal instructions. Never commit credentials, raw private conversations, or OpenClaw state directories.

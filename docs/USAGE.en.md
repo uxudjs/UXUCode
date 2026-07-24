@@ -244,7 +244,7 @@ OpenClaw is a general personal-assistant and coordination runtime, not a third c
 
 OpenClaw retains the conceptual modes `standard`, `lite`, `full`, `ultra`, and `off`, but stores the selection per workspace in the managed block. `standard` is the shipped default. `ultra` is an explicit choice for simple, low-risk work. Every mode restores full detail for destructive actions, authentication, privacy, payment, messaging, deployment, migration, rollback, and safety.
 
-The project provides `OpenClaw/templates/SOUL.md` and `OpenClaw/templates/IDENTITY.md` as optional starting templates. `SOUL.md` defines persona, tone, and boundaries; `IDENTITY.md` defines name, role, vibe, emoji, and avatar. Review and customize them before copying them to the workspace root. The installer manages only `AGENTS.md` and never creates or overwrites these files.
+The project provides `OpenClaw/templates/SOUL.md` and `OpenClaw/templates/IDENTITY.md` as starting templates. `SOUL.md` defines persona, tone, and boundaries; `IDENTITY.md` defines name, role, vibe, emoji, and avatar. The installer creates either file automatically when it is missing from the workspace root; existing files are never read, edited, or overwritten. Review and customize newly created files after installation.
 
 ### 12.2 Update, Removal, and Rollback
 

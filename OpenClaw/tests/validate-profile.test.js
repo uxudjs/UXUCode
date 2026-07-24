@@ -18,6 +18,7 @@ const {
 
 const root = path.resolve(__dirname, '..');
 const fragmentPath = path.join(root, 'AGENTS.fragment.md');
+const templateNames = ['SOUL.md', 'IDENTITY.md'];
 
 function canonicalFragment() {
   return fs.readFileSync(fragmentPath, 'utf8');
@@ -114,7 +115,47 @@ test('installer: creates AGENTS.md with standard mode by default', () => {
 
     assert.equal(result.action, 'created');
     assert.match(content, /<!-- UXUCODE:MODE standard -->/);
+    for (const name of templateNames) {
+      assert.ok(
+        fs.readFileSync(path.join(workspace, name)).equals(
+          fs.readFileSync(path.join(root, 'templates', name))
+        )
+      );
+    }
     assert.deepEqual(backupNames(workspace), []);
+  });
+});
+
+test('installer: adds missing native templates when AGENTS.md is already current', () => {
+  withWorkspace((workspace) => {
+    installProfile({ workspace, mode: 'standard' });
+    for (const name of templateNames) fs.rmSync(path.join(workspace, name));
+    const messages = [];
+
+    const result = installProfile({ workspace, mode: 'standard' }, {
+      log: (message) => messages.push(message)
+    });
+
+    assert.equal(result.action, 'unchanged');
+    assert.deepEqual(result.createdTemplates, templateNames);
+    assert.match(messages.join('\n'), /Created native workspace templates: SOUL\.md, IDENTITY\.md/);
+    for (const name of templateNames) {
+      assert.equal(fs.existsSync(path.join(workspace, name)), true);
+    }
+  });
+});
+
+test('installer: preserves existing native workspace files byte-for-byte', () => {
+  withWorkspace((workspace) => {
+    const soul = Buffer.from('# Custom SOUL\r\nprivate\r\n', 'utf8');
+    const identity = Buffer.from('# Custom IDENTITY\r\nprivate\r\n', 'utf8');
+    fs.writeFileSync(path.join(workspace, 'SOUL.md'), soul);
+    fs.writeFileSync(path.join(workspace, 'IDENTITY.md'), identity);
+
+    installProfile({ workspace, mode: 'standard' });
+
+    assert.ok(fs.readFileSync(path.join(workspace, 'SOUL.md')).equals(soul));
+    assert.ok(fs.readFileSync(path.join(workspace, 'IDENTITY.md')).equals(identity));
   });
 });
 
@@ -193,7 +234,11 @@ test('installer: dry-run reports intent without writing', () => {
 
     assert.equal(result.action, 'would-create');
     assert.equal(fs.existsSync(path.join(workspace, 'AGENTS.md')), false);
+    for (const name of templateNames) {
+      assert.equal(fs.existsSync(path.join(workspace, name)), false);
+    }
     assert.match(messages.join('\n'), /would create/i);
+    assert.match(messages.join('\n'), /would create native workspace templates: SOUL\.md, IDENTITY\.md/);
   });
 });
 
@@ -252,7 +297,7 @@ test('installer: rejects non-file and invalid UTF-8 AGENTS.md targets without wr
   });
 });
 
-test('installer: changes only AGENTS.md and an allowed replacement backup', () => {
+test('installer: changes only managed OpenClaw workspace files and an allowed replacement backup', () => {
   withWorkspace((workspace) => {
     const unrelatedPath = path.join(workspace, 'MEMORY.md');
     fs.writeFileSync(unrelatedPath, 'private memory stays untouched\n');
@@ -262,9 +307,11 @@ test('installer: changes only AGENTS.md and an allowed replacement backup', () =
     assert.equal(fs.readFileSync(unrelatedPath, 'utf8'), 'private memory stays untouched\n');
     const names = fs.readdirSync(workspace).sort();
     assert.equal(names.filter((name) => name === 'AGENTS.md').length, 1);
+    assert.equal(names.filter((name) => name === 'SOUL.md').length, 1);
+    assert.equal(names.filter((name) => name === 'IDENTITY.md').length, 1);
     assert.equal(names.filter((name) => name === 'MEMORY.md').length, 1);
     assert.equal(backupNames(workspace).length, 1);
-    assert.equal(names.length, 3);
+    assert.equal(names.length, 5);
   });
 });
 

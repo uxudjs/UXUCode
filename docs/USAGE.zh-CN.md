@@ -244,7 +244,7 @@ OpenClaw 是通用个人助理与协调运行时，不是第三个代码 CLI。M
 
 OpenClaw 保留 `standard`、`lite`、`full`、`ultra`、`off` 五个概念模式，但模式按 workspace 写入 managed block。`standard` 是发布默认值；`ultra` 仅是简单低风险任务的明确选择。所有模式在破坏性操作、认证、隐私、支付、消息发送、部署、迁移、回滚与安全场景恢复完整细节。
 
-项目提供 `OpenClaw/templates/SOUL.md` 和 `OpenClaw/templates/IDENTITY.md` 作为可选起始模板。`SOUL.md` 定义 persona、语气与边界；`IDENTITY.md` 定义名称、角色、风格、emoji 和 avatar。审阅并定制后再复制到 workspace 根目录；安装器只管理 `AGENTS.md`，不会创建或覆盖这两个文件。
+项目提供 `OpenClaw/templates/SOUL.md` 和 `OpenClaw/templates/IDENTITY.md` 作为起始模板。`SOUL.md` 定义 persona、语气与边界；`IDENTITY.md` 定义名称、角色、风格、emoji 和 avatar。安装器会在 workspace 根目录缺少同名文件时自动创建它们；已有文件不会被读取、修改或覆盖。安装后请审阅并定制新创建的文件。
 
 ### 12.2 更新、移除与回滚
 

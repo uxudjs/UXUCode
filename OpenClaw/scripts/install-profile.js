@@ -10,6 +10,7 @@ const {
 } = require('./validate-profile');
 
 const MODE_PATTERN = /<!-- UXUCODE:MODE ([a-z]+) -->/g;
+const TEMPLATE_NAMES = ['SOUL.md', 'IDENTITY.md'];
 
 function parseArgs(argv) {
   const options = {};
@@ -98,6 +99,16 @@ function writeVerified(targetPath, content) {
   }
 }
 
+function pathEntryExists(targetPath) {
+  try {
+    fs.lstatSync(targetPath);
+    return true;
+  } catch (error) {
+    if (error.code === 'ENOENT') return false;
+    throw error;
+  }
+}
+
 function nextBackupPath(agentsPath, now = new Date()) {
   const timestamp = now.toISOString().replace(/[:.]/g, '-');
   const base = `${agentsPath}.uxucode-backup-${timestamp}`;
@@ -138,8 +149,16 @@ function installProfile(options, dependencies = {}) {
 
   const workspace = resolveWorkspace(options.workspace);
   const agentsPath = path.join(workspace, 'AGENTS.md');
-  const fragmentPath = path.resolve(__dirname, '..', 'AGENTS.fragment.md');
+  const packageRoot = path.resolve(__dirname, '..');
+  const fragmentPath = path.join(packageRoot, 'AGENTS.fragment.md');
   const fragment = fs.readFileSync(fragmentPath, 'utf8');
+  const missingTemplates = TEMPLATE_NAMES
+    .filter((name) => !pathEntryExists(path.join(workspace, name)))
+    .map((name) => ({
+      name,
+      targetPath: path.join(workspace, name),
+      content: fs.readFileSync(path.join(packageRoot, 'templates', name))
+    }));
   const exists = fs.existsSync(agentsPath);
   if (exists && !fs.lstatSync(agentsPath).isFile()) {
     throw new Error('workspace AGENTS.md must be a regular file, not a directory or symbolic link');
@@ -157,26 +176,44 @@ function installProfile(options, dependencies = {}) {
   const next = managed
     ? current.slice(0, managed.start) + rendered + current.slice(managed.endExclusive)
     : appendBlock(current, rendered, newline);
-
-  if (Buffer.from(next, 'utf8').equals(original)) {
-    log(`AGENTS.md already has the requested UXUCode ${mode} profile; no changes.`);
-    return { action: 'unchanged', agentsPath };
-  }
-
+  const agentsUnchanged = Buffer.from(next, 'utf8').equals(original);
   const plannedAction = !exists ? 'create' : managed ? 'update' : 'merge';
   if (options.dryRun) {
-    log(`Dry run: would ${plannedAction} ${agentsPath} with UXUCode mode ${mode}.`);
-    return { action: `would-${plannedAction}`, agentsPath };
+    if (agentsUnchanged) {
+      log(`AGENTS.md already has the requested UXUCode ${mode} profile; no changes.`);
+    } else {
+      log(`Dry run: would ${plannedAction} ${agentsPath} with UXUCode mode ${mode}.`);
+    }
+    if (missingTemplates.length) {
+      log(`Dry run: would create native workspace templates: ${missingTemplates.map(({ name }) => name).join(', ')}.`);
+    }
+    return {
+      action: agentsUnchanged ? 'unchanged' : `would-${plannedAction}`,
+      agentsPath,
+      createdTemplates: []
+    };
   }
 
   let backupPath;
-  if (managed) backupPath = createVerifiedBackup(agentsPath, original, now);
-  writeVerified(agentsPath, next);
-  log(`UXUCode OpenClaw profile ${plannedAction}d at ${agentsPath} with mode ${mode}.`);
+  if (agentsUnchanged) {
+    log(`AGENTS.md already has the requested UXUCode ${mode} profile; no changes.`);
+  } else {
+    if (managed) backupPath = createVerifiedBackup(agentsPath, original, now);
+    writeVerified(agentsPath, next);
+    log(`UXUCode OpenClaw profile ${plannedAction}d at ${agentsPath} with mode ${mode}.`);
+  }
+  for (const template of missingTemplates) writeVerified(template.targetPath, template.content);
+  const createdTemplates = missingTemplates.map(({ name }) => name);
+  if (createdTemplates.length) {
+    log(`Created native workspace templates: ${createdTemplates.join(', ')}.`);
+  }
   return {
-    action: `${plannedAction}${plannedAction.endsWith('e') ? 'd' : 'ed'}`,
+    action: agentsUnchanged
+      ? 'unchanged'
+      : `${plannedAction}${plannedAction.endsWith('e') ? 'd' : 'ed'}`,
     agentsPath,
-    backupPath
+    backupPath,
+    createdTemplates
   };
 }
 
