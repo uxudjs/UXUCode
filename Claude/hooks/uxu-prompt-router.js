@@ -3,6 +3,7 @@
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
+const { policyFor, resolveMode } = require('./mode-policy');
 
 const commands = new Set(['help', 'spec', 'plan', 'build', 'debug', 'test', 'review', 'simplify', 'ship', 'mode', 'audit', 'debt', 'commit', 'compress', 'stats', 'status']);
 const modes = new Set(['standard', 'lite', 'full', 'ultra', 'off']);
@@ -63,6 +64,6 @@ process.stdin.on('end', () => {
     return;
   }
 
-  const mode = readJson(configPath, {}).mode || 'standard';
-  emit(`Route this request to the "${command}" skill with arguments "${args}". Apply UXUCode mode ${mode}.`);
+  const mode = resolveMode(readJson(configPath, {}).mode);
+  emit(`Route this request to the "${command}" skill with arguments "${args}". ${policyFor(mode)}`);
 });

@@ -4,7 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 
-const modes = new Set(['standard', 'lite', 'full', 'ultra', 'off']);
+const { policyFor, resolveMode } = require('./mode-policy');
 const configDir = process.platform === 'win32' && process.env.APPDATA
   ? path.join(process.env.APPDATA, 'uxucode')
   : path.join(os.homedir(), '.config', 'uxucode');
@@ -17,13 +17,12 @@ function readJson(file, fallback) {
 }
 
 const config = readJson(configPath, {});
-const mode = modes.has(config.mode) ? config.mode : 'standard';
+const mode = resolveMode(config.mode);
 const state = readJson(statePath, {});
 const context = [
   `UXUCode is active in ${mode} mode.`,
   'Use only /uxu-code:<command> public entries and never infer aliases.',
-  'Apply the internal implementation-policy and output-policy unless mode is off.',
-  'Correctness, safety, explicit requirements, and validation evidence outrank compactness.',
+  policyFor(mode),
   state.currentTask ? `Current task: ${state.currentTask}.` : '',
   state.tests ? `Last recorded tests: ${state.tests}.` : ''
 ].filter(Boolean).join(' ');

@@ -3,6 +3,7 @@
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
+const { policyFor, resolveMode } = require('./mode-policy');
 
 const configPath = process.platform === 'win32' && process.env.APPDATA
   ? path.join(process.env.APPDATA, 'uxucode', 'config.json')
@@ -10,12 +11,10 @@ const configPath = process.platform === 'win32' && process.env.APPDATA
 let mode = 'standard';
 try {
   const value = JSON.parse(fs.readFileSync(configPath, 'utf8').replace(/^\uFEFF/, '')).mode;
-  if (['standard', 'lite', 'full', 'ultra', 'off'].includes(value)) mode = value;
+  mode = resolveMode(value);
 } catch {}
 
-const context = mode === 'off'
-  ? 'UXUCode policies are off; follow the parent task and preserve validation evidence.'
-  : `Apply UXUCode ${mode} mode: smallest correct implementation, concise evidence-backed output, and full detail for risk or ambiguity.`;
+const context = policyFor(mode);
 
 process.stdout.write(JSON.stringify({
   hookSpecificOutput: {

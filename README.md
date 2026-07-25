@@ -17,6 +17,8 @@
 
 UXUCode 是面向 Claude Code 与 Codex CLI 的统一软件工程工作流系统，覆盖需求澄清、规格设计、项目规划、增量实现、调试测试、代码审查、复杂度治理与发布门禁。
 
+建议在代码仓库中配合 [colbymchenry/codegraph](https://github.com/colbymchenry/codegraph) 使用 UXUCode，以便在规格、规划、实现和审查时更快定位相关代码与调用关系。
+
 项目为两个 CLI 提供独立的原生插件包，并同步维护技能、内部工作流参考、Hook、三语言指南与一致性校验脚本。自 `v3.0.0` 起，Claude Code 与 Codex CLI 完全独立维护：
 
 -   独立目录
@@ -165,6 +167,8 @@ OpenClaw 评测协议见 [OpenClaw/evaluation/README.md](OpenClaw/evaluation/REA
 
 UXUCode 是面向 Claude Code 與 Codex CLI 的統一軟體工程工作流系統，涵蓋需求釐清、規格設計、專案規劃、增量實作、除錯測試、程式碼審查、複雜度治理與發布門禁。
 
+建議在程式碼儲存庫中搭配 [colbymchenry/codegraph](https://github.com/colbymchenry/codegraph) 使用 UXUCode，讓規格、規劃、實作與審查時能更快定位相關程式碼和呼叫關係。
+
 專案為兩個 CLI 提供獨立的原生插件套件，並同步維護技能、內部工作流參考、Hook、三語言指南與一致性校驗腳本。自 `v3.0.0` 起，Claude Code 與 Codex CLI 完全獨立維護：
 
 -   獨立目錄
@@ -312,6 +316,8 @@ OpenClaw 評估協議見 [OpenClaw/evaluation/README.md](OpenClaw/evaluation/REA
 📖 [Read the complete English usage guide](docs/USAGE.en.md)
 
 UXUCode is a unified software engineering workflow system for Claude Code and Codex CLI, covering requirement clarification, specification, planning, incremental implementation, debugging and testing, code review, complexity control, and release gates.
+
+We recommend using UXUCode with [colbymchenry/codegraph](https://github.com/colbymchenry/codegraph) in code repositories, so related code and call paths are easier to locate during specification, planning, implementation, and review.
 
 The project provides a native, independent plugin package for each CLI while keeping skills, internal workflow references, hooks, trilingual guides, and parity checks synchronized. Since `v3.0.0`, Claude Code and Codex CLI are maintained as completely independent distributions:
 

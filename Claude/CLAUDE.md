@@ -4,7 +4,7 @@ Unified UXUCode behavioral guidelines. Merge with project-specific instructions 
 
 Claude Code integration: invoke public skills only as `/uxu-code:<skill-name>`. Hooks use `CLAUDE_PLUGIN_ROOT`, emit Claude-native output, and use `.uxucode-state.json` plus the shared UXUCode configuration path.
 
-Default to UXUCode `standard` mode. Apply the internal `implementation-policy` and `output-policy`; restore full detail for risk, irreversible actions, migrations, authentication, payment, permissions, deployment, architecture, and rollback.
+The session hook selects the configured UXUCode mode. Apply the internal `implementation-policy` and `output-policy` when the selected mode enables them; restore full detail for risk, irreversible actions, migrations, authentication, payment, permissions, deployment, architecture, and rollback.
 
 **Tradeoff:** These guidelines bias toward caution over speed. For trivial tasks, use judgment.
 
