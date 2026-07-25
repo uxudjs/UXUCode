@@ -224,7 +224,7 @@ The following is the Claude Code and Codex default configuration:
 }
 ```
 
-The shared Claude Code and Codex configuration path is `%APPDATA%\uxucode\config.json` on Windows and `~/.config/uxucode/config.json` on macOS/Linux. Project state for those two hosts is stored in `.uxucode-state.json`. The status line format is `[UXUCODE:STANDARD] task 3/8 · tests ✓`. OpenClaw uses neither this shared configuration nor this project state file.
+The shared Claude Code and Codex configuration path is `%APPDATA%\uxucode\config.json` on Windows and `~/.config/uxucode/config.json` on macOS/Linux. Project state for those two hosts is stored in `.uxucode-state.json`. At session start, Codex emits `UXUCODE:<MODE>` and Claude reports `UXUCode is active in <mode> mode.`; each injects the policy for that configured mode. Neither output is a task-progress or test-status line. OpenClaw uses neither this shared configuration nor this project state file.
 
 ## 11. Frequently Asked Questions
 

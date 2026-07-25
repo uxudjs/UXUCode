@@ -224,7 +224,7 @@ spec → plan → build → review → simplify → ship
 }
 ```
 
-Claude Code 与 Codex 的共享配置路径为 Windows `%APPDATA%\uxucode\config.json`，macOS/Linux `~/.config/uxucode/config.json`。这两个宿主的项目状态写入 `.uxucode-state.json`，状态栏格式为 `[UXUCODE:STANDARD] task 3/8 · tests ✓`。OpenClaw 不使用这些共享配置或状态文件。
+Claude Code 与 Codex 的共享配置路径为 Windows `%APPDATA%\uxucode\config.json`，macOS/Linux `~/.config/uxucode/config.json`。这两个宿主的项目状态写入 `.uxucode-state.json`。会话启动时，Codex 输出 `UXUCODE:<MODE>`，Claude 报告 `UXUCode is active in <mode> mode.`；两者都会注入该配置模式的策略。这些输出均不表示任务进度或测试状态。OpenClaw 不使用这些共享配置或状态文件。
 
 ## 11. 常见问题
 
