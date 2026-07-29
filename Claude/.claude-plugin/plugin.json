@@ -1,6 +1,6 @@
 {
   "name": "uxu-code",
-  "version": "3.0.0",
+  "version": "4.0.0",
   "description": "Claude Code-native unified engineering workflows, minimal correct implementation, and concise technical output.",
   "author": {
     "name": "uxudjs",
@@ -10,6 +10,5 @@
   "repository": "https://github.com/uxudjs/UXUCode",
   "license": "MIT",
   "keywords": ["coding", "engineering", "skills", "hooks", "workflow"],
-  "skills": "./skills/",
-  "hooks": "./hooks/hooks.json"
+  "skills": "./skills/"
 }

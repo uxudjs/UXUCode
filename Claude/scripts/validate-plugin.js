@@ -26,9 +26,9 @@ const hooks = readJson('hooks/hooks.json');
 
 if (manifest) {
   if (manifest.name !== 'uxu-code') fail('manifest: unexpected plugin name');
-  if (manifest.version !== '3.0.0') fail('manifest: expected version 3.0.0');
+  if (manifest.version !== '4.0.0') fail('manifest: expected version 4.0.0');
   if (manifest.skills !== './skills/') fail('manifest: skills must be ./skills/');
-  if (manifest.hooks !== './hooks/hooks.json') fail('manifest: hooks must be ./hooks/hooks.json');
+  if ('hooks' in manifest) fail('manifest: standard hooks/hooks.json is auto-loaded and must not be declared');
 }
 if (marketplace?.name !== 'uxu-code-claude') fail('marketplace: unexpected name');
 if (marketplace?.plugins?.[0]?.source !== './') fail('marketplace: plugin source must be ./');
