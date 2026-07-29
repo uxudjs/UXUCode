@@ -4,7 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 
-const { policyFor, resolveMode } = require('./mode-policy');
+const { policyFor, resolveMode, workflowPolicy } = require('./mode-policy');
 const configDir = process.platform === 'win32' && process.env.APPDATA
   ? path.join(process.env.APPDATA, 'uxucode')
   : path.join(os.homedir(), '.config', 'uxucode');
@@ -23,6 +23,7 @@ const context = [
   `UXUCode is active in ${mode} mode.`,
   'Use only @<command> public entries and never infer aliases.',
   policyFor(mode),
+  workflowPolicy,
   state.currentTask ? `Current task: ${state.currentTask}.` : '',
   state.tests ? `Last recorded tests: ${state.tests}.` : ''
 ].filter(Boolean).join(' ');

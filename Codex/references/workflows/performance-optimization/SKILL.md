@@ -289,6 +289,20 @@ app.use('/static', express.static('public', {
 res.set('Cache-Control', 'public, max-age=300'); // 5 minutes
 ```
 
+### Step 4: Verify (Keep or Revert)
+
+Re-run the same command, same conditions, and the same fixed performance budget used for the baseline. Change one variable at a time so the result remains attributable.
+
+**Beat the noise.** A lower mean is not enough when run-to-run variance overlaps the baseline. Use repeated measurements appropriate to the metric, report the spread, and keep the change only when the improvement exceeds that noise.
+
+| Result | Decision |
+|---|---|
+| Improved beyond measurement noise, and all correctness gates stay green | Keep |
+| Within noise or worse | Revert |
+| Improved, but a test went red | Revert |
+
+Log every attempt, including the reverted ones, with the hypothesis, before/after measurements, conditions, variance, correctness result, and decision. A neutral result is evidence, not a reason to retain complexity.
+
 ## Performance Budget
 
 Set budgets and enforce them:
@@ -342,9 +356,12 @@ For detailed performance checklists, optimization commands, and anti-pattern ref
 After any performance-related change:
 
 - [ ] Before and after measurements exist (specific numbers)
+- [ ] Before and after use the same command, conditions, and fixed budget
+- [ ] The improvement exceeds observed run-to-run measurement noise
 - [ ] The specific bottleneck is identified and addressed
 - [ ] Core Web Vitals are within "Good" thresholds
 - [ ] Bundle size hasn't increased significantly
 - [ ] No N+1 queries in new data fetching code
 - [ ] Performance budget passes in CI (if configured)
 - [ ] Existing tests still pass (optimization didn't break behavior)
+- [ ] Non-wins and correctness regressions were reverted and the attempt was logged

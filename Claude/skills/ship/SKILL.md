@@ -11,4 +11,6 @@ Review code quality, security, tests/builds, compatibility, operational readines
 
 Deduplicate results into `Blocker`, `Recommended`, and `Acknowledged`. Return `GO` only when no blocker remains and required evidence exists; otherwise return `NO-GO`. Include release steps, rollback steps, and anything not verified.
 
+Use an approved specification when one exists; otherwise use the planning basis and acceptance criteria in `work-products/plan.md`. Return the gate in the conversation by default. If a ship report or other process file is created, place it only under `work-products/ship/`.
+
 Use `references/workflows/shipping-and-launch/`, `ci-cd-and-automation/`, `git-workflow-and-versioning/`, `deprecation-and-migration/`, `observability-and-instrumentation/`, `security-and-hardening/`, and `test-driven-development/` according to release risk.

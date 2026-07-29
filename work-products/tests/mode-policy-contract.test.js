@@ -5,8 +5,8 @@ const os = require('node:os');
 const path = require('node:path');
 const test = require('node:test');
 
-const codex = require('../Codex/hooks/mode-policy');
-const claude = require('../Claude/hooks/mode-policy');
+const codex = require('../../Codex/hooks/mode-policy');
+const claude = require('../../Claude/hooks/mode-policy');
 
 const expectedModes = ['standard', 'lite', 'full', 'ultra', 'off'];
 
@@ -96,7 +96,7 @@ test('every Codex hook includes the configured mode policy', () => {
 
   for (const mode of expectedModes) {
     for (const [script, input] of hooks) {
-      const output = runCodexHook(path.join(__dirname, '..', 'Codex', 'hooks', script), mode, input);
+      const output = runCodexHook(path.join(__dirname, '..', '..', 'Codex', 'hooks', script), mode, input);
       assert.ok(output.hookSpecificOutput.additionalContext.includes(codex.policyFor(mode)));
     }
   }
@@ -111,7 +111,7 @@ test('every Claude hook includes the configured mode policy', () => {
 
   for (const mode of expectedModes) {
     for (const [script, input] of hooks) {
-      const output = runClaudeHook(path.join(__dirname, '..', 'Claude', 'hooks', script), mode, input);
+      const output = runClaudeHook(path.join(__dirname, '..', '..', 'Claude', 'hooks', script), mode, input);
       const context = script === 'uxu-subagent-start.js' ? JSON.parse(output).hookSpecificOutput.additionalContext : output;
       assert.ok(context.includes(claude.policyFor(mode)));
     }
@@ -120,7 +120,7 @@ test('every Claude hook includes the configured mode policy', () => {
 
 test('static host guidance delegates mode selection to the session hook', () => {
   for (const guide of ['Codex/AGENTS.md', 'Claude/CLAUDE.md']) {
-    const content = fs.readFileSync(path.join(__dirname, '..', guide), 'utf8');
+    const content = fs.readFileSync(path.join(__dirname, '..', '..', guide), 'utf8');
     assert.doesNotMatch(content, /Default to UXUCode `standard` mode\./);
     assert.match(content, /session hook selects the configured UXUCode mode/);
   }

@@ -45,7 +45,7 @@ for (const file of ['accessibility-checklist.md', 'definition-of-done.md', 'obse
 
 const skillDirs = fs.readdirSync(path.join(root, 'skills'), { withFileTypes: true })
   .filter((entry) => entry.isDirectory()).map((entry) => entry.name).sort();
-const expectedSkills = ['audit', 'build', 'commit', 'compress', 'debt', 'debug', 'help', 'implementation-policy', 'mode', 'output-policy', 'plan', 'review', 'ship', 'simplify', 'spec', 'stats', 'status', 'test', 'using-uxucode'].sort();
+const expectedSkills = ['audit', 'build', 'clean', 'commit', 'compress', 'debt', 'debug', 'help', 'implementation-policy', 'mode', 'output-policy', 'plan', 'review', 'ship', 'simplify', 'spec', 'stats', 'status', 'test', 'using-uxucode'].sort();
 const names = new Set();
 for (const directory of skillDirs) {
   const relativePath = path.join('skills', directory, 'SKILL.md');

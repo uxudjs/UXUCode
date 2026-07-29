@@ -3,7 +3,7 @@
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
-const { policyFor, resolveMode } = require('./mode-policy');
+const { policyFor, resolveMode, workflowPolicy } = require('./mode-policy');
 
 const configPath = process.platform === 'win32' && process.env.APPDATA
   ? path.join(process.env.APPDATA, 'uxucode', 'config.json')
@@ -14,7 +14,7 @@ try {
   mode = resolveMode(value);
 } catch {}
 
-const context = policyFor(mode);
+const context = `${policyFor(mode)} ${workflowPolicy}`;
 
 process.stdout.write(JSON.stringify({
   hookSpecificOutput: {

@@ -30,7 +30,7 @@ Before writing any code, operate in read-only mode:
 - Map dependencies between components
 - Note risks and unknowns
 
-**Do NOT write code during planning.** The output is a plan document saved to `tasks/plan.md` and a task list saved to `tasks/todo.md`, not implementation.
+**Do NOT write code during planning.** The output is a plan document saved to `work-products/plan.md` and a task list saved to `work-products/todo.md`, not implementation.
 
 ### Step 2: Identify the Dependency Graph
 
@@ -90,8 +90,8 @@ Each task follows this structure:
 - [ ] [Specific, testable condition]
 
 **Verification:**
-- [ ] Tests pass: `npm test -- --grep "feature-name"`
-- [ ] Build succeeds: `npm run build`
+- [ ] Tests pass: [the repository's focused-test command]
+- [ ] Build succeeds: [the repository's build command]
 - [ ] Manual check: [description of what to verify]
 
 **Dependencies:** [Task numbers this depends on, or "None"]
@@ -142,10 +142,10 @@ If a task is L or larger, it should be broken into smaller tasks. An agent perfo
 
 ## Output Files
 
-- **Plan document:** Save the implementation plan to `tasks/plan.md`.
-- **Task list:** Save the checklist-style task list to `tasks/todo.md`.
+- **Plan document:** Save the implementation plan to `work-products/plan.md`.
+- **Task list:** Save the checklist-style task list to `work-products/todo.md`.
 
-Create the `tasks/` directory if it does not exist. These paths are the convention expected by the `@build` command and other downstream tooling.
+Create the `work-products/` directory if it does not exist. These paths are the convention expected by the `@build` command and other downstream tooling.
 
 ## Plan Document Template
 

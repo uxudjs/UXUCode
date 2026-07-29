@@ -4,128 +4,225 @@ const fs = require('fs');
 const path = require('path');
 
 const root = path.resolve(__dirname, '..');
-const readme = fs.readFileSync(path.join(root, 'README.md'), 'utf8');
-const failures = [];
 const definitions = [
   {
     marker: '# 🇨🇳 简体中文',
     next: '# 🇹🇼 繁體中文',
+    headings: ['## 产品用途', '## 选择宿主', '## 快速安装', '## 第一次使用与验证', '## 更新', '## 完整指南', '## 致谢'],
     guide: 'docs/USAGE.zh-CN.md',
     linkText: '查看完整简体中文使用指南',
-    updateHeading: '### 更新',
-    validationHeading: '## 校验',
+    systemTerminal: '在系统终端',
+    claudeSession: '进入 Claude Code 会话后',
+    newOpenClawSession: '启动新的 OpenClaw 会话',
     workspacePlaceholder: '<请替换为OpenClaw工作区绝对路径>'
   },
   {
     marker: '# 🇹🇼 繁體中文',
     next: '# 🇺🇸 English',
+    headings: ['## 產品用途', '## 選擇宿主', '## 快速安裝', '## 第一次使用與驗證', '## 更新', '## 完整指南', '## 致謝'],
     guide: 'docs/USAGE.zh-TW.md',
     linkText: '查看完整繁體中文使用指南',
-    updateHeading: '### 更新',
-    validationHeading: '## 驗證',
+    systemTerminal: '在系統終端',
+    claudeSession: '進入 Claude Code 工作階段後',
+    newOpenClawSession: '啟動新的 OpenClaw 工作階段',
     workspacePlaceholder: '<請替換為OpenClaw工作區絕對路徑>'
   },
   {
     marker: '# 🇺🇸 English',
     next: '## Star History',
+    headings: ['## What It Does', '## Choose a Host', '## Quick Installation', '## First Use and Verification', '## Updating', '## Complete Guide', '## Acknowledgements'],
     guide: 'docs/USAGE.en.md',
     linkText: 'Read the complete English usage guide',
-    updateHeading: '### Updating',
-    validationHeading: '## Validation',
+    systemTerminal: 'In a system terminal',
+    claudeSession: 'After entering the Claude Code session',
+    newOpenClawSession: 'Start a new OpenClaw session',
     workspacePlaceholder: '<replace-with-absolute-openclaw-workspace-path>'
   }
+];
+const evaluationDetailPatterns = [
+  { pattern: /\b52\b[^\r\n]{0,80}\b(?:evaluation\s+)?cases?\b/i, label: '52 evaluation cases' },
+  { pattern: /(?:评测|評測|测试|測試)[^\r\n]{0,80}52\s*(?:个|個)?\s*(?:用例|案例)/i, label: '52 evaluation cases' },
+  { pattern: /52\s*(?:个|個)\s*(?:评测|評測|测试|測試)?(?:用例|案例)/i, label: '52 evaluation cases' },
+  { pattern: /35%[^\r\n]{0,80}(?:token|令牌|權杖|阈值|閾值|門檻|threshold|reduction|减少|減少)/i, label: '35% evaluation threshold' },
+  { pattern: /(?:token|令牌|權杖|阈值|閾值|門檻|threshold|reduction|减少|減少)[^\r\n]{0,80}35%/i, label: '35% evaluation threshold' },
+  { pattern: /95%[^\r\n]{0,80}(?:correctness|正确|正確|低风险|低風險|threshold|阈值|閾值|門檻)/i, label: '95% evaluation threshold' },
+  { pattern: /(?:correctness|正确|正確|低风险|低風險|threshold|阈值|閾值|門檻)[^\r\n]{0,80}95%/i, label: '95% evaluation threshold' }
 ];
 
 function count(value, search) {
   return value.split(search).length - 1;
 }
 
-const sections = definitions.map((definition) => {
-  const start = readme.indexOf(definition.marker);
-  const end = readme.indexOf(definition.next, start + definition.marker.length);
-  if (start < 0 || end < 0) {
-    failures.push('README language section is missing or out of order: ' + definition.marker);
-    return '';
-  }
-  return readme.slice(start, end);
-});
-
-definitions.forEach((definition, index) => {
-  const section = sections[index];
-  const hostHeadings = ['### Claude Code', '### Codex CLI', '### OpenClaw'];
-  const hostPositions = hostHeadings.map((heading) => section.indexOf(heading));
-  if (hostPositions.some((position) => position < 0) ||
-      hostPositions.some((position, hostIndex) => hostIndex > 0 && position <= hostPositions[hostIndex - 1])) {
-    failures.push(definition.marker + ': host installation headings are missing or out of order');
-  }
-  const openClawStart = section.indexOf('### OpenClaw');
-  const updateStart = section.indexOf(definition.updateHeading, openClawStart);
-  const validationStart = section.indexOf(definition.validationHeading, updateStart);
-  if (openClawStart < 0 || updateStart < 0 || validationStart < 0) {
-    failures.push(definition.marker + ': OpenClaw install, update, and validation sections are missing or out of order');
-  }
-  for (const installCommand of [
-    `node OpenClaw/scripts/install-profile.js --workspace "${definition.workspacePlaceholder}" --mode standard --dry-run`,
-    `node OpenClaw/scripts/install-profile.js --workspace "${definition.workspacePlaceholder}" --mode standard`
-  ]) {
-    const position = section.indexOf(installCommand);
-    if (position < openClawStart || position >= updateStart) {
-      failures.push(definition.marker + ': OpenClaw installation command is outside the host installation block');
-    }
-  }
-  for (const validationToken of [
-    'node OpenClaw/scripts/validate-profile.js',
-    'OpenClaw/evaluation/README.md',
-    'node --test OpenClaw/tests/validate-profile.test.js OpenClaw/tests/evaluation.test.js',
-    'node OpenClaw/evaluation/score-results.js <results.json>'
-  ]) {
-    if (section.indexOf(validationToken) < validationStart) {
-      failures.push(definition.marker + ': OpenClaw validation content is outside the validation section');
-    }
-  }
-  if (!section.includes('[' + definition.linkText + '](' + definition.guide + ')')) {
-    failures.push(definition.marker + ': missing its guide link');
-  }
-  if (count(readme, definition.guide) !== 1) {
-    failures.push(definition.guide + ': expected exactly one README link');
-  }
-  for (const required of [
-    'v3.0.0',
-    '/uxu-code:spec',
-    '/uxu-code:mode full',
-    '@spec',
-    '@mode full',
-    'OpenClaw/scripts/install-profile.js',
-    '--mode standard',
-    '--dry-run',
-    'node OpenClaw/scripts/validate-profile.js',
-    'OpenClaw/evaluation/README.md',
-    'node --test OpenClaw/tests/validate-profile.test.js OpenClaw/tests/evaluation.test.js',
-    'node OpenClaw/evaluation/score-results.js <results.json>',
-    'OpenClaw/templates/SOUL.md',
-    'OpenClaw/templates/IDENTITY.md',
-    '52',
-    '35%',
-    '95%'
-  ]) {
-    if (!section.includes(required)) failures.push(definition.marker + ': missing synchronized value ' + required);
-  }
-  if (/--workspace\s+<[^>\r\n]+>/.test(section)) {
-    failures.push(definition.marker + ': contains an unquoted workspace placeholder that PowerShell cannot parse');
-  }
-});
-
-const headingSignatures = sections.map((section) =>
-  [...section.matchAll(/^(#{2,3})\s+/gm)].map((match) => match[1].length).join(',')
-);
-if (new Set(headingSignatures).size !== 1) {
-  failures.push('README language sections do not share the same heading structure');
+function sectionBetween(value, start, end) {
+  const startIndex = value.indexOf(start);
+  const endIndex = end ? value.indexOf(end, startIndex + start.length) : value.length;
+  return startIndex >= 0 && endIndex >= 0 ? value.slice(startIndex, endIndex) : '';
 }
 
-if (failures.length) {
-  console.error('README language parity validation failed:');
-  failures.forEach((failure) => console.error('- ' + failure));
-  process.exit(1);
+function requireOrdered(scope, tokens, message, failures) {
+  let previous = -1;
+  for (const token of tokens) {
+    const position = scope.indexOf(token);
+    if (position < 0 || position <= previous) {
+      failures.push(message + ': missing or out of order ' + token);
+      return;
+    }
+    previous = position;
+  }
 }
 
-console.log('README language parity passed: three aligned sections, guide links, coding commands, and OpenClaw profile tokens.');
+function validateReadme(readme) {
+  const failures = [];
+  const sections = definitions.map((definition) => {
+    const start = readme.indexOf(definition.marker);
+    const end = readme.indexOf(definition.next, start + definition.marker.length);
+    if (start < 0 || end < 0) {
+      failures.push('README language section is missing or out of order: ' + definition.marker);
+      return '';
+    }
+    return readme.slice(start, end);
+  });
+
+  definitions.forEach((definition, index) => {
+    const section = sections[index];
+    requireOrdered(section, definition.headings, definition.marker + ': user journey', failures);
+
+    const install = sectionBetween(section, definition.headings[2], definition.headings[3]);
+    const verify = sectionBetween(section, definition.headings[3], definition.headings[4]);
+    const update = sectionBetween(section, definition.headings[4], definition.headings[5]);
+    for (const [name, scope] of [['installation', install], ['verification', verify], ['update', update]]) {
+      requireOrdered(scope, ['### Claude Code', '### Codex CLI', '### OpenClaw'], definition.marker + ': ' + name + ' hosts', failures);
+    }
+
+    const installClaude = sectionBetween(install, '### Claude Code', '### Codex CLI');
+    const installCodex = sectionBetween(install, '### Codex CLI', '### OpenClaw');
+    const installOpenClaw = sectionBetween(install, '### OpenClaw');
+    const verifyClaude = sectionBetween(verify, '### Claude Code', '### Codex CLI');
+    const verifyCodex = sectionBetween(verify, '### Codex CLI', '### OpenClaw');
+    const verifyOpenClaw = sectionBetween(verify, '### OpenClaw');
+    const updateClaude = sectionBetween(update, '### Claude Code', '### Codex CLI');
+    const updateOpenClaw = sectionBetween(update, '### OpenClaw');
+
+    requireOrdered(installClaude, [
+      definition.systemTerminal,
+      'claude',
+      definition.claudeSession,
+      '/plugin marketplace add ./Claude',
+      '/plugin install uxu-code@uxu-code-claude',
+      '/reload-plugins'
+    ], definition.marker + ': Claude Code installation', failures);
+
+    for (const required of [
+      'codex plugin marketplace add ./Codex',
+      'codex plugin add uxu-code@uxu-code-codex'
+    ]) {
+      if (!installCodex.includes(required)) failures.push(definition.marker + ': Codex CLI installation is missing ' + required);
+    }
+    for (const required of [
+      `node OpenClaw/scripts/install-profile.js --workspace "${definition.workspacePlaceholder}" --mode standard --dry-run`,
+      `node OpenClaw/scripts/install-profile.js --workspace "${definition.workspacePlaceholder}" --mode standard`
+    ]) {
+      if (!installOpenClaw.includes(required)) failures.push(definition.marker + ': OpenClaw installation is missing ' + required);
+    }
+
+    if (!verifyClaude.includes('/uxu-code:help')) {
+      failures.push(definition.marker + ': Claude Code verification is missing /uxu-code:help');
+    }
+    if (!verifyCodex.includes('@help')) {
+      failures.push(definition.marker + ': Codex CLI verification is missing @help');
+    }
+    if (!verifyOpenClaw.includes(definition.newOpenClawSession)) {
+      failures.push(definition.marker + ': OpenClaw verification is missing ' + definition.newOpenClawSession);
+    }
+
+    if (!update.includes('git pull --ff-only')) {
+      failures.push(definition.marker + ': update instructions are missing git pull --ff-only');
+    }
+    for (const required of [
+      '/plugin marketplace update uxu-code-claude',
+      '/plugin update uxu-code@uxu-code-claude',
+      '/reload-plugins'
+    ]) {
+      if (!updateClaude.includes(required)) failures.push(definition.marker + ': Claude Code update is missing ' + required);
+    }
+    for (const required of [
+      'OpenClaw/scripts/install-profile.js',
+      '--dry-run'
+    ]) {
+      if (!updateOpenClaw.includes(required)) failures.push(definition.marker + ': OpenClaw update is missing ' + required);
+    }
+
+    if (!section.includes('[' + definition.linkText + '](' + definition.guide + ')')) {
+      failures.push(definition.marker + ': missing its complete guide link');
+    }
+    if (count(readme, definition.guide) !== 1) {
+      failures.push(definition.guide + ': expected exactly one README link');
+    }
+    if (!section.includes('work-products/')) {
+      failures.push(definition.marker + ': missing the concise generated-files location');
+    }
+    for (const required of ['/uxu-code:clean', '@clean', '`apply`', '`BLOCKED`']) {
+      if (!section.includes(required)) {
+        failures.push(definition.marker + ': clean contract is missing ' + required);
+      }
+    }
+    if (!/(?:不是删除命令|不是刪除命令|is not a delete command)/.test(section)) {
+      failures.push(definition.marker + ': clean contract is missing the non-deletion boundary');
+    }
+    if (section.includes('/uxu-code:organize') ||
+        /(^|[^A-Za-z0-9_-])@organize(?:$|[^A-Za-z0-9_-])/.test(section)) {
+      failures.push(definition.marker + ': forbidden organize alias');
+    }
+
+    for (const forbidden of [
+      'spec?',
+      'work-products/SPEC.md',
+      'work-products/plan.md',
+      'work-products/todo.md',
+      'OpenClaw/evaluation/README.md',
+      'score-results.js',
+      'node scripts/validate-all.js',
+      '16 个命令',
+      '16 個命令',
+      '16-command',
+      '16 commands'
+    ]) {
+      if (section.includes(forbidden)) failures.push(definition.marker + ': maintainer-only README content found: ' + forbidden);
+    }
+    for (const { pattern, label } of evaluationDetailPatterns) {
+      if (pattern.test(section)) {
+        failures.push(definition.marker + ': maintainer-only README evaluation detail found: ' + label);
+      }
+    }
+    if (/--workspace\s+<[^>\r\n]+>/.test(section)) {
+      failures.push(definition.marker + ': contains an unquoted workspace placeholder that PowerShell cannot parse');
+    }
+    if ((section.match(/`{3}/g) || []).length % 2 !== 0) {
+      failures.push(definition.marker + ': unbalanced code fences');
+    }
+  });
+
+  const headingSignatures = sections.map((section) =>
+    [...section.matchAll(/^(#{2,3})\s+/gm)].map((match) => match[1].length).join(',')
+  );
+  if (new Set(headingSignatures).size !== 1) {
+    failures.push('README language sections do not share the same heading structure');
+  }
+  return failures;
+}
+
+function main() {
+  const readme = fs.readFileSync(path.join(root, 'README.md'), 'utf8');
+  const failures = validateReadme(readme);
+  if (failures.length) {
+    console.error('README user-journey validation failed:');
+    failures.forEach((failure) => console.error('- ' + failure));
+    process.exitCode = 1;
+    return;
+  }
+  console.log('README user journey passed: three aligned languages, host-specific execution contexts, first-use checks, updates, and guide links.');
+}
+
+if (require.main === module) main();
+
+module.exports = { validateReadme };

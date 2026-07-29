@@ -1,306 +1,293 @@
 # UXUCode
 
-> 面向 Claude Code 与 Codex CLI 的统一软件工程工作流。
-> 双端原生适配，技能语义同步，并以最小正确实现与明确发布门禁贯穿开发全流程。
+> 为 Claude Code、Codex 和 OpenClaw 提供清晰、可验证的软件工程工作流。
+>
+> A clear, verifiable software-engineering workflow for Claude Code, Codex, and OpenClaw.
 
-### 🌐 选择语言 \| 選擇語言 \| Choose Language
+### 🌐 选择语言 | 選擇語言 | Choose Language
 
--   [🇨🇳 简体中文](#-简体中文)
--   [🇹🇼 繁體中文](#-繁體中文)
--   [🇺🇸 English](#-english)
+- [🇨🇳 简体中文](#-简体中文)
+- [🇹🇼 繁體中文](#-繁體中文)
+- [🇺🇸 English](#-english)
 
-------------------------------------------------------------------------
+---
 
 # 🇨🇳 简体中文
 
-📖 [查看完整简体中文使用指南](docs/USAGE.zh-CN.md)
+## 产品用途
 
-UXUCode 是面向 Claude Code 与 Codex CLI 的统一软件工程工作流系统，覆盖需求澄清、规格设计、项目规划、增量实现、调试测试、代码审查、复杂度治理与发布门禁。
+UXUCode 把需求澄清、计划、实现、调试、测试、评审、简化和发布门禁串成一套可验证的工作流，帮助你在 Claude Code 或 Codex 中持续完成软件工程任务。
 
-建议在代码仓库中配合 [colbymchenry/codegraph](https://github.com/colbymchenry/codegraph) 使用 UXUCode，以便在规格、规划、实现和审查时更快定位相关代码与调用关系。
+当任务需要先明确范围时，可以从 `spec` 开始；需求已经清楚时，也可以直接进入 `plan`。推荐流程：
 
-项目为两个 CLI 提供独立的原生插件包，并同步维护技能、内部工作流参考、Hook、三语言指南与一致性校验脚本。自 `v3.0.0` 起，Claude Code 与 Codex CLI 完全独立维护：
-
--   独立目录
--   独立插件配置
--   独立技能系统
--   独立 Hook 生命周期
--   独立运行环境
-
-避免两个 CLI 因架构差异产生兼容问题。
-
-`OpenClaw/` 是单独的通用助理 workspace 策略，不是第三个代码 CLI 插件，也不参与 Claude/Codex 的 16 个命令一致性校验。
-
-## 主要功能
-
-| 🧭 完整工程工作流 | 🛡️ 验证与发布门禁 | ⚙️ 双 CLI 原生适配 |
-|----------------------|----------------------|----------------------|
-| 需求澄清、规格设计与项目规划 | 测试、构建与运行证据 | Claude Code 与 Codex 独立插件包 |
-| 增量实现、调试与测试 | 正确性、安全、性能与复杂度审查 | 16 个公开命令与工作流语义同步 |
-| Code Review 与最小正确实现 | Blocker、Recommended 与 GO／NO-GO | 独立 Hook、配置与运行环境 |
-| 简化、技术债与上下文压缩 | 高风险操作保护与回滚检查 | 三语言指南与自动一致性校验 |
-| 发布、迁移与状态追踪 | 失败即停止，不以猜测代替验证 | 可分别安装、更新与维护 | 
-
-## 项目结构
-
-``` text
-UXUCode/
-├── README.md
-├── Claude/
-├── Codex/
-└── OpenClaw/
+```text
+[需要时先运行 spec] → plan → build → review → simplify → ship
 ```
 
-## 安装
+UXUCode 会把生成的规格、计划和过程记录集中保存在 `work-products/`，避免打乱项目原有目录。产品源码和最终交付文件仍遵循项目现有结构。
 
-先克隆仓库：
+`work-products/` 中的正式规格、实施计划、任务清单和测试是可进入版本控制的正式项目事实；调试记录、评审报告、发布门禁报告和其他未声明过程文件默认只保留在本地。仓库静态校验通过不代表已安装的插件缓存已经重新加载这些变更。
 
-``` bash
+如果历史 UXUCode 过程文件错放在目录外，先用 `/uxu-code:clean` 或 `@clean` 零写入预览；确认后仅以精确的 `apply` 参数执行整理。`clean` 不是删除命令，只移动可确认归属的文件；遇到冲突或歧义会返回 `BLOCKED` 并保持文件不变。
+
+在代码仓库中，建议配合 [colbymchenry/codegraph](https://github.com/colbymchenry/codegraph) 使用，以便更快定位相关代码和调用路径。
+
+## 选择宿主
+
+| 你使用的宿主 | 安装方式 | 命令示例 |
+|---|---|---|
+| Claude Code | 安装 `Claude/` 插件 | `/uxu-code:plan` |
+| Codex CLI | 安装 `Codex/` 插件 | `@plan` |
+| OpenClaw | 将策略安装到指定 workspace | 使用 OpenClaw 的正常对话入口 |
+
+如果你也使用 OpenClaw，可以把 UXUCode 的执行与输出策略应用到指定 workspace。它与 Claude Code、Codex 插件分别安装，详细步骤见 [OpenClaw 指南](OpenClaw/README.md)。
+
+## 快速安装
+
+先在系统终端克隆仓库并进入目录：
+
+```bash
 git clone https://github.com/uxudjs/UXUCode.git
 cd UXUCode
 ```
 
 ### Claude Code
 
-临时加载并验证：
+在系统终端、UXUCode 仓库根目录运行：
 
-``` bash
-claude --plugin-dir ./Claude
+```bash
+claude
 ```
 
-持久安装：
+进入 Claude Code 会话后运行：
 
-``` text
+```text
 /plugin marketplace add ./Claude
 /plugin install uxu-code@uxu-code-claude
+/reload-plugins
 ```
-
-重启 Claude Code，或执行 `/reload-plugins`。技能调用格式为 `/uxu-code:<skill-name>`，例如 `/uxu-code:plan`。
 
 ### Codex CLI
 
-注册本地 Marketplace 并安装：
+在系统终端、UXUCode 仓库根目录运行：
 
-``` text
+```text
 codex plugin marketplace add ./Codex
 codex plugin add uxu-code@uxu-code-codex
 ```
 
-重启 Codex。技能调用格式为 `@<skill-name>`，例如 `@plan`；可用 `/hooks` 检查 Hook 状态。
-
-本地 Marketplace 记录依赖克隆目录，请不要在安装后立即删除仓库。
+安装后重启 Codex。
 
 ### OpenClaw
 
-OpenClaw 使用写入指定 workspace `AGENTS.md` 的策略配置，不安装插件、Hook 或技能，也不读取 Claude/Codex 的共享全局模式。完整说明见 [OpenClaw/README.md](OpenClaw/README.md)。
+在系统终端、UXUCode 仓库根目录中，把引号内的占位文字替换为目标 workspace 的绝对路径，先预览再安装：
 
-先预览，再安装默认的 `standard` 模式；`ultra` 仅用于明确选择的简单低风险任务：
-
-``` text
+```text
 node OpenClaw/scripts/install-profile.js --workspace "<请替换为OpenClaw工作区绝对路径>" --mode standard --dry-run
 node OpenClaw/scripts/install-profile.js --workspace "<请替换为OpenClaw工作区绝对路径>" --mode standard
 ```
 
-运行前必须把引号内的占位文字替换为实际 OpenClaw workspace 的绝对路径。安装器会从 `OpenClaw/templates/SOUL.md` 与 `OpenClaw/templates/IDENTITY.md` 自动创建 workspace 根目录中缺失的同名文件；已有文件始终保留且不会被读取、修改或覆盖。安装后请审阅并按需定制新文件，然后启动新的 OpenClaw 会话以重新加载 workspace 文件。MVP 没有运行时模式命令、遥测、会话读取或共享全局配置。
+安装后启动新的 OpenClaw 会话，让 workspace 文件重新加载。
 
-### 更新
+## 第一次使用与验证
 
-先在克隆目录拉取最新版本：
+### Claude Code
 
-``` bash
+在 Claude Code 会话内运行：
+
+```text
+/uxu-code:help
+```
+
+看到命令目录和当前语言指南路径，即表示插件入口可用。之后可用 `/uxu-code:<command>` 执行任务。
+
+### Codex CLI
+
+在 Codex 中运行：
+
+```text
+@help
+```
+
+看到命令目录和当前语言指南路径，即表示插件入口可用。之后可用 `@<command>` 执行任务。
+
+### OpenClaw
+
+启动新的 OpenClaw 会话，并确认目标 workspace 已加载安装后的 `AGENTS.md`、`SOUL.md` 和 `IDENTITY.md`。如需诊断，请查看 [OpenClaw 指南](OpenClaw/README.md)。
+
+## 更新
+
+先在系统终端更新本地仓库：
+
+```bash
 cd UXUCode
 git pull --ff-only
 ```
 
-Claude Code（在 Claude Code 会话中执行）：
+### Claude Code
 
-``` text
+进入 Claude Code 会话后运行：
+
+```text
 /plugin marketplace update uxu-code-claude
 /plugin update uxu-code@uxu-code-claude
 /reload-plugins
 ```
 
-Codex CLI：
+### Codex CLI
 
-完成 `git pull --ff-only` 后直接重启 Codex，即可从更新后的本地目录加载插件。
+本地仓库更新完成后重启 Codex，使其重新加载插件。
 
-OpenClaw：
+### OpenClaw
 
-对每个目标 workspace 先重新运行 `--dry-run`，再用该 workspace 已选模式执行安装命令。移除时只删除成对 managed markers 及其中内容；回滚时核对并恢复同一 workspace 的 `AGENTS.md.uxucode-backup-*`。标记损坏时停止，不要覆盖整个 `AGENTS.md`。
+在系统终端针对每个目标 workspace 重新运行安装器：先使用 `OpenClaw/scripts/install-profile.js` 和 `--dry-run` 预览，再使用该 workspace 已选模式执行安装，然后启动新会话。移除与回滚步骤见 [OpenClaw 指南](OpenClaw/README.md)。
 
-### 使用示例
+## 完整指南
 
-``` text
-# Claude Code
-/uxu-code:spec 为登录限流功能编写规格
-/uxu-code:mode full
+[查看完整简体中文使用指南](docs/USAGE.zh-CN.md)，了解命令、模式、生成文件位置、故障排查和维护者校验。
 
-# Codex CLI
-@spec 为登录限流功能编写规格
-@mode full
-```
-
-## 校验
-
-``` bash
-node Claude/scripts/validate-plugin.js
-node Codex/scripts/validate-plugin.js
-node OpenClaw/scripts/validate-profile.js
-node --test OpenClaw/tests/validate-profile.test.js OpenClaw/tests/evaluation.test.js
-node OpenClaw/evaluation/score-results.js <results.json>
-```
-
-OpenClaw 评测协议见 [OpenClaw/evaluation/README.md](OpenClaw/evaluation/README.md)。它使用 52 个脱敏用例，对无配置基线与启用配置的 workspace 进行固定环境配对评测。发布门禁要求输出 token 中位数至少降低 35%、低风险正确率至少 95%、未经请求的外部变更为零、必要风险信息遗漏为零。静态测试只验证门禁逻辑，不能证明真实 token 节省。
-
-## 鸣谢
+## 致谢
 
 - [DietrichGebert/ponytail](https://github.com/DietrichGebert/ponytail)
 - [JuliusBrussee/caveman](https://github.com/JuliusBrussee/caveman)
 - [addyosmani/agent-skills](https://github.com/addyosmani/agent-skills)
 - [multica-ai/andrej-karpathy-skills](https://github.com/multica-ai/andrej-karpathy-skills)
 
-------------------------------------------------------------------------
+---
 
 # 🇹🇼 繁體中文
 
-📖 [查看完整繁體中文使用指南](docs/USAGE.zh-TW.md)
+## 產品用途
 
-UXUCode 是面向 Claude Code 與 Codex CLI 的統一軟體工程工作流系統，涵蓋需求釐清、規格設計、專案規劃、增量實作、除錯測試、程式碼審查、複雜度治理與發布門禁。
+UXUCode 把需求釐清、計畫、實作、除錯、測試、評審、簡化和發佈門禁串成一套可驗證的工作流程，協助你在 Claude Code 或 Codex 中持續完成軟體工程任務。
 
-建議在程式碼儲存庫中搭配 [colbymchenry/codegraph](https://github.com/colbymchenry/codegraph) 使用 UXUCode，讓規格、規劃、實作與審查時能更快定位相關程式碼和呼叫關係。
+當任務需要先明確範圍時，可以從 `spec` 開始；需求已經清楚時，也可以直接進入 `plan`。推薦流程：
 
-專案為兩個 CLI 提供獨立的原生插件套件，並同步維護技能、內部工作流參考、Hook、三語言指南與一致性校驗腳本。自 `v3.0.0` 起，Claude Code 與 Codex CLI 完全獨立維護：
-
--   獨立目錄
--   獨立插件設定
--   獨立技能系統
--   獨立 Hook 生命週期
--   獨立執行環境
-
-避免兩個 CLI 因架構差異產生相容性問題。
-
-`OpenClaw/` 是獨立的通用助理 workspace 策略，不是第三個程式碼 CLI 插件，也不參與 Claude/Codex 的 16 個命令一致性驗證。
-
-## 主要功能
-
-| 🧭 完整工程工作流 | 🛡️ 驗證與發布門禁 | ⚙️ 雙 CLI 原生適配 |
-|----------------------|----------------------|----------------------|
-| 需求釐清、規格設計與專案規劃 | 測試、建置與執行證據 | Claude Code 與 Codex 獨立插件套件 |
-| 增量實作、除錯與測試 | 正確性、安全、效能與複雜度審查 | 16 個公開命令與工作流語意同步 |
-| Code Review 與最小正確實作 | Blocker、Recommended 與 GO／NO-GO | 獨立 Hook、設定與執行環境 |
-| 簡化、技術債與上下文壓縮 | 高風險操作保護與回復檢查 | 三語言指南與自動一致性校驗 |
-| 發布、遷移與狀態追蹤 | 失敗即停止，不以猜測取代驗證 | 可分別安裝、更新與維護 | 
-
-## 專案結構
-
-``` text
-UXUCode/
-├── README.md
-├── Claude/
-├── Codex/
-└── OpenClaw/
+```text
+[需要時先執行 spec] → plan → build → review → simplify → ship
 ```
 
-## 安裝
+UXUCode 會把產生的規格、計畫和過程記錄集中保存在 `work-products/`，避免打亂專案原有目錄。產品原始碼和最終交付檔案仍遵循專案現有結構。
 
-先複製倉庫：
+`work-products/` 中的正式規格、實施計畫、任務清單和測試是可納入版本控制的正式專案事實；除錯記錄、評審報告、發佈門禁報告和其他未聲明的過程檔案預設只保留在本機。儲存庫靜態驗證通過不代表已安裝的外掛快取已重新載入這些變更。
 
-``` bash
+如果歷史 UXUCode 過程檔案錯放在目錄外，先用 `/uxu-code:clean` 或 `@clean` 零寫入預覽；確認後僅以精確的 `apply` 參數執行整理。`clean` 不是刪除命令，只移動可確認歸屬的檔案；遇到衝突或歧義會回傳 `BLOCKED` 並保持檔案不變。
+
+在程式碼儲存庫中，建議搭配 [colbymchenry/codegraph](https://github.com/colbymchenry/codegraph) 使用，以便更快定位相關程式碼和呼叫路徑。
+
+## 選擇宿主
+
+| 你使用的宿主 | 安裝方式 | 命令範例 |
+|---|---|---|
+| Claude Code | 安裝 `Claude/` 外掛 | `/uxu-code:plan` |
+| Codex CLI | 安裝 `Codex/` 外掛 | `@plan` |
+| OpenClaw | 將策略安裝到指定 workspace | 使用 OpenClaw 的一般對話入口 |
+
+如果你也使用 OpenClaw，可以把 UXUCode 的執行與輸出策略套用到指定 workspace。它與 Claude Code、Codex 外掛分別安裝，詳細步驟請見 [OpenClaw 指南](OpenClaw/README.md)。
+
+## 快速安裝
+
+先在系統終端複製儲存庫並進入目錄：
+
+```bash
 git clone https://github.com/uxudjs/UXUCode.git
 cd UXUCode
 ```
 
 ### Claude Code
 
-臨時載入並驗證：
+在系統終端、UXUCode 儲存庫根目錄執行：
 
-``` bash
-claude --plugin-dir ./Claude
+```bash
+claude
 ```
 
-持久安裝：
+進入 Claude Code 工作階段後執行：
 
-``` text
+```text
 /plugin marketplace add ./Claude
 /plugin install uxu-code@uxu-code-claude
+/reload-plugins
 ```
-
-重啟 Claude Code，或執行 `/reload-plugins`。技能呼叫格式為 `/uxu-code:<skill-name>`，例如 `/uxu-code:plan`。
 
 ### Codex CLI
 
-註冊本地 Marketplace 並安裝：
+在系統終端、UXUCode 儲存庫根目錄執行：
 
-``` text
+```text
 codex plugin marketplace add ./Codex
 codex plugin add uxu-code@uxu-code-codex
 ```
 
-重啟 Codex。技能呼叫格式為 `@<skill-name>`，例如 `@plan`；可用 `/hooks` 檢查 Hook 狀態。
-
-本地 Marketplace 記錄依賴複製目錄，請不要在安裝後立即刪除倉庫。
+安裝後重新啟動 Codex。
 
 ### OpenClaw
 
-OpenClaw 使用寫入指定 workspace `AGENTS.md` 的策略設定，不安裝插件、Hook 或技能，也不讀取 Claude/Codex 的共享全域模式。完整說明見 [OpenClaw/README.md](OpenClaw/README.md)。
+在系統終端、UXUCode 儲存庫根目錄中，把引號內的預留文字替換為目標 workspace 的絕對路徑，先預覽再安裝：
 
-先預覽，再安裝預設的 `standard` 模式；`ultra` 僅適用於明確選擇的簡單低風險工作：
-
-``` text
+```text
 node OpenClaw/scripts/install-profile.js --workspace "<請替換為OpenClaw工作區絕對路徑>" --mode standard --dry-run
 node OpenClaw/scripts/install-profile.js --workspace "<請替換為OpenClaw工作區絕對路徑>" --mode standard
 ```
 
-執行前必須把引號內的佔位文字替換為實際 OpenClaw workspace 的絕對路徑。安裝器會從 `OpenClaw/templates/SOUL.md` 與 `OpenClaw/templates/IDENTITY.md` 自動建立 workspace 根目錄中缺少的同名檔案；既有檔案一律保留，不會被讀取、修改或覆寫。安裝後請審閱並按需自訂新檔案，再啟動新的 OpenClaw 工作階段以重新載入 workspace 檔案。MVP 沒有執行期模式命令、遙測、對話讀取或共享全域設定。
+安裝後啟動新的 OpenClaw 工作階段，讓 workspace 檔案重新載入。
 
-### 更新
+## 第一次使用與驗證
 
-先在複製目錄拉取最新版本：
+### Claude Code
 
-``` bash
+在 Claude Code 工作階段內執行：
+
+```text
+/uxu-code:help
+```
+
+看到命令目錄和目前語言指南路徑，即表示外掛入口可用。之後可用 `/uxu-code:<command>` 執行任務。
+
+### Codex CLI
+
+在 Codex 中執行：
+
+```text
+@help
+```
+
+看到命令目錄和目前語言指南路徑，即表示外掛入口可用。之後可用 `@<command>` 執行任務。
+
+### OpenClaw
+
+啟動新的 OpenClaw 工作階段，並確認目標 workspace 已載入安裝後的 `AGENTS.md`、`SOUL.md` 和 `IDENTITY.md`。如需診斷，請查看 [OpenClaw 指南](OpenClaw/README.md)。
+
+## 更新
+
+先在系統終端更新本機儲存庫：
+
+```bash
 cd UXUCode
 git pull --ff-only
 ```
 
-Claude Code（在 Claude Code 工作階段中執行）：
+### Claude Code
 
-``` text
+進入 Claude Code 工作階段後執行：
+
+```text
 /plugin marketplace update uxu-code-claude
 /plugin update uxu-code@uxu-code-claude
 /reload-plugins
 ```
 
-Codex CLI：
+### Codex CLI
 
-完成 `git pull --ff-only` 後直接重新啟動 Codex，即可從更新後的本機目錄載入插件。
+本機儲存庫更新完成後重新啟動 Codex，使其重新載入外掛。
 
-OpenClaw：
+### OpenClaw
 
-對每個目標 workspace 先重新執行 `--dry-run`，再用該 workspace 已選模式執行安裝命令。移除時只刪除成對 managed markers 及其中內容；回復時核對並還原同一 workspace 的 `AGENTS.md.uxucode-backup-*`。標記損壞時停止，不要覆寫整個 `AGENTS.md`。
+在系統終端針對每個目標 workspace 重新執行安裝器：先使用 `OpenClaw/scripts/install-profile.js` 和 `--dry-run` 預覽，再使用該 workspace 已選模式執行安裝，然後啟動新工作階段。移除與復原步驟請見 [OpenClaw 指南](OpenClaw/README.md)。
 
-### 使用範例
+## 完整指南
 
-``` text
-# Claude Code
-/uxu-code:spec 為登入限流功能編寫規格
-/uxu-code:mode full
-
-# Codex CLI
-@spec 為登入限流功能編寫規格
-@mode full
-```
-
-## 驗證
-
-``` bash
-node Claude/scripts/validate-plugin.js
-node Codex/scripts/validate-plugin.js
-node OpenClaw/scripts/validate-profile.js
-node --test OpenClaw/tests/validate-profile.test.js OpenClaw/tests/evaluation.test.js
-node OpenClaw/evaluation/score-results.js <results.json>
-```
-
-OpenClaw 評估協議見 [OpenClaw/evaluation/README.md](OpenClaw/evaluation/README.md)。它使用 52 個脫敏案例，對無設定基線與啟用設定的 workspace 進行固定環境配對評估。發布門禁要求輸出 token 中位數至少降低 35%、低風險正確率至少 95%、未經請求的外部變更為零、必要風險資訊遺漏為零。靜態測試只驗證門禁邏輯，不能證明真實 token 節省。
+[查看完整繁體中文使用指南](docs/USAGE.zh-TW.md)，瞭解命令、模式、產生檔案位置、故障排除和維護者驗證。
 
 ## 致謝
 
@@ -309,162 +296,151 @@ OpenClaw 評估協議見 [OpenClaw/evaluation/README.md](OpenClaw/evaluation/REA
 - [addyosmani/agent-skills](https://github.com/addyosmani/agent-skills)
 - [multica-ai/andrej-karpathy-skills](https://github.com/multica-ai/andrej-karpathy-skills)
 
-------------------------------------------------------------------------
+---
 
 # 🇺🇸 English
 
-📖 [Read the complete English usage guide](docs/USAGE.en.md)
+## What It Does
 
-UXUCode is a unified software engineering workflow system for Claude Code and Codex CLI, covering requirement clarification, specification, planning, incremental implementation, debugging and testing, code review, complexity control, and release gates.
+UXUCode connects requirement clarification, planning, implementation, debugging, testing, review, simplification, and release gates into one verifiable workflow for ongoing software-engineering work in Claude Code or Codex.
 
-We recommend using UXUCode with [colbymchenry/codegraph](https://github.com/colbymchenry/codegraph) in code repositories, so related code and call paths are easier to locate during specification, planning, implementation, and review.
+Start with `spec` when the scope still needs definition; when the request is already clear, you can go directly to `plan`. Recommended flow:
 
-The project provides a native, independent plugin package for each CLI while keeping skills, internal workflow references, hooks, trilingual guides, and parity checks synchronized. Since `v3.0.0`, Claude Code and Codex CLI are maintained as completely independent distributions:
-
--   Independent directories
--   Independent plugin configurations
--   Independent skill systems
--   Independent Hook lifecycles
--   Independent runtime environments
-
-This avoids compatibility issues caused by architectural differences
-between the two CLIs.
-
-`OpenClaw/` is a separate general-assistant workspace policy. It is not a third coding-CLI plugin and is not included in the 16-command Claude/Codex parity contract.
-
-## Features
-
-| 🧭 Complete Engineering Workflow | 🛡️ Validation & Release Gates | ⚙️ Native Dual-CLI Support |
-|----------------------------------|--------------------------------|------------------------------|
-| Requirement clarification, specification, and planning | Test, build, and runtime evidence | Independent Claude Code and Codex plugin packages |
-| Incremental implementation, debugging, and testing | Correctness, security, performance, and complexity review | 16 synchronized public commands and workflow semantics |
-| Code review and minimal correct implementation | Blocker, Recommended, and GO/NO-GO decisions | Independent hooks, configuration, and runtimes |
-| Simplification, technical debt, and context compression | High-risk operation safeguards and rollback checks | Trilingual guides and automated parity validation |
-| Release, migration, and status tracking | Stop on failure; never replace verification with guesses | Independent installation, updates, and maintenance |
-
-## Project Structure
-
-``` text
-UXUCode/
-├── README.md
-├── Claude/
-├── Codex/
-└── OpenClaw/
+```text
+[run spec first when needed] → plan → build → review → simplify → ship
 ```
 
-## Installation
+UXUCode keeps generated specifications, plans, and process records together under `work-products/` so the project's existing layout stays organized. Product source code and final deliverables continue to follow the project's own structure.
 
-Clone the repository first:
+Under `work-products/`, formal specifications, implementation plans, task lists, and tests are formal project facts that can be tracked in version control; debug records, review reports, release-gate reports, and other undeclared process files remain local by default. Passing repository static validation does not mean the installed plugin cache has reloaded these changes.
 
-``` bash
+If historical UXUCode process files are misplaced outside that directory, run `/uxu-code:clean` or `@clean` first for a zero-write preview, then use only the exact `apply` argument after review. `clean` is not a delete command: it moves only confirmed artifacts and returns `BLOCKED` without changes on conflicts or ambiguity.
+
+For code repositories, we recommend using UXUCode with [colbymchenry/codegraph](https://github.com/colbymchenry/codegraph) to locate related code and call paths faster.
+
+## Choose a Host
+
+| Your host | Installation | Command example |
+|---|---|---|
+| Claude Code | Install the `Claude/` plugin | `/uxu-code:plan` |
+| Codex CLI | Install the `Codex/` plugin | `@plan` |
+| OpenClaw | Apply the policy to a selected workspace | Use the normal OpenClaw conversation entry |
+
+If you also use OpenClaw, you can apply UXUCode's execution and output policies to a selected workspace. Install it separately from the Claude Code and Codex plugins; see the [OpenClaw guide](OpenClaw/README.md) for details.
+
+## Quick Installation
+
+In a system terminal, clone the repository and enter it:
+
+```bash
 git clone https://github.com/uxudjs/UXUCode.git
 cd UXUCode
 ```
 
 ### Claude Code
 
-Load temporarily for verification:
+In a system terminal, from the UXUCode repository root, run:
 
-``` bash
-claude --plugin-dir ./Claude
+```bash
+claude
 ```
 
-Persistent install:
+After entering the Claude Code session, run:
 
-``` text
+```text
 /plugin marketplace add ./Claude
 /plugin install uxu-code@uxu-code-claude
+/reload-plugins
 ```
-
-Restart Claude Code, or run `/reload-plugins`. Invoke skills as `/uxu-code:<skill-name>`, e.g. `/uxu-code:plan`.
 
 ### Codex CLI
 
-Register the local Marketplace and install:
+In a system terminal, from the UXUCode repository root, run:
 
-``` text
+```text
 codex plugin marketplace add ./Codex
 codex plugin add uxu-code@uxu-code-codex
 ```
 
-Restart Codex. Invoke skills as `@<skill-name>`, e.g. `@plan`; use `/hooks` to check Hook status.
-
-Local Marketplace entries reference the cloned directory, so do not delete the repository after installation.
+Restart Codex after installation.
 
 ### OpenClaw
 
-OpenClaw uses a policy installed into the selected workspace `AGENTS.md`. It installs no plugin, hook, or skill and does not read the shared Claude/Codex global mode. See [OpenClaw/README.md](OpenClaw/README.md) for the complete guide.
+In a system terminal, from the UXUCode repository root, replace the quoted placeholder with the absolute path to the target workspace, then preview and install:
 
-Preview, then install the default `standard` mode. `ultra` is an explicit choice for simple, low-risk work:
-
-``` text
+```text
 node OpenClaw/scripts/install-profile.js --workspace "<replace-with-absolute-openclaw-workspace-path>" --mode standard --dry-run
 node OpenClaw/scripts/install-profile.js --workspace "<replace-with-absolute-openclaw-workspace-path>" --mode standard
 ```
 
-Before running either command, replace the quoted placeholder with the absolute path to the actual OpenClaw workspace. The installer automatically creates missing `SOUL.md` and `IDENTITY.md` files in the workspace root from `OpenClaw/templates/SOUL.md` and `OpenClaw/templates/IDENTITY.md`; existing files are preserved and never read, edited, or overwritten. Review and customize newly created files after installation, then start a new OpenClaw session to reload the workspace files. The MVP has no runtime mode command, telemetry, conversation access, or shared global configuration.
+Start a new OpenClaw session after installation so it reloads the workspace files.
 
-### Updating
+## First Use and Verification
 
-Pull the latest version in the cloned repository:
+### Claude Code
 
-``` bash
+Inside the Claude Code session, run:
+
+```text
+/uxu-code:help
+```
+
+If the command catalog and current-language guide path appear, the plugin entry is available. Use `/uxu-code:<command>` for subsequent tasks.
+
+### Codex CLI
+
+In Codex, run:
+
+```text
+@help
+```
+
+If the command catalog and current-language guide path appear, the plugin entry is available. Use `@<command>` for subsequent tasks.
+
+### OpenClaw
+
+Start a new OpenClaw session and confirm that the target workspace loaded the installed `AGENTS.md`, `SOUL.md`, and `IDENTITY.md` files. For diagnostics, see the [OpenClaw guide](OpenClaw/README.md).
+
+## Updating
+
+First update the local repository in a system terminal:
+
+```bash
 cd UXUCode
 git pull --ff-only
 ```
 
-Claude Code (run inside a Claude Code session):
+### Claude Code
 
-``` text
+After entering the Claude Code session, run:
+
+```text
 /plugin marketplace update uxu-code-claude
 /plugin update uxu-code@uxu-code-claude
 /reload-plugins
 ```
 
-Codex CLI:
+### Codex CLI
 
-After `git pull --ff-only` completes, restart Codex to load the plugin from the updated local directory.
+After updating the local repository, restart Codex so it reloads the plugin.
 
-OpenClaw:
+### OpenClaw
 
-For each target workspace, rerun `--dry-run`, then run the installer with that workspace's selected mode. To remove the profile, delete only the paired managed markers and their contents. To roll back, verify and restore that workspace's `AGENTS.md.uxucode-backup-*`. Stop on malformed markers instead of overwriting all of `AGENTS.md`.
+In a system terminal, rerun the installer for each target workspace: preview with `OpenClaw/scripts/install-profile.js` and `--dry-run`, install with that workspace's selected mode, then start a new session. See the [OpenClaw guide](OpenClaw/README.md) for removal and rollback.
 
-### Usage Examples
+## Complete Guide
 
-``` text
-# Claude Code
-/uxu-code:spec Write a spec for login rate-limiting
-/uxu-code:mode full
-
-# Codex CLI
-@spec Write a spec for login rate-limiting
-@mode full
-```
-
-## Validation
-
-``` bash
-node Claude/scripts/validate-plugin.js
-node Codex/scripts/validate-plugin.js
-node OpenClaw/scripts/validate-profile.js
-node --test OpenClaw/tests/validate-profile.test.js OpenClaw/tests/evaluation.test.js
-node OpenClaw/evaluation/score-results.js <results.json>
-```
-
-See [OpenClaw/evaluation/README.md](OpenClaw/evaluation/README.md) for the OpenClaw protocol. It uses 52 sanitized cases to compare an unprofiled baseline workspace with a profiled workspace under pinned conditions. The release gate requires at least 35% lower median output tokens, at least 95% low-risk correctness, zero unsolicited external mutations, and zero missing required risk information. Static tests validate the gate logic; they do not prove real token savings.
+[Read the complete English usage guide](docs/USAGE.en.md) for commands, modes, generated-file locations, troubleshooting, and maintainer validation.
 
 ## Acknowledgements
-
-Thanks to:
 
 - [DietrichGebert/ponytail](https://github.com/DietrichGebert/ponytail)
 - [JuliusBrussee/caveman](https://github.com/JuliusBrussee/caveman)
 - [addyosmani/agent-skills](https://github.com/addyosmani/agent-skills)
 - [multica-ai/andrej-karpathy-skills](https://github.com/multica-ai/andrej-karpathy-skills)
 
-------------------------------------------------------------------------
+---
 
 ## Star History
 
-[![Star History
-Chart](https://api.star-history.com/svg?repos=uxudjs/UXUCode&type=Date)](https://star-history.com/#uxudjs/UXUCode&Date)
+[![Star History Chart](https://api.star-history.com/svg?repos=uxudjs/UXUCode&type=Date)](https://star-history.com/#uxudjs/UXUCode&Date)

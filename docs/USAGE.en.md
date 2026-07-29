@@ -1,218 +1,240 @@
 # UXUCode Usage Guide
 
-## 1. What UXUCode Is
+[Back to README](../README.md)
 
-UXUCode is a unified software-engineering workflow for Claude Code and Codex. It combines requirement clarification, specifications, planning, incremental implementation, testing, review, security, performance, minimal correct implementation, concise communication, context compression, and release gates. The two runtime packages remain independent while command names, arguments, and result semantics stay aligned.
+## 1. Positioning and Use Cases
 
-## 2. Project Features
+UXUCode gives Claude Code and Codex the same software-engineering workflow, connecting requirement clarification, planning, implementation, debugging, testing, review, simplification, and release gates into a verifiable process. The hosts use different command prefixes, but each task has the same meaning and outcome.
 
-| Feature | Description |
-|---|---|
-| Complete engineering workflow | Covers requirements, specifications, planning, implementation, testing, review, simplification, migration, and release |
-| Specification-driven | Creates a verifiable specification before non-trivial work |
-| Incremental implementation | Completes independently verifiable vertical slices |
-| Minimal correct implementation | Prefers reuse, standard libraries, and platform-native capabilities |
-| Validation first | Requires test, build, or runtime evidence for completion |
-| Multi-dimensional review | Checks correctness, readability, architecture, security, performance, and complexity |
-| Concise technical communication | Removes redundancy while preserving precision and risk information |
-| Release gate | Returns Blocker, Recommended, Acknowledged, and GO/NO-GO |
-| Context compression | Preserves code, commands, paths, links, and structure exactly |
-| Consistent dual-CLI experience | Keeps adapters independent while workflow semantics remain aligned |
+UXUCode is useful when:
 
-## 3. Installation and Updates
+- a new feature, cross-module change, or acceptance criteria still need definition;
+- the request is clear and needs a dependency-ordered implementation plan;
+- an observed failure must be reproduced before it is fixed;
+- quality, security, compatibility, and rollback readiness need review before merge or release;
+- verified behavior should be kept while complexity is safely reduced.
 
-Clone the repository and enter it:
+If you also use OpenClaw, you can apply UXUCode's execution and output policies to a selected workspace. Install it separately from the Claude Code and Codex plugins.
 
-```bash
-git clone https://github.com/uxudjs/UXUCode.git
-cd UXUCode
-```
+## 2. Quick Start
 
-Claude Code:
+1. Choose and install a host in section 3.
+2. Run the shortest verification command in section 4.
+3. Choose a workflow from section 5 based on whether the scope needs definition first.
 
-```text
-claude --plugin-dir ./Claude
-/plugin marketplace add ./Claude
-/plugin install uxu-code@uxu-code-claude
-```
-
-Codex:
-
-```text
-codex plugin marketplace add ./Codex
-codex plugin add uxu-code@uxu-code-codex
-```
-
-OpenClaw:
-
-```text
-node OpenClaw/scripts/install-profile.js --workspace "<replace-with-absolute-openclaw-workspace-path>" --mode standard --dry-run
-node OpenClaw/scripts/install-profile.js --workspace "<replace-with-absolute-openclaw-workspace-path>" --mode standard
-```
-
-Before running either command, replace the quoted placeholder with the absolute path to the actual OpenClaw workspace.
-
-To update, first run `git pull` in the repository. Refresh Claude Code and Codex through their host plugin flows. For each OpenClaw workspace, run `--dry-run`, then rerun the installer with its selected mode. Do not delete the cloned directory referenced by a local Marketplace or OpenClaw Gateway.
-
-## 4. Claude Code and Codex Command Formats
-
-Claude Code uses:
-
-```text
-/uxu-code:<command> [arguments]
-```
-
-Codex uses:
-
-```text
-@<command> [arguments]
-```
-
-Only the prefix differs. For example:
-
-```text
-/uxu-code:spec Add rate limiting to the login API
-/uxu-code:mode full
-@spec Add rate limiting to the login API
-@mode full
-```
-
-## 5. Recommended Development Workflow
-
-For a non-trivial feature, use:
-
-```text
-spec → plan → build → review → simplify → ship
-```
-
-For a small, well-defined fix, use `debug → review → ship`. Use `build auto` only when the specification and plan are stable, tests are reliable, and the user explicitly authorizes continuous execution.
-
-## 6. Core Command Details
-
-### 6.1 spec
-
-```text
-/uxu-code:spec <requirement>
-@spec <requirement>
-```
-
-Use for new features, cross-module changes, unclear acceptance criteria, or decisions about interfaces and risk. It is usually unnecessary for an obvious one-line fix or an already approved `SPEC.md`. It produces the objective, scope, non-goals, constraints, interfaces, test strategy, risks, acceptance criteria, and `SPEC.md`.
-
-### 6.2 plan
+Claude Code uses `/uxu-code:<command>` and Codex uses `@<command>`. For example:
 
 ```text
 /uxu-code:plan
 @plan
 ```
 
-Use after `SPEC.md` is approved and the work cannot be completed as one small change. It performs read-only analysis, identifies dependencies, divides work into vertical slices, and creates `tasks/plan.md` and `tasks/todo.md` with acceptance and validation steps. It does not modify business code.
+`ship` only returns a merge or release-readiness decision. It does not commit, push, or deploy by itself.
 
-### 6.3 build
+## 3. Install by Host
 
-```text
-/uxu-code:build
-@build
+In a system terminal, clone the repository and enter it:
+
+```bash
+git clone https://github.com/uxudjs/UXUCode.git
+cd UXUCode
 ```
 
-Use with an approved plan to execute the next task. It completes one minimal vertical slice, tests and verifies it, updates task state, commits only when authorized, and then stops with evidence so the change remains reviewable and reversible.
+### 3.1 Claude Code
 
-### 6.4 build auto
+In a system terminal, from the UXUCode repository root, run:
 
-```text
-/uxu-code:build auto
-@build auto
+```bash
+claude
 ```
 
-Use only when the specification and plan are stable, acceptance criteria are clear, automated tests are reliable, continuous execution is authorized, and each task is independently reversible. Do not use while requirements are changing, key tests are missing, migrations are high risk, or external behavior is unverified. Stop on ambiguity or failed validation.
-
-### 6.5 debug
+After entering the Claude Code session, run:
 
 ```text
-/uxu-code:debug <problem-or-error>
-@debug <problem-or-error>
+/plugin marketplace add ./Claude
+/plugin install uxu-code@uxu-code-claude
+/reload-plugins
 ```
 
-Use for an observed failure, log, or abnormal behavior. Reproduce it, identify the root cause, add regression coverage, implement the smallest fix, and verify it. Report reproduction conditions, root cause, repair, test evidence, and unresolved uncertainty.
+The local Marketplace entry references the cloned directory, so keep that directory available.
 
-### 6.6 review
+### 3.2 Codex CLI
+
+In a system terminal, from the UXUCode repository root, run:
 
 ```text
-/uxu-code:review
-@review
+codex plugin marketplace add ./Codex
+codex plugin add uxu-code@uxu-code-codex
 ```
 
-Use after a feature or fix is complete, before merge, for model-generated code, or after a refactor. Review correctness, readability, architecture, security, performance, and complexity. Return Critical, Important, and Suggestion findings with precise `file:line`, impact, evidence, and repairs.
+Restart Codex after installation. The local Marketplace entry references the cloned directory, so keep that directory available.
 
-### 6.7 simplify
+### 3.3 OpenClaw
+
+In a system terminal, from the UXUCode repository root, replace the quoted placeholder with the absolute path to the target workspace, then preview and install:
 
 ```text
-/uxu-code:simplify
-@simplify
+node OpenClaw/scripts/install-profile.js --workspace "<replace-with-absolute-openclaw-workspace-path>" --mode standard --dry-run
+node OpenClaw/scripts/install-profile.js --workspace "<replace-with-absolute-openclaw-workspace-path>" --mode standard
 ```
 
-Use only after behavior is correct and tests pass. Remove unnecessary nesting, duplication, abstractions, or dependencies one change at a time, validating after every step. Do not use while tests fail, requirements change, or merely to reduce line count. Never sacrifice security, accessibility, data integrity, or clarity.
+Start a new OpenClaw session after installation so it reloads the workspace files.
 
-### 6.8 ship
+## 4. First Use
+
+### 4.1 Claude Code
+
+Inside the Claude Code session, run:
 
 ```text
-/uxu-code:ship
-@ship
+/uxu-code:help
 ```
 
-`ship` is the merge or release readiness check used after implementation is complete. It is not a normal commit command and does not directly deploy production. It combines code quality, security, tests, compatibility, operational readiness, and rollback readiness; deduplicates findings into Blocker, Recommended, and Acknowledged; and returns GO or NO-GO.
+If the command catalog and English guide path appear, the plugin entry is available.
 
-Authentication, payment, permissions, data migration, production configuration, security fixes, and public API compatibility never use a fast path. Any blocker or missing required evidence means NO-GO.
+### 4.2 Codex CLI
 
-## 7. Supporting Commands
+In Codex, run:
 
-| Command | Claude Code | Codex | Result |
+```text
+@help
+```
+
+If the command catalog and English guide path appear, the plugin entry is available.
+
+### 4.3 OpenClaw
+
+Start a new OpenClaw session and confirm that the target workspace loaded the installed `AGENTS.md`, `SOUL.md`, and `IDENTITY.md` files. If they were not loaded, first confirm the workspace path used during installation.
+
+## 5. Recommended Workflow
+
+Run `spec` first when the scope or acceptance criteria still need definition. When the request is already clear, go directly to `plan`:
+
+```text
+[run spec first when needed] → plan → build → review → simplify → ship
+```
+
+The brackets describe an optional stage; they are not part of a command. Common choices:
+
+| Task | Recommended flow |
+|---|---|
+| New feature or high-impact change | `spec → plan → build → review → simplify → ship` |
+| Clear request and acceptance criteria | `plan → build → review → simplify → ship` |
+| Observed failure | `debug → review → ship` |
+| Independent check of existing changes | `review` or `test` |
+
+One `build` run completes only the next task by default, which keeps review and rollback manageable. Use `/uxu-code:build auto` or `@build auto` only when the plan is stable, acceptance criteria are clear, automated tests are reliable, the user explicitly allows continuous execution, and every task can be rolled back independently.
+
+## 6. Command Reference
+
+### 6.1 Core Workflow
+
+| Purpose | Claude Code | Codex | What you get |
 |---|---|---|---|
-| Help | `/uxu-code:help` | `@help` | Commands, workflow, and guide paths |
-| Test | `/uxu-code:test` | `@test` | Test design, execution, and evidence |
-| Audit | `/uxu-code:audit` | `@audit` | Complexity that can be deleted, reused, or replaced |
-| Debt | `/uxu-code:debt` | `@debt` | `uxucode-debt:` items and escalation conditions |
-| Commit message | `/uxu-code:commit` | `@commit` | A message derived from the real diff |
-| Compress | `/uxu-code:compress <file>` | `@compress <file>` | Recoverable, protected context compression |
-| Stats | `/uxu-code:stats` | `@stats` | Verifiable scope, source, and metrics |
-| Status | `/uxu-code:status` | `@status` | Mode, task, test, and gate state |
+| Define a specification | `/uxu-code:spec <request>` | `@spec <request>` | Goals, scope, constraints, risks, and acceptance criteria |
+| Create a plan | `/uxu-code:plan` | `@plan` | Dependency-ordered, independently verifiable tasks |
+| Implement a task | `/uxu-code:build` | `@build` | The next complete slice and its test evidence |
+| Fix a failure | `/uxu-code:debug <problem>` | `@debug <problem>` | Reproduction, root cause, minimal fix, and regression evidence |
+| Design or run tests | `/uxu-code:test` | `@test` | Test scope, results, and evidence boundaries |
+| Review changes | `/uxu-code:review` | `@review` | Severity-ordered findings and recommendations |
+| Reduce complexity | `/uxu-code:simplify` | `@simplify` | Behavior-preserving simplification and validation |
+| Check release readiness | `/uxu-code:ship` | `@ship` | Blocker, Recommended, Acknowledged, and GO/NO-GO |
 
-`compress` must create a recoverable backup before editing. It must not change code blocks, inline code, URLs, commands, paths, environment variables, APIs, errors, versions, or numbers. If Markdown or protected-content validation fails, it preserves the original file.
+### 6.2 Supporting Commands
 
-## 8. Mode Settings
+| Purpose | Claude Code | Codex | What you get |
+|---|---|---|---|
+| Show help | `/uxu-code:help` | `@help` | Command catalog, workflow, and guide path |
+| Select a mode | `/uxu-code:mode full` | `@mode full` | Current implementation and output policy |
+| Audit complexity | `/uxu-code:audit` | `@audit` | Candidates to remove, reuse, or replace |
+| Inventory debt | `/uxu-code:debt` | `@debt` | Debt boundaries and upgrade conditions |
+| Draft a commit message | `/uxu-code:commit` | `@commit` | A suggestion based on the observed diff |
+| Compress a context file | `/uxu-code:compress <file>` | `@compress <file>` | A recoverable reduction that preserves technical tokens |
+| Show verifiable metrics | `/uxu-code:stats` | `@stats` | Sources, scope, and derivable metrics |
+| Show current status | `/uxu-code:status` | `@status` | Mode, task progress, validation, and gate state |
+| Organize misplaced process files | `/uxu-code:clean` | `@clean` | A zero-write preview plus move, reference, and ignore changes |
 
-```text
-/uxu-code:mode standard
-@mode standard
-```
+`clean` is not a delete command. Calling it without arguments only previews; after reviewing moves, reference rewrites, and repository `.gitignore` changes, only `/uxu-code:clean apply` or `@clean apply` executes them. It handles only confirmed misplaced UXUCode specifications, tasks, and auxiliary tests. Project source, project-native tests, deliverables, and files with unclear ownership are never moved automatically. A target conflict, ambiguous path, or unsafe rewrite returns `BLOCKED` without writes; a compliant workspace returns `NO_CHANGES`.
 
-| Mode | Implementation and output policy | Best use |
+## 7. Choose a Mode
+
+| Mode | Behavior | Suggested use |
 |---|---|---|
-| `standard` | Minimal correct implementation with complete concise output | Everyday default |
-| `lite` | Preserves more teaching context and only suggests simpler alternatives | New repositories, teaching, discussion |
-| `full` | Enforces reuse, YAGNI, minimal maintainable changes, and conclusion-first output | Routine work in a familiar project |
-| `ultra` | Aggressively removes valueless complexity and uses very short output | Clear small fixes and status updates |
-| `off` | Disables global UXUCode simplification and compact-output policies | Diagnosing policy impact or special tasks |
+| `standard` | Smallest correct implementation with complete, concise output | Everyday default |
+| `lite` | More teaching context and suggestions for simpler options | New repositories, teaching, discussion |
+| `full` | Stronger reuse, scope, and maintainability discipline | Routine work in a familiar project |
+| `ultra` | More aggressive removal of valueless complexity and shorter output | Clear, low-risk, small tasks |
+| `off` | Disables global simplification and compression policies | Isolating policy effects or special tasks |
 
-The fixed priority is correctness and safety > explicit user requirements > workflow and validation evidence > minimal correct implementation > compactness. Security, irreversible deletion, migration, authentication, payment, permissions, deployment, architecture, and rollback automatically restore full detail.
+Correctness and safety always take priority. Deletion, migration, authentication, payment, permissions, deployment, architecture, and rollback restore full detail in every mode.
 
-## 9. Common Task Examples
+## 8. Generated File Locations
 
-New feature:
+UXUCode keeps the process artifacts it creates in these locations:
 
-```text
-/uxu-code:spec Add login rate limiting
-/uxu-code:plan
-/uxu-code:build
-/uxu-code:review
-/uxu-code:simplify
-/uxu-code:ship
+| Content | Default location |
+|---|---|
+| Specification | `work-products/SPEC.md` |
+| Implementation plan | `work-products/plan.md` |
+| Task list | `work-products/todo.md` |
+| Debug records | `work-products/debug/` |
+| Review reports | `work-products/reviews/` |
+| Release-gate reports | `work-products/ship/` |
+| New tests, test data, and reports | `work-products/tests/` |
+
+Under `work-products/`, formal specifications, implementation plans, task lists, and tests are formal project facts that can be tracked in version control; debug records, review reports, release-gate reports, and other undeclared process files remain local by default. Passing repository static validation does not mean the installed plugin cache has reloaded these changes.
+
+`clean apply` minimally synchronizes the repository's own `.gitignore`: formal facts remain trackable, other local process artifacts stay ignored by default, and no old root-path rule is retained. User-level `core.excludesFile` and repository `.git/info/exclude` effects are reported but never modified.
+
+Product source and final deliverables remain in project-native locations. If the project's test framework, CI, colocated-test layout, or packaging rules require a fixed directory, follow the project convention and record the validation command; existing tests may also be edited in place.
+
+## 9. Update, Remove, and Troubleshoot
+
+### 9.1 Updating
+
+First update the local repository in a system terminal:
+
+```bash
+cd UXUCode
+git pull --ff-only
 ```
 
-Use the same flow in Codex with `@spec`, `@plan`, `@build`, `@review`, `@simplify`, and `@ship`. For a bug fix, use `debug → review → ship`.
+#### Claude Code
 
-## 10. Configuration and State
+After entering the Claude Code session, run:
 
-The following is the Claude Code and Codex default configuration:
+```text
+/plugin marketplace update uxu-code-claude
+/plugin update uxu-code@uxu-code-claude
+/reload-plugins
+```
+
+#### Codex CLI
+
+After updating the local repository, restart Codex so it reloads the plugin.
+
+#### OpenClaw
+
+In a system terminal, rerun `OpenClaw/scripts/install-profile.js` for each target workspace: preview with `--dry-run`, install with that workspace's selected mode, then start a new session.
+
+### 9.2 Removal and Rollback
+
+For Claude Code and Codex, use the host's plugin-management entry to remove the plugin. Do not only delete a repository directory that the local Marketplace still references.
+
+For OpenClaw removal, back up `AGENTS.md`, then delete only the paired boundaries marked by UXUCode and the content between them. To roll back an update, inspect and restore the matching workspace's `AGENTS.md.uxucode-backup-*`. Stop and use the dedicated guide if the boundaries are missing, duplicated, nested, or out of order.
+
+### 9.3 Troubleshooting
+
+- Claude Code: confirm that `/plugin ...` commands run inside a Claude Code session, then run `/reload-plugins` after installation or update.
+- Codex: confirm that commands run from the repository root, the cloned directory still exists, and Codex was restarted after installation or update.
+- OpenClaw: confirm that `--workspace` is an absolute path, inspect `--dry-run` first, then start a new session.
+- If a command entry is unavailable, repeat the `help` check in section 4 before inspecting the host's plugin status.
+
+## 10. Advanced Configuration
+
+### 10.1 Claude Code and Codex Configuration
+
+Default configuration:
 
 ```json
 {
@@ -224,44 +246,41 @@ The following is the Claude Code and Codex default configuration:
 }
 ```
 
-The shared Claude Code and Codex configuration path is `%APPDATA%\uxucode\config.json` on Windows and `~/.config/uxucode/config.json` on macOS/Linux. Project state for those two hosts is stored in `.uxucode-state.json`. At session start, Codex emits `UXUCODE:<MODE>` and Claude reports `UXUCode is active in <mode> mode.`; each injects the policy for that configured mode. Neither output is a task-progress or test-status line. OpenClaw uses neither this shared configuration nor this project state file.
+Claude Code and Codex use `%APPDATA%\uxucode\config.json` on Windows and `~/.config/uxucode/config.json` on macOS/Linux. Project-level state is stored in `.uxucode-state.json`. OpenClaw does not read this shared configuration or state.
 
-## 11. Frequently Asked Questions
+### 10.2 Session State and Output
 
-**Why are the prefixes different?** Each host has a different native entry point, while command names, arguments, and behavior remain aligned.
+At session start, Codex prints `UXUCODE:<MODE>` and Claude Code prints `UXUCode is active in <mode> mode.` These messages only confirm the current policy mode; they do not mean a task is complete or its tests passed. Use `status` for task and gate state.
 
-**Does `ship` commit or deploy?** No. It returns the merge or release gate, steps, and rollback plan.
+## 11. OpenClaw
 
-**When should I use `build auto`?** Only when a stable plan, reliable tests, explicit authorization, and reversible tasks all exist.
+### 11.1 User Value
 
-**What happens when compression fails?** The original and backup are preserved, the failure is reported, and the original content is not overwritten.
+The OpenClaw installation applies UXUCode's scope control, execution discipline, output style, and high-risk information safeguards to a selected workspace. `standard` is the default; `ultra` suits clear, simple, low-risk tasks. Each workspace can use a different mode.
 
-## 12. OpenClaw Workspace Profile
+### 11.2 File Protection and Native Controls
 
-OpenClaw is a general personal-assistant and coordination runtime, not a third coding CLI. The MVP only writes a compact policy into the selected workspace `AGENTS.md`. It has no plugin, hook, skill, telemetry, conversation access, or shared global configuration, and it is not included in Claude/Codex 16-command or skill parity. See `OpenClaw/README.md` for the complete boundaries.
+The installer only updates one UXUCode-marked section of `AGENTS.md` and creates a backup first. If `SOUL.md` or `IDENTITY.md` is missing, it creates the file from a template; an existing file with the same name is never read, edited, or overwritten.
 
-### 12.1 Modes and Boundaries
+Continue using OpenClaw's native `/usage`, `/compact`, `/verbose`, `/reasoning`, `/think`, and `/model` controls. UXUCode does not duplicate them.
 
-OpenClaw retains the conceptual modes `standard`, `lite`, `full`, `ultra`, and `off`, but stores the selection per workspace in the managed block. `standard` is the shipped default. `ultra` is an explicit choice for simple, low-risk work. Every mode restores full detail for destructive actions, authentication, privacy, payment, messaging, deployment, migration, rollback, and safety.
+### 11.3 Detailed Documentation
 
-The project provides `OpenClaw/templates/SOUL.md` and `OpenClaw/templates/IDENTITY.md` as starting templates. `SOUL.md` defines persona, tone, and boundaries; `IDENTITY.md` defines name, role, vibe, emoji, and avatar. The installer creates either file automatically when it is missing from the workspace root; existing files are never read, edited, or overwritten. Review and customize newly created files after installation.
+- Installation, file protection, updates, removal, and rollback: [OpenClaw/README.md](../OpenClaw/README.md)
+- Independent evaluation process and evidence requirements: [OpenClaw/evaluation/README.md](../OpenClaw/evaluation/README.md)
 
-### 12.2 Update, Removal, and Rollback
+## 12. Validation Appendix for Project Maintainers
 
-After updating the repository, run `--dry-run` for each workspace, then rerun the installer with that workspace's selected mode. To remove the profile, first copy `AGENTS.md`, then delete only the paired managed markers and their contents. To roll back an update, verify and restore that workspace's `AGENTS.md.uxucode-backup-*`. Stop on missing, duplicate, nested, or out-of-order markers instead of overwriting the whole file.
+### 12.1 Unified Validation Entry
 
-### 12.3 Native Runtime Controls
-
-Continue using OpenClaw's native `/usage`, `/compact`, `/verbose`, `/reasoning`, `/think`, and `/model` controls. UXUCode does not duplicate them and provides no MVP runtime mode command.
-
-### 12.4 Validation and Limitations
+From the repository root, run:
 
 ```text
-node OpenClaw/scripts/validate-profile.js
-node --test OpenClaw/tests/validate-profile.test.js OpenClaw/tests/evaluation.test.js
-node OpenClaw/evaluation/score-results.js <results.json>
+node scripts/validate-all.js
 ```
 
-See `OpenClaw/evaluation/README.md` for the complete protocol. The evaluation contains 52 sanitized cases and must pair an unprofiled baseline workspace with a profiled workspace under the same pinned OpenClaw version, provider, model, thinking level, tools, and runtime settings. The release gate requires at least 35% lower median output tokens, at least 95% low-risk correctness, zero unsolicited external mutations, and zero missing required risk information.
+The entry stops on the first failure and identifies the failing step. Run the reported individual validator or test only when further diagnosis is needed. Before committing, also run the diff, formatting, and platform checks required by the project.
 
-Static validation and synthetic results only prove the scoring logic; they do not prove real token savings. Retain only pinned environment metadata and sanitized aggregate evidence. Never commit credentials, raw private conversations, real personal data, or OpenClaw state directories.
+### 12.2 Evidence Boundary
+
+The unified entry provides repository static-validation and local-test evidence; it does not prove a live Marketplace installation, actual Hook loading, or OpenClaw Gateway runtime behavior. A merge or release decision must state which checks ran and which live-host validations remain incomplete.

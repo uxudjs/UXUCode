@@ -140,7 +140,7 @@ With the validated spec, generate a technical implementation plan:
 
 > Follow `planning-and-task-breakdown` for the dependency-graph mapping and vertical-slicing mechanics behind these steps; it is the canonical source. The bullets above are a lightweight summary; if they ever diverge, `planning-and-task-breakdown` takes precedence.
 >
-> **Output convention:** Save the plan to `tasks/plan.md` and the task list to `tasks/todo.md`, per the `@plan` command convention. Create `tasks/` if it does not exist. Downstream commands (`@build`, etc.) expect these paths.
+> **Output convention:** Save the plan to `work-products/plan.md` and the task list to `work-products/todo.md`, per the `@plan` command convention. Create `work-products/` if it does not exist. Downstream commands (`@build`, etc.) expect these paths.
 
 The plan should be reviewable: the human should be able to read it and say "yes, that's the right approach" or "no, change X."
 
@@ -174,7 +174,7 @@ The spec is a living document, not a one-time artifact:
 
 - **Update when decisions change** — If you discover the data model needs to change, update the spec first, then implement.
 - **Update when scope changes** — Features added or cut should be reflected in the spec.
-- **Commit the spec** — The spec belongs in version control alongside the code.
+- **Commit the spec** — `work-products/SPEC.md` belongs in version control alongside the code. Its ignore rules must permit normal Git tracking; never depend on `git add -f`.
 - **Reference the spec in PRs** — Link back to the spec section that each PR implements.
 
 ## Common Rationalizations

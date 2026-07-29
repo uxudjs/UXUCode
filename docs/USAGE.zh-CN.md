@@ -1,218 +1,240 @@
 # UXUCode 使用指南
 
-## 1. UXUCode 是什么
+[返回 README](../README.md)
 
-UXUCode 是面向 Claude Code 与 Codex 的统一软件工程工作流系统，将需求澄清、规格、计划、增量实现、测试、审查、安全、性能、最小正确实现、简洁表达、上下文压缩和发布门禁整合为一致体验。两个运行包独立维护，但命令名称、参数和结果语义一致。
+## 1. 产品定位与适用场景
 
-## 2. 项目特性
+UXUCode 为 Claude Code 和 Codex 提供同一套软件工程工作流，帮助你把需求澄清、计划、实现、调试、测试、评审、简化和发布门禁连成可验证的过程。两个宿主使用不同的命令前缀，但任务含义和结果一致。
 
-| 特性 | 说明 |
-|---|---|
-| 完整工程流程 | 覆盖需求、规格、规划、实现、测试、审查、简化、迁移和发布 |
-| 规格驱动 | 非简单任务先建立可验证规格 |
-| 增量实现 | 按纵向切片逐项完成并独立验证 |
-| 最小正确实现 | 优先复用、标准库和平台原生能力 |
-| 验证优先 | 完成必须提供测试、构建或运行证据 |
-| 多维审查 | 检查正确性、可读性、架构、安全、性能和复杂度 |
-| 简洁技术表达 | 删除冗余但保留技术精度与风险信息 |
-| 发布门禁 | 输出 Blocker、Recommended、Acknowledged 和 GO／NO-GO |
-| 上下文压缩 | 精确保留代码、命令、路径、链接和结构 |
-| 双 CLI 一致体验 | 内部独立适配，外部工作流语义一致 |
+适合使用 UXUCode 的场景包括：
 
-## 3. 安装与更新
+- 新功能、跨模块修改或验收标准尚未明确；
+- 已有明确要求，需要拆分计划并逐项实施；
+- 已观察到错误，需要先复现再修复；
+- 合并或发布前，需要检查质量、安全、兼容性和回滚条件；
+- 已验证功能正确，希望安全地降低复杂度。
 
-先克隆仓库并进入目录：
+如果你也使用 OpenClaw，可以把 UXUCode 的执行与输出策略应用到指定 workspace。它与 Claude Code、Codex 插件分别安装。
 
-```bash
-git clone https://github.com/uxudjs/UXUCode.git
-cd UXUCode
-```
+## 2. 快速开始
 
-Claude Code：
+1. 按第 3 节选择并安装宿主。
+2. 按第 4 节运行最短验证命令。
+3. 根据任务是否需要先明确范围，选择第 5 节的工作流。
 
-```text
-claude --plugin-dir ./Claude
-/plugin marketplace add ./Claude
-/plugin install uxu-code@uxu-code-claude
-```
-
-Codex：
-
-```text
-codex plugin marketplace add ./Codex
-codex plugin add uxu-code@uxu-code-codex
-```
-
-OpenClaw：
-
-```text
-node OpenClaw/scripts/install-profile.js --workspace "<请替换为OpenClaw工作区绝对路径>" --mode standard --dry-run
-node OpenClaw/scripts/install-profile.js --workspace "<请替换为OpenClaw工作区绝对路径>" --mode standard
-```
-
-执行前必须把引号内的占位文字替换为实际 OpenClaw workspace 的绝对路径。
-
-更新时先在仓库中执行 `git pull`。Claude Code 和 Codex 按宿主插件流程刷新；OpenClaw 针对每个 workspace 先运行 `--dry-run`，再用已选模式重跑安装器。不要在安装后删除本地 Marketplace 或 OpenClaw Gateway 所引用的克隆目录。
-
-## 4. Claude Code 与 Codex 命令格式
-
-Claude Code 使用：
-
-```text
-/uxu-code:<command> [arguments]
-```
-
-Codex 使用：
-
-```text
-@<command> [arguments]
-```
-
-两端仅前缀不同。例如：
-
-```text
-/uxu-code:spec 为登录接口增加限流
-/uxu-code:mode full
-@spec 为登录接口增加限流
-@mode full
-```
-
-## 5. 推荐开发流程
-
-非简单功能建议：
-
-```text
-spec → plan → build → review → simplify → ship
-```
-
-小型明确修复可使用 `debug → review → ship`。只有规格和计划稳定、测试可靠且用户明确允许连续执行时，才使用 `build auto`。
-
-## 6. 核心命令详解
-
-### 6.1 spec
-
-```text
-/uxu-code:spec <需求>
-@spec <需求>
-```
-
-用于新功能、跨模块变更、验收标准不明确或需要先确定接口与风险时。明显的一行修复或已有已批准 `SPEC.md` 时通常不需要。输出目标、范围、非目标、约束、接口、测试策略、风险、验收标准和 `SPEC.md`。
-
-### 6.2 plan
+Claude Code 使用 `/uxu-code:<command>`，Codex 使用 `@<command>`。例如：
 
 ```text
 /uxu-code:plan
 @plan
 ```
 
-在 `SPEC.md` 已确认且工作不能由一个小改动完成时使用。它只读分析，不修改业务代码；识别依赖、按纵向切片拆分任务，并生成包含验收与验证步骤的 `tasks/plan.md` 和 `tasks/todo.md`。
+`ship` 只给出合并或发布就绪结论，不会自行提交、推送或部署。
 
-### 6.3 build
+## 3. 按宿主安装
 
-```text
-/uxu-code:build
-@build
+先在系统终端克隆仓库并进入目录：
+
+```bash
+git clone https://github.com/uxudjs/UXUCode.git
+cd UXUCode
 ```
 
-在已有批准计划时执行下一个待办。一次完成一个最小纵向切片，然后测试、验证、更新任务状态，并在获得授权时提交；完成后停止报告，方便检查和回滚。
+### 3.1 Claude Code
 
-### 6.4 build auto
+在系统终端、UXUCode 仓库根目录运行：
 
-```text
-/uxu-code:build auto
-@build auto
+```bash
+claude
 ```
 
-仅在规格和计划稳定、验收标准明确、自动化测试可靠、用户允许连续执行且任务可独立回滚时使用。需求变化、缺少关键测试、高风险迁移或外部行为未验证时不得使用；遇到歧义或验证失败必须停止。
-
-### 6.5 debug
+进入 Claude Code 会话后运行：
 
 ```text
-/uxu-code:debug <问题或错误>
-@debug <问题或错误>
+/plugin marketplace add ./Claude
+/plugin install uxu-code@uxu-code-claude
+/reload-plugins
 ```
 
-用于已有错误、日志或异常行为的故障。先复现并定位根因，再加入回归测试、实施最小修复并验证。输出复现条件、根因、修复、测试证据和未解决的不确定性。
+本地 Marketplace 会引用克隆目录，请保留该目录。
 
-### 6.6 review
+### 3.2 Codex CLI
+
+在系统终端、UXUCode 仓库根目录运行：
 
 ```text
-/uxu-code:review
-@review
+codex plugin marketplace add ./Codex
+codex plugin add uxu-code@uxu-code-codex
 ```
 
-在功能或修复完成、准备合并、模型生成代码需要复核或重构后使用。审查正确性、可读性、架构、安全、性能与复杂度，并按 Critical、Important、Suggestion 输出精确 `file:line`、影响、证据和修复建议。
+安装后重启 Codex。本地 Marketplace 会引用克隆目录，请保留该目录。
 
-### 6.7 simplify
+### 3.3 OpenClaw
+
+在系统终端、UXUCode 仓库根目录中，把引号内的占位文字替换为目标 workspace 的绝对路径，先预览再安装：
 
 ```text
-/uxu-code:simplify
-@simplify
+node OpenClaw/scripts/install-profile.js --workspace "<请替换为OpenClaw工作区绝对路径>" --mode standard --dry-run
+node OpenClaw/scripts/install-profile.js --workspace "<请替换为OpenClaw工作区绝对路径>" --mode standard
 ```
 
-仅在行为正确且测试通过后使用。逐次移除深层嵌套、重复、无必要抽象或依赖，并在每次修改后验证。测试失败、需求变化或只是为了减少行数时不应使用；不得牺牲安全、可访问性、数据完整性或清晰度。
+安装后启动新的 OpenClaw 会话，让 workspace 文件重新加载。
 
-### 6.8 ship
+## 4. 第一次使用
+
+### 4.1 Claude Code
+
+在 Claude Code 会话内运行：
 
 ```text
-/uxu-code:ship
-@ship
+/uxu-code:help
 ```
 
-`ship` 用于功能完成后的发布或合并就绪检查。它不是普通提交命令，也不会直接部署生产环境。它汇总代码质量、安全、测试、兼容性、运行准备与回滚情况，去重后分类为 Blocker、Recommended、Acknowledged，并输出 GO 或 NO-GO。
+看到命令目录和简体中文指南路径，即表示插件入口可用。
 
-认证、支付、权限、数据迁移、生产配置、安全修复和对外 API 兼容性不得走快速路径。存在阻断项或缺少必要证据时必须为 NO-GO。
+### 4.2 Codex CLI
 
-## 7. 辅助命令
+在 Codex 中运行：
 
-| 命令 | Claude Code | Codex | 结果 |
+```text
+@help
+```
+
+看到命令目录和简体中文指南路径，即表示插件入口可用。
+
+### 4.3 OpenClaw
+
+启动新的 OpenClaw 会话，并确认目标 workspace 已加载安装后的 `AGENTS.md`、`SOUL.md` 和 `IDENTITY.md`。如文件未加载，请先核对安装时使用的 workspace 路径。
+
+## 5. 推荐工作流
+
+当范围或验收标准仍需明确时，先运行 `spec`；要求已经足够清楚时，可以直接进入 `plan`：
+
+```text
+[需要时先运行 spec] → plan → build → review → simplify → ship
+```
+
+方括号表示一个可选阶段，不是命令的一部分。常用选择：
+
+| 任务 | 推荐流程 |
+|---|---|
+| 新功能或高影响修改 | `spec → plan → build → review → simplify → ship` |
+| 要求清楚、验收标准明确 | `plan → build → review → simplify → ship` |
+| 已观察到错误 | `debug → review → ship` |
+| 只需独立检查现有改动 | `review` 或 `test` |
+
+一次 `build` 默认只完成下一个待办，便于检查和回滚。只有计划稳定、验收标准明确、自动化测试可靠、用户明确允许连续执行且任务可独立回滚时，才使用 `/uxu-code:build auto` 或 `@build auto`。
+
+## 6. 命令参考
+
+### 6.1 核心工作流
+
+| 用途 | Claude Code | Codex | 你会得到什么 |
 |---|---|---|---|
-| 帮助 | `/uxu-code:help` | `@help` | 命令、流程和指南路径 |
-| 测试 | `/uxu-code:test` | `@test` | 测试设计、执行与证据 |
-| 审计 | `/uxu-code:audit` | `@audit` | 可删除、复用或替换的复杂度 |
-| 技术债 | `/uxu-code:debt` | `@debt` | `uxucode-debt:` 项及升级条件 |
-| 提交信息 | `/uxu-code:commit` | `@commit` | 基于真实 Diff 的提交信息 |
-| 压缩 | `/uxu-code:compress <file>` | `@compress <file>` | 可恢复、受保护的上下文压缩 |
-| 指标 | `/uxu-code:stats` | `@stats` | 可验证的范围、来源和指标 |
-| 状态 | `/uxu-code:status` | `@status` | 模式、任务、测试和门禁状态 |
+| 定义规格 | `/uxu-code:spec <需求>` | `@spec <需求>` | 目标、范围、约束、风险和验收标准 |
+| 制定计划 | `/uxu-code:plan` | `@plan` | 按依赖排序、可独立验证的任务 |
+| 实施任务 | `/uxu-code:build` | `@build` | 下一个完整切片及测试证据 |
+| 修复故障 | `/uxu-code:debug <问题>` | `@debug <问题>` | 复现、根因、最小修复和回归证据 |
+| 设计或运行测试 | `/uxu-code:test` | `@test` | 测试范围、结果和证据边界 |
+| 评审改动 | `/uxu-code:review` | `@review` | 按严重性排序的问题和建议 |
+| 降低复杂度 | `/uxu-code:simplify` | `@simplify` | 行为不变的简化及验证结果 |
+| 检查发布就绪 | `/uxu-code:ship` | `@ship` | Blocker、Recommended、Acknowledged 和 GO／NO-GO |
 
-`compress` 修改前必须建立可恢复备份；不得改变代码块、行内代码、URL、命令、路径、环境变量、API、错误、版本和数字。Markdown 或受保护内容验证失败时保留原文件。
+### 6.2 辅助命令
 
-## 8. 模式设置
+| 用途 | Claude Code | Codex | 你会得到什么 |
+|---|---|---|---|
+| 查看帮助 | `/uxu-code:help` | `@help` | 命令目录、流程和指南路径 |
+| 选择模式 | `/uxu-code:mode full` | `@mode full` | 当前实现与输出策略 |
+| 审计复杂度 | `/uxu-code:audit` | `@audit` | 可删除、复用或替换的候选项 |
+| 盘点技术债 | `/uxu-code:debt` | `@debt` | 债务边界和升级条件 |
+| 生成提交信息 | `/uxu-code:commit` | `@commit` | 基于真实差异的提交建议 |
+| 压缩上下文文件 | `/uxu-code:compress <file>` | `@compress <file>` | 保留技术标记、可恢复的精简结果 |
+| 查看可验证指标 | `/uxu-code:stats` | `@stats` | 来源、范围和可计算指标 |
+| 查看当前状态 | `/uxu-code:status` | `@status` | 模式、任务进度、验证和门禁状态 |
+| 整理错放的过程文件 | `/uxu-code:clean` | `@clean` | 零写入预览、移动与引用／ignore 变化 |
 
-```text
-/uxu-code:mode standard
-@mode standard
-```
+`clean` 不是删除命令。无参数调用只预览；检查移动、引用改写和仓库 `.gitignore` 变化后，只有 `/uxu-code:clean apply` 或 `@clean apply` 才会执行。它只处理可确认属于 UXUCode 的错放规格、任务和辅助测试；项目源码、项目原生测试、交付文件和归属不明的文件不会自动移动。目标冲突、路径歧义或无法安全改写时返回 `BLOCKED` 且不写入；无需整理时返回 `NO_CHANGES`。
 
-| 模式 | 实现与输出策略 | 适用场景 |
+## 7. 模式选择
+
+| 模式 | 行为 | 建议场景 |
 |---|---|---|
-| `standard` | 最小正确实现，完整而简洁 | 日常默认 |
-| `lite` | 保留更多教学信息，只提示更简单方案 | 新仓库、教学、讨论 |
-| `full` | 强制复用、YAGNI、最小可维护改动，结论优先 | 熟悉项目后的常规开发 |
-| `ultra` | 激进删除无价值复杂度，极短输出 | 明确的小修复与状态更新 |
-| `off` | 关闭 UXUCode 全局简化和压缩策略 | 排查策略影响或特殊任务 |
+| `standard` | 最小正确实现，表达完整而简洁 | 日常默认 |
+| `lite` | 保留更多教学解释，只提示更简单方案 | 新仓库、教学、讨论 |
+| `full` | 更强地约束复用、范围和可维护性 | 熟悉项目后的常规开发 |
+| `ultra` | 更积极地删除无价值复杂度，输出更短 | 明确、低风险的小任务 |
+| `off` | 关闭全局简化与压缩策略 | 排查策略影响或特殊任务 |
 
-优先级固定为：正确性与安全 > 用户明确要求 > 工作流与验证证据 > 最小正确实现 > 输出简洁度。安全、不可逆删除、迁移、认证、支付、权限、部署、架构和回滚场景自动恢复完整表达。
+无论选择哪种模式，正确性和安全始终优先。删除、迁移、认证、支付、权限、部署、架构和回滚等高风险场景会恢复完整说明。
 
-## 9. 常见任务示例
+## 8. 生成文件位置
 
-新功能：
+UXUCode 将自身生成的过程产物集中放在以下位置：
 
-```text
-/uxu-code:spec 增加登录限流
-/uxu-code:plan
-/uxu-code:build
-/uxu-code:review
-/uxu-code:simplify
-/uxu-code:ship
+| 内容 | 默认位置 |
+|---|---|
+| 规格 | `work-products/SPEC.md` |
+| 实施计划 | `work-products/plan.md` |
+| 任务清单 | `work-products/todo.md` |
+| 调试记录 | `work-products/debug/` |
+| 评审报告 | `work-products/reviews/` |
+| 发布门禁报告 | `work-products/ship/` |
+| 新建测试、测试数据和报告 | `work-products/tests/` |
+
+`work-products/` 中的正式规格、实施计划、任务清单和测试是可进入版本控制的正式项目事实；调试记录、评审报告、发布门禁报告和其他未声明过程文件默认只保留在本地。仓库静态校验通过不代表已安装的插件缓存已经重新加载这些变更。
+
+`clean apply` 会最小同步仓库自身 `.gitignore`：正式事实保持可跟踪，其他本地过程产物默认忽略，旧根路径规则不保留。用户级 `core.excludesFile` 和仓库 `.git/info/exclude` 只报告影响，不会修改。
+
+产品源码和最终交付物仍使用项目原有位置。如果项目测试框架、CI、共置测试或打包规则要求固定目录，以项目约定为准并记录验证命令；已有测试文件也可以原位修改。
+
+## 9. 更新、移除与故障排查
+
+### 9.1 更新
+
+先在系统终端更新本地仓库：
+
+```bash
+cd UXUCode
+git pull --ff-only
 ```
 
-同一流程在 Codex 中使用 `@spec`、`@plan`、`@build`、`@review`、`@simplify`、`@ship`。Bug 修复使用 `debug → review → ship`。
+#### Claude Code
 
-## 10. 配置与状态
+进入 Claude Code 会话后运行：
 
-以下是 Claude Code 与 Codex 的默认配置：
+```text
+/plugin marketplace update uxu-code-claude
+/plugin update uxu-code@uxu-code-claude
+/reload-plugins
+```
+
+#### Codex CLI
+
+本地仓库更新完成后重启 Codex，使其重新加载插件。
+
+#### OpenClaw
+
+在系统终端针对每个目标 workspace 重新运行 `OpenClaw/scripts/install-profile.js`：先使用 `--dry-run` 预览，再使用该 workspace 已选模式执行安装，最后启动新会话。
+
+### 9.2 移除与回滚
+
+Claude Code 和 Codex 请使用各自宿主的插件管理入口移除插件；不要只删除仍被本地 Marketplace 引用的仓库目录。
+
+OpenClaw 移除时，先备份 `AGENTS.md`，再只删除由 UXUCode 标记的成对边界及其内容。需要回滚更新时，核对并恢复同一 workspace 的 `AGENTS.md.uxucode-backup-*`。如果边界缺失、重复、嵌套或顺序异常，请停止操作并查看专项指南。
+
+### 9.3 故障排查
+
+- Claude Code：确认 `/plugin ...` 命令是在 Claude Code 会话内执行，并在安装或更新后运行 `/reload-plugins`。
+- Codex：确认命令在仓库根目录执行，克隆目录仍存在，并在安装或更新后重启。
+- OpenClaw：确认 `--workspace` 使用绝对路径，先查看 `--dry-run` 输出，再启动新会话。
+- 命令入口不可用时，先重新运行第 4 节的 `help` 验证，再检查宿主插件状态。
+
+## 10. 高级配置
+
+### 10.1 Claude Code 与 Codex 配置
+
+默认配置：
 
 ```json
 {
@@ -224,44 +246,41 @@ spec → plan → build → review → simplify → ship
 }
 ```
 
-Claude Code 与 Codex 的共享配置路径为 Windows `%APPDATA%\uxucode\config.json`，macOS/Linux `~/.config/uxucode/config.json`。这两个宿主的项目状态写入 `.uxucode-state.json`。会话启动时，Codex 输出 `UXUCODE:<MODE>`，Claude 报告 `UXUCode is active in <mode> mode.`；两者都会注入该配置模式的策略。这些输出均不表示任务进度或测试状态。OpenClaw 不使用这些共享配置或状态文件。
+Claude Code 与 Codex 在 Windows 使用 `%APPDATA%\uxucode\config.json`，在 macOS/Linux 使用 `~/.config/uxucode/config.json`。项目级状态写入 `.uxucode-state.json`。OpenClaw 不读取这些共享配置或状态文件。
 
-## 11. 常见问题
+### 10.2 会话状态与输出
 
-**为什么两端前缀不同？** 宿主原生入口不同，但命令、参数和行为一致。
+会话启动时，Codex 输出 `UXUCODE:<MODE>`，Claude Code 输出 `UXUCode is active in <mode> mode.`。这些信息只确认当前策略模式，不代表任务已完成或测试已通过。使用 `status` 查看任务与门禁状态。
 
-**`ship` 会提交或部署吗？** 不会。它只给出发布或合并门禁结论、步骤与回滚计划。
+## 11. OpenClaw
 
-**何时使用 `build auto`？** 仅在稳定计划、可靠测试、明确授权和可回滚任务同时成立时。
+### 11.1 能为使用者带来什么
 
-**压缩失败怎么办？** 保留原文件与备份，报告失败，不覆盖原内容。
+OpenClaw 安装会把 UXUCode 的范围控制、执行纪律、输出风格和高风险信息保护应用到指定 workspace。`standard` 是默认选择；`ultra` 适合明确、简单且低风险的任务。不同 workspace 可以选择不同模式。
 
-## 12. OpenClaw workspace 策略
+### 11.2 文件保护与原生控制
 
-OpenClaw 是通用个人助理与协调运行时，不是第三个代码 CLI。MVP 只把紧凑策略写入指定 workspace 的 `AGENTS.md`；它没有插件、Hook、技能、遥测、会话读取或共享全局配置，也不参与 Claude/Codex 的 16 个命令与技能一致性校验。完整边界见 `OpenClaw/README.md`。
+安装器只更新 `AGENTS.md` 中由 UXUCode 标记的一段内容，更新前会创建备份。缺少 `SOUL.md` 或 `IDENTITY.md` 时会从模板创建；已有同名文件不会被读取、修改或覆盖。
 
-### 12.1 模式与边界
+继续使用 OpenClaw 自带的 `/usage`、`/compact`、`/verbose`、`/reasoning`、`/think` 和 `/model` 控制。UXUCode 不复制这些功能。
 
-OpenClaw 保留 `standard`、`lite`、`full`、`ultra`、`off` 五个概念模式，但模式按 workspace 写入 managed block。`standard` 是发布默认值；`ultra` 仅是简单低风险任务的明确选择。所有模式在破坏性操作、认证、隐私、支付、消息发送、部署、迁移、回滚与安全场景恢复完整细节。
+### 11.3 详细文档
 
-项目提供 `OpenClaw/templates/SOUL.md` 和 `OpenClaw/templates/IDENTITY.md` 作为起始模板。`SOUL.md` 定义 persona、语气与边界；`IDENTITY.md` 定义名称、角色、风格、emoji 和 avatar。安装器会在 workspace 根目录缺少同名文件时自动创建它们；已有文件不会被读取、修改或覆盖。安装后请审阅并定制新创建的文件。
+- 安装、文件保护、更新、移除与回滚：[OpenClaw/README.md](../OpenClaw/README.md)
+- 独立评测流程与证据要求：[OpenClaw/evaluation/README.md](../OpenClaw/evaluation/README.md)
 
-### 12.2 更新、移除与回滚
+## 12. 面向项目维护者的校验附录
 
-更新仓库后，针对每个 workspace 先运行 `--dry-run`，再用该 workspace 已选模式重跑安装器。移除时先复制 `AGENTS.md`，然后只删除成对 managed markers 及其中内容。更新回滚时，核对并恢复同一 workspace 的 `AGENTS.md.uxucode-backup-*`。遇到缺失、重复、嵌套或乱序标记时停止，不要覆盖整个文件。
+### 12.1 统一校验入口
 
-### 12.3 原生运行时控制
-
-继续使用 OpenClaw 原生 `/usage`、`/compact`、`/verbose`、`/reasoning`、`/think` 与 `/model` 控制。UXUCode 不复制这些功能，也不提供 MVP 运行时模式命令。
-
-### 12.4 校验与限制
+在仓库根目录运行：
 
 ```text
-node OpenClaw/scripts/validate-profile.js
-node --test OpenClaw/tests/validate-profile.test.js OpenClaw/tests/evaluation.test.js
-node OpenClaw/evaluation/score-results.js <results.json>
+node scripts/validate-all.js
 ```
 
-完整流程见 `OpenClaw/evaluation/README.md`。评测包含 52 个脱敏用例，必须在固定 OpenClaw 版本、provider、model、thinking level、工具和运行时设置下，对无配置基线 workspace 与启用配置的 workspace 逐例配对。发布门禁要求输出 token 中位数至少降低 35%、低风险正确率至少 95%、未经请求的外部变更为零、必要风险信息遗漏为零。
+该入口失败即停，并显示失败步骤。需要进一步定位时，再运行该步骤报告的单项验证器或测试。提交前还应运行项目要求的差异、格式和平台检查。
 
-静态校验和合成结果只能证明评分逻辑有效，不能证明真实 token 节省。只保留固定环境元数据和脱敏汇总证据；不得提交凭据、原始私人对话、真实个人数据或 OpenClaw 状态目录。
+### 12.2 证据边界
+
+统一入口提供仓库静态校验和本地测试证据，不证明真实 Marketplace 安装、Hook 实际加载或 OpenClaw Gateway 运行正常。发布或合并结论必须明确记录哪些检查已运行、哪些真实宿主验证尚未完成。

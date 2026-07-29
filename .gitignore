@@ -1,3 +1,7 @@
 # Local UXUCode workflow artifacts
-/SPEC.md
-/tasks/
+/work-products/*
+!/work-products/SPEC.md
+!/work-products/plan.md
+!/work-products/todo.md
+!/work-products/tests/
+!/work-products/tests/**

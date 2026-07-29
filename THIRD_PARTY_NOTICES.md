@@ -10,7 +10,9 @@ UXUCode incorporates ideas and modified material from the projects listed below.
 
 ## addyosmani/agent-skills
 
-- Upstream commit used for the v3 review: `2fbfa004a0192529bc997d103fc12f19a3804aab`
+- Upstream commit used for the v3 review: `7829ffd90d973b6325f5f12f1b1226dcace74443`
+- Adopted scope: project-native test commands, ecosystem-neutral dependency audits, and same-condition performance verification with keep-or-revert evidence.
+- Excluded from adoption: `.github` automation, evaluation fixtures, Hook documentation, repository-level `CLAUDE.md` and `CONTRIBUTING.md`, and unrelated skill-authoring material.
 - Copyright (c) 2025 Addy Osmani
 - License: MIT
 

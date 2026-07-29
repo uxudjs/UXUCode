@@ -23,7 +23,7 @@ const failures = [];
 
 function walk(directory) {
   for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
-    if (entry.name === '.git') continue;
+    if (entry.name === '.git' || entry.name === 'work-products') continue;
     const absolute = path.join(directory, entry.name);
     if (entry.isDirectory()) walk(absolute);
     else {
@@ -40,7 +40,7 @@ walk(root);
 
 for (const pkg of ['Claude', 'Codex']) {
   const hooks = fs.readdirSync(path.join(root, pkg, 'hooks')).sort();
-  const expected = ['hooks.json', 'uxu-prompt-router.js', 'uxu-session-start.js', 'uxu-statusline.js', 'uxu-subagent-start.js'];
+  const expected = ['hooks.json', 'mode-policy.js', 'uxu-prompt-router.js', 'uxu-session-start.js', 'uxu-statusline.js', 'uxu-subagent-start.js'];
   if (JSON.stringify(hooks) !== JSON.stringify(expected)) failures.push(pkg + ': unexpected hook files: ' + hooks.join(', '));
 }
 
