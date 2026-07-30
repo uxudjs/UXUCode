@@ -1,5 +1,7 @@
 # AGENTS.md
 
+Language: user input
+
 Unified UXUCode behavioral guidelines. Merge with project-specific instructions as needed.
 
 Codex integration: invoke public skills only as `@<skill-name>`. Do not assume Claude slash commands, Claude agents, or `CLAUDE_PLUGIN_ROOT`; hooks use Codex's `PLUGIN_ROOT` contract and `.uxucode-state.json` plus the shared UXUCode configuration path.

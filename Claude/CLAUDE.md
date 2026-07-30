@@ -1,5 +1,7 @@
 # CLAUDE.md
 
+Language: user input
+
 Unified UXUCode behavioral guidelines. Merge with project-specific instructions as needed.
 
 Claude Code integration: invoke public skills only as `/uxu-code:<skill-name>`. Hooks use `CLAUDE_PLUGIN_ROOT`, emit Claude-native output, and use `.uxucode-state.json` plus the shared UXUCode configuration path.
