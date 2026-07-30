@@ -21,7 +21,8 @@ const legacyFiles = [
 ];
 const delimitedTestNamePattern = /(?:^test[._]|[._](?:test|spec)[._])/i;
 const camelCaseTestNamePattern = /(?:Test|Tests)\.[^.]+$/;
-const ignoredDirectoryNames = new Set(['.git', 'node_modules', '.venv', 'venv', 'vendor']);
+const derivedArtifactSuffixPattern = /\.(?:new|orig|rej|bak|tmp|patch|diff)$/i;
+const ignoredDirectoryNames = new Set(['.git', 'node_modules', '.venv', 'venv', 'vendor', '__pycache__']);
 const ignoreSemanticProbes = [
   { path: 'work-products/SPEC.md', expected: 'tracked' },
   { path: 'work-products/plan.md', expected: 'tracked' },
@@ -44,6 +45,134 @@ function toPosix(relativePath) {
 
 function isSupportedTestName(fileName) {
   return delimitedTestNamePattern.test(fileName) || camelCaseTestNamePattern.test(fileName);
+}
+
+function pythonCodeOnly(content) {
+  let code = '';
+  let quote = null;
+  let triple = false;
+  for (let index = 0; index < content.length;) {
+    const character = content[index];
+    if (quote) {
+      const delimiter = triple ? quote.repeat(3) : quote;
+      if (content.startsWith(delimiter, index)) {
+        code += ' '.repeat(delimiter.length);
+        index += delimiter.length;
+        quote = null;
+        triple = false;
+      } else if (character === '\\') {
+        code += ' ';
+        index += 1;
+        if (index < content.length) {
+          code += content[index] === '\n' ? '\n' : ' ';
+          index += 1;
+        }
+      } else {
+        code += character === '\n' ? '\n' : ' ';
+        index += 1;
+      }
+      continue;
+    }
+    if (character === '#') {
+      while (index < content.length && content[index] !== '\n') {
+        code += ' ';
+        index += 1;
+      }
+      continue;
+    }
+    if (character === "'" || character === '"') {
+      quote = character;
+      triple = content.startsWith(character.repeat(3), index);
+      const delimiterLength = triple ? 3 : 1;
+      code += ' '.repeat(delimiterLength);
+      index += delimiterLength;
+      continue;
+    }
+    code += character;
+    index += 1;
+  }
+  return code;
+}
+
+function javascriptCodeOnly(content) {
+  let code = '';
+  let quote = null;
+  let blockComment = false;
+  for (let index = 0; index < content.length;) {
+    const character = content[index];
+    if (quote) {
+      if (character === '\\') {
+        code += ' ';
+        index += 1;
+        if (index < content.length) {
+          code += content[index] === '\n' ? '\n' : ' ';
+          index += 1;
+        }
+      } else {
+        code += character === '\n' ? '\n' : ' ';
+        index += 1;
+        if (character === quote) quote = null;
+      }
+      continue;
+    }
+    if (blockComment) {
+      if (content.startsWith('*/', index)) {
+        code += '  ';
+        index += 2;
+        blockComment = false;
+      } else {
+        code += character === '\n' ? '\n' : ' ';
+        index += 1;
+      }
+      continue;
+    }
+    if (content.startsWith('//', index)) {
+      while (index < content.length && content[index] !== '\n') {
+        code += ' ';
+        index += 1;
+      }
+      continue;
+    }
+    if (content.startsWith('/*', index)) {
+      code += '  ';
+      index += 2;
+      blockComment = true;
+      continue;
+    }
+    if (character === "'" || character === '"' || character === '`') {
+      quote = character;
+      code += ' ';
+      index += 1;
+      continue;
+    }
+    code += character;
+    index += 1;
+  }
+  return code;
+}
+
+function pathEvidenceCodeOnly(source, content) {
+  const extension = path.extname(source).toLowerCase();
+  if (extension === '.py') return pythonCodeOnly(content);
+  if (['.js', '.cjs', '.mjs', '.jsx', '.ts', '.tsx'].includes(extension)) {
+    return javascriptCodeOnly(content);
+  }
+  return null;
+}
+
+function isWeakPythonSuffixTest(relativePath, fileName, content) {
+  const lowerName = fileName.toLowerCase();
+  if (!lowerName.endsWith('_test.py') || lowerName.startsWith('test_')) return false;
+  const directories = toPosix(relativePath).toLowerCase().split('/').slice(0, -1);
+  if (directories.some((directory) =>
+    ['test', 'tests', '__tests__', 'spec', 'specs'].includes(directory))) {
+    return false;
+  }
+  const code = pythonCodeOnly(content);
+  return !(/^\s*(?:async\s+)?def\s+test_[a-z0-9_]*\s*\(/im.test(code) ||
+    /^\s*class\s+Test[a-z0-9_]*\s*[\(:]/im.test(code) ||
+    /^\s*(?:from\s+(?:pytest|unittest)\s+import|import\s+(?:pytest|unittest)(?:\s|,|$))/im
+      .test(code));
 }
 
 function findRepositoryRoot(start) {
@@ -110,6 +239,15 @@ function visitTests(directory, root, report) {
       continue;
     }
     if (!entry.isFile() || !isSupportedTestName(entry.name)) continue;
+    if (derivedArtifactSuffixPattern.test(entry.name)) {
+      report.skipped.push({ path: relativePath, reason: 'derived-artifact' });
+      continue;
+    }
+    const readable = readTextFile(absolutePath);
+    if (!readable.error && isWeakPythonSuffixTest(relativePath, entry.name, readable.text)) {
+      report.skipped.push({ path: relativePath, reason: 'test-name-without-test-evidence' });
+      continue;
+    }
 
     const testRelativePath = relativePath.startsWith('tests/')
       ? relativePath.slice('tests/'.length)
@@ -381,7 +519,7 @@ function readTextFile(filePath) {
   }
 }
 
-function collectTextFiles(root, report) {
+function collectFilePaths(root, report) {
   const files = [];
 
   function visit(directory) {
@@ -391,10 +529,11 @@ function collectTextFiles(root, report) {
     } catch (error) {
       report.skipped.push({
         path: toPosix(path.relative(root, directory)),
-        reason: `unreadable-directory:${error.code || 'unknown'}`
+        reason: 'unreadable-directory:' + (error.code || 'unknown')
       });
       return;
     }
+    entries.sort((left, right) => left.name < right.name ? -1 : left.name > right.name ? 1 : 0);
     for (const entry of entries) {
       if (ignoredDirectoryNames.has(entry.name.toLowerCase())) continue;
       const absolutePath = path.join(directory, entry.name);
@@ -403,12 +542,7 @@ function collectTextFiles(root, report) {
       if (entry.isDirectory()) {
         visit(absolutePath);
       } else if (entry.isFile()) {
-        const readable = readTextFile(absolutePath);
-        if (!readable.error) {
-          files.push({ file: relativePath, original: readable.buffer, content: readable.text });
-        } else if (readable.error.startsWith('read-failed:')) {
-          report.skipped.push({ path: relativePath, reason: readable.error });
-        }
+        files.push({ file: relativePath, absolutePath });
       }
     }
   }
@@ -455,6 +589,38 @@ function formatReference(reference, rewritten, preserveSpaces) {
   return `${encodeURI(pathPart)}${suffix}`;
 }
 
+function collectProvenRootReferenceOffsets(source, content, moveSourcePattern) {
+  const offsets = new Set();
+  if (!moveSourcePattern) return offsets;
+  const code = pathEvidenceCodeOnly(source, content);
+  if (!code) return offsets;
+
+  const pattern = new RegExp(
+    '(?:\\b(?:Path|PurePath|PurePosixPath|PureWindowsPath|open|' +
+    '(?:fs\\.)?(?:readFileSync|writeFileSync))\\s*\\(\\s*|' +
+    "\\b[A-Za-z_][A-Za-z0-9_]*\\s*\\/\\s*)(['\"])" +
+    '(' + moveSourcePattern + ')\\1',
+    'g'
+  );
+  const references = new Set();
+  for (const match of content.matchAll(pattern)) {
+    if (match.index === undefined || code[match.index] !== content[match.index]) continue;
+    references.add(match[2]);
+    offsets.add(match.index + match[0].lastIndexOf(match[2]));
+  }
+
+  const coupledPattern = new RegExp(
+    "\\bchanges\\s*\\[\\s*(['\"])(" + moveSourcePattern + ')\\1\\s*\\]\\s*=',
+    'g'
+  );
+  for (const match of content.matchAll(coupledPattern)) {
+    if (match.index === undefined || code[match.index] !== content[match.index]) continue;
+    if (!references.has(match[2])) continue;
+    offsets.add(match.index + match[0].indexOf(match[2]));
+  }
+  return offsets;
+}
+
 function rewriteRelativeReferences(
   root,
   source,
@@ -474,9 +640,59 @@ function rewriteRelativeReferences(
     .join('|');
   let next = content;
   if (moveSourcePattern) {
-    const quotedMovePattern = new RegExp(`(['"])(${moveSourcePattern})\\1`, 'g');
-    next = next.replace(quotedMovePattern, (match, quote, reference) => {
+    const diffArgumentPattern = new RegExp(
+      "((?:fromfile|tofile)\\s*=\\s*)(['\"])([ab]\\/)" +
+      '(' + moveSourcePattern + ')\\2',
+      'g'
+    );
+    next = next.replace(
+      diffArgumentPattern,
+      (match, prefix, quote, side, reference) => {
+        const finalTarget = moveMap.get(reference);
+        const from = side + reference;
+        const to = side + finalTarget;
+        updates.push({ file: target, from, to, count: 1 });
+        checks.push({ file: target, reference: to, target: finalTarget });
+        return prefix + quote + to + quote;
+      }
+    );
+    const diffFilePattern = new RegExp(
+      '^((?:---|\\+\\+\\+) [ab]\\/)(' + moveSourcePattern + ')(?=\\t|\\r?$)',
+      'gm'
+    );
+    next = next.replace(diffFilePattern, (match, prefix, reference) => {
       const finalTarget = moveMap.get(reference);
+      const from = prefix + reference;
+      const to = prefix + finalTarget;
+      updates.push({ file: target, from, to, count: 1 });
+      checks.push({ file: target, reference: to, target: finalTarget });
+      return to;
+    });
+    const diffGitPattern = new RegExp(
+      '^(diff --git a\\/)(' + moveSourcePattern + ')( b\\/)\\2(?=\\r?$)',
+      'gm'
+    );
+    next = next.replace(diffGitPattern, (match, prefix, reference, middle) => {
+      const finalTarget = moveMap.get(reference);
+      const from = prefix + reference + middle + reference;
+      const to = prefix + finalTarget + middle + finalTarget;
+      updates.push({ file: target, from, to, count: 2 });
+      checks.push({ file: target, reference: to, target: finalTarget });
+      return to;
+    });
+    const provenRootReferenceOffsets = collectProvenRootReferenceOffsets(
+      source,
+      next,
+      moveSourcePattern
+    );
+    const quotedMovePattern = new RegExp("(['\"])(" + moveSourcePattern + ')\\1', 'g');
+    next = next.replace(quotedMovePattern, (match, quote, reference, offset) => {
+      const finalTarget = moveMap.get(reference);
+      if (provenRootReferenceOffsets.has(offset + quote.length)) {
+        updates.push({ file: target, from: reference, to: finalTarget, count: 1 });
+        checks.push({ file: target, reference: finalTarget, target: finalTarget });
+        return quote + finalTarget + quote;
+      }
       if (!blockers.some((blocker) =>
         blocker.code === 'AMBIGUOUS_REFERENCE' &&
         blocker.file === target &&
@@ -552,11 +768,18 @@ function buildPlan(workspace = process.cwd()) {
   const updates = [];
   const referenceChecks = [];
   const changes = [];
-  for (const textFile of collectTextFiles(root, report)) {
+  for (const textFile of collectFilePaths(root, report)) {
     const file = textFile.file;
     if (file === '.gitignore') continue;
-    const original = textFile.original;
-    let content = textFile.content;
+    const readable = readTextFile(textFile.absolutePath);
+    if (readable.error) {
+      if (readable.error.startsWith('read-failed:')) {
+        report.skipped.push({ path: file, reason: readable.error });
+      }
+      continue;
+    }
+    const original = readable.buffer;
+    let content = readable.text;
     const output = moveMap.get(file) || file;
     content = rewriteRelativeReferences(
       root,
@@ -577,6 +800,7 @@ function buildPlan(workspace = process.cwd()) {
     const rightKey = `${right.file}\0${right.from}\0${right.to}`;
     return leftKey < rightKey ? -1 : leftKey > rightKey ? 1 : 0;
   });
+  report.skipped.sort(comparePaths);
   report.blockers.sort(comparePaths);
   const hasChanges = report.moves.length > 0 ||
     report.referenceUpdates.length > 0 ||

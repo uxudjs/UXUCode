@@ -168,6 +168,222 @@ test('preview returns NO_CHANGES for a compliant workspace without candidates', 
   }
 });
 
+test('preview ignores generated Python bytecode caches', () => {
+  for (const pkg of packages) {
+    const workspace = createWorkspace({
+      '.gitignore': `${requiredIgnoreRules.join('\n')}\n`,
+      'tests/__pycache__/test_product.cpython-312.pyc': Buffer.from([0, 1, 2])
+    });
+
+    try {
+      const before = workspaceSnapshot(workspace);
+      const report = runPreview(pkg, workspace);
+
+      assert.equal(report.status, 'NO_CHANGES');
+      assert.deepEqual(report.moves, []);
+      assert.deepEqual(report.blockers, []);
+      assert.deepEqual(workspaceSnapshot(workspace), before);
+    } finally {
+      fs.rmSync(workspace, { recursive: true, force: true });
+    }
+  }
+});
+
+test('preview keeps a non-test Python patch helper and rewrites proven repository paths', () => {
+  const workspace = createWorkspace({
+    '.gitignore': `${requiredIgnoreRules.join('\n')}\n`,
+    'tests/test_lifecycle_reconstruction.py':
+      'def test_lifecycle_reconstruction():\n    assert True\n',
+    'work/patches/fix_302_test.py':
+      'from pathlib import Path\n' +
+      'import difflib\n' +
+      "block = '''\ndef test_generated_patch_target():\n    assert True\n'''\n" +
+      'p = Path("tests/test_lifecycle_reconstruction.py")\n' +
+      'old = p.read_text(encoding="utf-8")\n' +
+      "patch = ''.join(difflib.unified_diff(\n" +
+      "    old.splitlines(True), old.splitlines(True),\n" +
+      "    fromfile='a/tests/test_lifecycle_reconstruction.py',\n" +
+      "    tofile='b/tests/test_lifecycle_reconstruction.py',\n" +
+      '))\n',
+    'work/patches/test_lifecycle_reconstruction.py.new':
+      'def test_staged_copy():\n    assert True\n',
+    'work/patches/lifecycle.patch':
+      'diff --git a/tests/test_lifecycle_reconstruction.py ' +
+      'b/tests/test_lifecycle_reconstruction.py\n' +
+      '--- a/tests/test_lifecycle_reconstruction.py\n' +
+      '+++ b/tests/test_lifecycle_reconstruction.py\n'
+  });
+
+  try {
+    const preview = runPreview('Codex', workspace);
+
+    assert.equal(preview.status, 'READY');
+    assert.deepEqual(preview.moves, [
+      {
+        source: 'tests/test_lifecycle_reconstruction.py',
+        target: 'work-products/tests/test_lifecycle_reconstruction.py',
+        reason: 'internal-test-artifact'
+      }
+    ]);
+    assert.deepEqual(preview.blockers, []);
+
+    const result = runEngine('Codex', workspace, ['apply']);
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(JSON.parse(result.stdout).status, 'APPLIED');
+    assert.equal(
+      fs.readFileSync(path.join(workspace, 'work', 'patches', 'fix_302_test.py'), 'utf8'),
+      'from pathlib import Path\n' +
+      'import difflib\n' +
+      "block = '''\ndef test_generated_patch_target():\n    assert True\n'''\n" +
+      'p = Path("work-products/tests/test_lifecycle_reconstruction.py")\n' +
+      'old = p.read_text(encoding="utf-8")\n' +
+      "patch = ''.join(difflib.unified_diff(\n" +
+      "    old.splitlines(True), old.splitlines(True),\n" +
+      "    fromfile='a/work-products/tests/test_lifecycle_reconstruction.py',\n" +
+      "    tofile='b/work-products/tests/test_lifecycle_reconstruction.py',\n" +
+      '))\n'
+    );
+    assert.equal(
+      fs.existsSync(path.join(
+        workspace,
+        'work',
+        'patches',
+        'test_lifecycle_reconstruction.py.new'
+      )),
+      true
+    );
+    assert.equal(
+      fs.readFileSync(path.join(workspace, 'work', 'patches', 'lifecycle.patch'), 'utf8'),
+      'diff --git a/work-products/tests/test_lifecycle_reconstruction.py ' +
+      'b/work-products/tests/test_lifecycle_reconstruction.py\n' +
+      '--- a/work-products/tests/test_lifecycle_reconstruction.py\n' +
+      '+++ b/work-products/tests/test_lifecycle_reconstruction.py\n'
+    );
+    assert.equal(runPreview('Codex', workspace).status, 'NO_CHANGES');
+  } finally {
+    fs.rmSync(workspace, { recursive: true, force: true });
+  }
+});
+
+test('apply rewrites proven repository-root process paths and their coupled metadata', () => {
+  const workspace = createWorkspace({
+    '.gitignore': `${requiredIgnoreRules.join('\n')}\n`,
+    'tasks/plan.md': '# Plan\n',
+    'tasks/todo.md': '# Todo\n',
+    'work/patches/make_checkpoint_a_patch.py':
+      'from pathlib import Path\n' +
+      'root = Path.cwd()\n' +
+      'changes = {}\n' +
+      "plan_path = root / 'tasks/plan.md'\n" +
+      "changes['tasks/plan.md'] = (plan_path, plan_path)\n" +
+      "todo_path = root / 'tasks/todo.md'\n" +
+      "changes['tasks/todo.md'] = (todo_path, todo_path)\n"
+  });
+
+  try {
+    const preview = runPreview('Claude', workspace);
+
+    assert.equal(preview.status, 'READY');
+    assert.deepEqual(preview.blockers, []);
+    assert.deepEqual(preview.moves.map(({ source, target }) => ({ source, target })), [
+      { source: 'tasks/plan.md', target: 'work-products/plan.md' },
+      { source: 'tasks/todo.md', target: 'work-products/todo.md' }
+    ]);
+
+    const result = runEngine('Claude', workspace, ['apply']);
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(JSON.parse(result.stdout).status, 'APPLIED');
+    assert.equal(
+      fs.readFileSync(
+        path.join(workspace, 'work', 'patches', 'make_checkpoint_a_patch.py'),
+        'utf8'
+      ),
+      'from pathlib import Path\n' +
+      'root = Path.cwd()\n' +
+      'changes = {}\n' +
+      "plan_path = root / 'work-products/plan.md'\n" +
+      "changes['work-products/plan.md'] = (plan_path, plan_path)\n" +
+      "todo_path = root / 'work-products/todo.md'\n" +
+      "changes['work-products/todo.md'] = (todo_path, todo_path)\n"
+    );
+    assert.equal(runPreview('Claude', workspace).status, 'NO_CHANGES');
+  } finally {
+    fs.rmSync(workspace, { recursive: true, force: true });
+  }
+});
+
+test('preview rejects Path-looking examples and unrelated same-value strings', () => {
+  for (const pkg of packages) {
+    const workspace = createWorkspace({
+      '.gitignore': `${requiredIgnoreRules.join('\n')}\n`,
+      'tasks/plan.md': '# Plan\n',
+      'docs/example.js':
+        "const snippet = 'Path(\"tasks/plan.md\")';\n" +
+        '// Path("tasks/plan.md")\n' +
+        "const expected = 'tasks/plan.md';\n",
+      'work/patches/mixed.py':
+        'from pathlib import Path\n' +
+        'changes = {}\n' +
+        'plan_path = Path("tasks/plan.md")\n' +
+        'changes["tasks/plan.md"] = (plan_path, plan_path)\n' +
+        'example = "tasks/plan.md"\n'
+    });
+
+    try {
+      const before = workspaceSnapshot(workspace);
+      const report = runPreview(pkg, workspace);
+
+      assert.equal(report.status, 'BLOCKED');
+      assert.deepEqual(report.blockers, [
+        {
+          code: 'AMBIGUOUS_REFERENCE',
+          file: 'docs/example.js',
+          reference: 'tasks/plan.md',
+          target: 'work-products/plan.md'
+        },
+        {
+          code: 'AMBIGUOUS_REFERENCE',
+          file: 'work/patches/mixed.py',
+          reference: 'tasks/plan.md',
+          target: 'work-products/plan.md'
+        }
+      ]);
+      assert.equal(report.referenceUpdates.length, 2);
+      assert.equal(
+        report.referenceUpdates.every((update) => update.file === 'work/patches/mixed.py'),
+        true
+      );
+      assert.deepEqual(workspaceSnapshot(workspace), before);
+    } finally {
+      fs.rmSync(workspace, { recursive: true, force: true });
+    }
+  }
+});
+
+test('preview does not retain every repository text file in the JavaScript heap', () => {
+  const workspace = createWorkspace({
+    '.gitignore': `${requiredIgnoreRules.join('\n')}\n`
+  });
+  const payload = `${'x'.repeat(1024 * 1024 - 1)}\n`;
+
+  try {
+    for (let index = 0; index < 80; index += 1) {
+      writeFixture(workspace, `data/chunk-${String(index).padStart(2, '0')}.txt`, payload);
+    }
+    const result = runEngine(
+      'Codex',
+      workspace,
+      [],
+      { NODE_OPTIONS: '--max-old-space-size=64' }
+    );
+
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(JSON.parse(result.stdout).status, 'NO_CHANGES');
+  } finally {
+    fs.rmSync(workspace, { recursive: true, force: true });
+  }
+});
+
 test('classification reports target conflicts as BLOCKED without modifying either file', () => {
   const workspace = createWorkspace({
     '.gitignore': `${requiredIgnoreRules.join('\n')}\n`,
@@ -318,6 +534,7 @@ test('preview recognizes supported cross-language test names', () => {
     'frontend/component.test.ts': 'export {};\n',
     'frontend/view.spec.tsx': 'export {};\n',
     'python/test_worker.py': 'pass\n',
+    'python/worker_test.py': 'def test_worker():\n    assert True\n',
     'go/worker_test.go': 'package worker\n',
     'fixtures/api.test.json': '{}\n',
     'agents/test-reviewer.md': '# Review agent\n',
@@ -348,6 +565,10 @@ test('preview recognizes supported cross-language test names', () => {
       {
         source: 'python/test_worker.py',
         target: 'work-products/tests/python/test_worker.py'
+      },
+      {
+        source: 'python/worker_test.py',
+        target: 'work-products/tests/python/worker_test.py'
       }
     ]);
   } finally {
@@ -360,7 +581,9 @@ test('preview blocks ambiguous bare strings that match a moved test source', () 
     '.gitignore': `${requiredIgnoreRules.join('\n')}\n`,
     'frontend.test.js': 'module.exports = {};\n',
     'work-products/tests/fixture-contract.test.js':
-      "const expectedFileName = 'frontend.test.js';\nvoid expectedFileName;\n"
+      "const expectedFileName = 'frontend.test.js';\n" +
+      "const moduleName = require('frontend.test.js');\n" +
+      "void expectedFileName;\nvoid moduleName;\n"
   });
 
   try {

@@ -154,7 +154,7 @@ node OpenClaw/scripts/install-profile.js --workspace "<請替換為OpenClaw工�
 | 查看目前狀態 | `/uxu-code:status` | `@status` | 模式、任務進度、驗證和門禁狀態 |
 | 整理錯放的過程檔案 | `/uxu-code:clean` | `@clean` | 零寫入預覽、移動與引用／ignore 變更 |
 
-`clean` 不是刪除命令。無參數呼叫只預覽；檢查移動、引用改寫和儲存庫 `.gitignore` 變更後，只有 `/uxu-code:clean apply` 或 `@clean apply` 才會執行。它會跨語言掃描整個儲存庫內按 `test`／`spec` 邊界命名的內部測試並統一遷入 `work-products/tests/`，同時跳過任意層級的依賴與版本控制目錄；專案原始碼、交付檔案和歸屬不明的非測試檔案不會自動移動。被移動文字檔中可確認位於目前儲存庫內的絕對路徑會改為相對路徑，儲存庫外路徑不會改寫。重複目標、目標祖先連結／逃逸、歧義裸字串或無法安全改寫時回傳 `BLOCKED` 且不寫入；無需整理時回傳 `NO_CHANGES`。
+`clean` 不是刪除命令。無參數呼叫只預覽；檢查移動、引用改寫和儲存庫 `.gitignore` 變更後，只有 `/uxu-code:clean apply` 或 `@clean apply` 才會執行。它會跨語言掃描整個儲存庫內按 `test`／`spec` 邊界命名的內部測試並統一遷入 `work-products/tests/`，同時跳過任意層級的依賴、版本控制、`__pycache__` 和補丁衍生檔案；測試目錄外的 Python `*_test.py` 還需具備真實靜態測試證據。可證明的儲存庫根路徑運算式、統一 diff 路徑及被移動文字檔中的儲存庫內絕對路徑會同步改寫，儲存庫外路徑不會改寫。重複目標、目標祖先連結／逃逸、缺少路徑結構證據的裸字串或無法安全改寫時回傳 `BLOCKED` 且不寫入；無需整理時回傳 `NO_CHANGES`。
 
 ## 7. 模式選擇
 

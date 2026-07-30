@@ -154,7 +154,7 @@ node OpenClaw/scripts/install-profile.js --workspace "<请替换为OpenClaw工�
 | 查看当前状态 | `/uxu-code:status` | `@status` | 模式、任务进度、验证和门禁状态 |
 | 整理错放的过程文件 | `/uxu-code:clean` | `@clean` | 零写入预览、移动与引用／ignore 变化 |
 
-`clean` 不是删除命令。无参数调用只预览；检查移动、引用改写和仓库 `.gitignore` 变化后，只有 `/uxu-code:clean apply` 或 `@clean apply` 才会执行。它会跨语言扫描整个仓库内按 `test`／`spec` 边界命名的内部测试并统一迁入 `work-products/tests/`，同时跳过任意层级的依赖与版本控制目录；项目源码、交付文件和归属不明的非测试文件不会自动移动。被移动文本中可确认位于当前仓库内的绝对路径会改为相对路径，仓库外路径不会改写。重复目标、目标祖先链接／逃逸、歧义裸字符串或无法安全改写时返回 `BLOCKED` 且不写入；无需整理时返回 `NO_CHANGES`。
+`clean` 不是删除命令。无参数调用只预览；检查移动、引用改写和仓库 `.gitignore` 变化后，只有 `/uxu-code:clean apply` 或 `@clean apply` 才会执行。它会跨语言扫描整个仓库内按 `test`／`spec` 边界命名的内部测试并统一迁入 `work-products/tests/`，同时跳过任意层级的依赖、版本控制、`__pycache__` 和补丁派生文件；测试目录外的 Python `*_test.py` 还需具有真实静态测试证据。可证明的仓库根路径表达式、统一 diff 路径及被移动文本中的仓库内绝对路径会同步改写，仓库外路径不会改写。重复目标、目标祖先链接／逃逸、缺少路径结构证据的裸字符串或无法安全改写时返回 `BLOCKED` 且不写入；无需整理时返回 `NO_CHANGES`。
 
 ## 7. 模式选择
 

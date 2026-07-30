@@ -179,8 +179,8 @@ test('guide validator requires canonical test placement and relative repository 
 
 test('documentation validators require the complete clean safety boundary', () => {
   const missingGuideBoundary = guides[2].replace(
-    'ambiguous bare strings',
-    'ambiguous values'
+    'bare strings without path-structure evidence',
+    'values without path-structure evidence'
   );
   const missingReadmeBoundary = readme.replace(
     'duplicate targets',

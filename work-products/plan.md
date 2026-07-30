@@ -971,6 +971,23 @@
 
 **回滚：** 任务 28.1 与 28.2 各自独立回滚；验证记录可重跑，不修改产品状态。
 
+## 任务 29：修复 Clean 在真实项目中的误阻塞与大仓库崩溃
+
+**规划依据：** 用户提供了 AShareQuantFusion 的 3 个歧义引用与 6 个 Python 字节码候选；零写入复现进一步发现补丁脚本／派生文件误分类和 4 GB Node 堆 OOM。
+
+**范围与验收：**
+
+- [x] `__pycache__/` 与补丁派生文件不进入测试迁移候选。
+- [x] 测试目录外的 Python `*_test.py` 排除字符串／注释后仍需真实测试证据，补丁生成脚本保持原位。
+- [x] `Path(...)`、仓库根路径拼接、耦合路径元数据与统一 diff 路径可证明时同步改写；普通裸字符串继续 `AMBIGUOUS_REFERENCE`。
+- [x] 全仓扫描逐文件读取；64 MB 堆下处理 80 MB 文本夹具不再 OOM。
+- [x] AShareQuantFusion 零写入复测为 `READY`、0 blocker，且所报补丁脚本／派生文件均安全跳过。
+- [x] Claude/Codex 引擎与 Skill 保持字节一致，三语言 README／指南和规格同步。
+
+**验证：** `node --test work-products/tests/clean-contract.test.js`、`node scripts/validate-all.js`、`git -c safe.directory=C:/Users/brand/SynologyDrive/Code/UXUCode diff --check`。
+
+**回滚：** 成对回退引擎、合同测试、规格、双宿主 Skill 与三语言说明；不对验证用项目执行 `apply`。
+
 ## 风险与缓解
 
 | 风险 | 影响 | 缓解 |
