@@ -108,6 +108,18 @@ test('both hosts route only exact clean invocations and reject aliases or invali
   }
 });
 
+test('both clean skills retry only structured sandbox permission failures', () => {
+  for (const pkg of packages) {
+    const skill = readSkill(pkg, 'clean');
+
+    assert.match(skill, /structured subprocess permission error/i);
+    assert.match(skill, /sandbox approval/i);
+    assert.match(skill, /same arguments/i);
+    assert.match(skill, /at most once/i);
+    assert.match(skill, /preview must never be upgraded to `apply`/i);
+  }
+});
+
 function ignoredPathsInTemporaryRepository(relativePaths) {
   const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'uxucode-gitignore-contract-'));
   const globalExcludes = path.join(tempRoot, 'global-excludes');
@@ -474,4 +486,34 @@ test('audit and performance guidance stays ecosystem-neutral and evidence-gated'
   assert.match(notices, /project-native test commands/);
   assert.match(notices, /same-condition performance verification/);
   assert.match(notices, /Excluded from adoption:/);
+});
+
+test('release metadata and maintenance workflows enforce the 4.2.0 version contract', () => {
+  const expectedVersion = '4.2.0';
+  const maintenanceContract =
+    /every completed bug fix or optimization must update the release version consistently/;
+  const claudeManifest = JSON.parse(
+    fs.readFileSync(path.join(root, 'Claude', '.claude-plugin', 'plugin.json'), 'utf8')
+  );
+  const claudeMarketplace = JSON.parse(
+    fs.readFileSync(path.join(root, 'Claude', '.claude-plugin', 'marketplace.json'), 'utf8')
+  );
+  const codexManifest = JSON.parse(
+    fs.readFileSync(path.join(root, 'Codex', '.codex-plugin', 'plugin.json'), 'utf8')
+  );
+
+  assert.equal(claudeManifest.version, expectedVersion);
+  assert.equal(claudeMarketplace.plugins[0].version, expectedVersion);
+  assert.equal(codexManifest.version, expectedVersion);
+
+  for (const pkg of packages) {
+    const validator = fs.readFileSync(
+      path.join(root, pkg, 'scripts', 'validate-plugin.js'),
+      'utf8'
+    );
+    assert.match(validator, /expected version 4\.2\.0/);
+    for (const skill of ['build', 'debug', 'simplify']) {
+      assert.match(readSkill(pkg, skill), maintenanceContract);
+    }
+  }
 });

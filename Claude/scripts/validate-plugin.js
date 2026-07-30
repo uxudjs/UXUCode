@@ -26,12 +26,15 @@ const hooks = readJson('hooks/hooks.json');
 
 if (manifest) {
   if (manifest.name !== 'uxu-code') fail('manifest: unexpected plugin name');
-  if (manifest.version !== '4.1.1') fail('manifest: expected version 4.1.1');
+  if (manifest.version !== '4.2.0') fail('manifest: expected version 4.2.0');
   if (manifest.skills !== './skills/') fail('manifest: skills must be ./skills/');
   if ('hooks' in manifest) fail('manifest: standard hooks/hooks.json is auto-loaded and must not be declared');
 }
 if (marketplace?.name !== 'uxu-code-claude') fail('marketplace: unexpected name');
 if (marketplace?.plugins?.[0]?.source !== './') fail('marketplace: plugin source must be ./');
+if (marketplace?.plugins?.[0]?.version !== manifest?.version) {
+  fail('marketplace: plugin version must match the manifest');
+}
 if (JSON.stringify(hooks).includes('PLUGIN_ROOT') && !JSON.stringify(hooks).includes('CLAUDE_PLUGIN_ROOT')) {
   fail('hooks: Claude hooks must use CLAUDE_PLUGIN_ROOT');
 }

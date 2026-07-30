@@ -43,6 +43,19 @@ function toPosix(relativePath) {
   return relativePath.split(path.sep).join('/');
 }
 
+function gitCommandFailure(code, operation, result, fallback) {
+  const error = result.error || null;
+  const stderr = typeof result.stderr === 'string' ? result.stderr.trim() : '';
+  return {
+    code,
+    operation,
+    reason: error?.message || stderr || fallback,
+    errorCode: error?.code || null,
+    status: result.status,
+    signal: result.signal || null
+  };
+}
+
 function isSupportedTestName(fileName) {
   return delimitedTestNamePattern.test(fileName) || camelCaseTestNamePattern.test(fileName);
 }
@@ -222,6 +235,18 @@ function addCandidate(report, root, source, target, reason) {
   }
 }
 
+function normalizeTestRelativePath(relativePath) {
+  const segments = relativePath.split('/');
+  if (segments[0] === 'tests') segments.shift();
+  for (let index = 0; index + 1 < segments.length;) {
+    if (segments[index] === 'work-products' && segments[index + 1] === 'tests') {
+      segments.splice(index, 2);
+    } else {
+      index += 1;
+    }
+  }
+  return segments.join('/');
+}
 function visitTests(directory, root, report) {
   for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
     const absolutePath = path.join(directory, entry.name);
@@ -249,9 +274,7 @@ function visitTests(directory, root, report) {
       continue;
     }
 
-    const testRelativePath = relativePath.startsWith('tests/')
-      ? relativePath.slice('tests/'.length)
-      : relativePath;
+    const testRelativePath = normalizeTestRelativePath(relativePath);
     addCandidate(
       report,
       root,
@@ -279,10 +302,9 @@ function inspectGitignoreSemantics(content) {
       { cwd: workspace, encoding: 'utf8', env: environment }
     );
     if (init.status !== 0) {
-      return [{
-        code: 'GITIGNORE_CHECK_FAILED',
-        reason: (init.stderr || 'git init failed').trim()
-      }];
+      return [gitCommandFailure(
+        'GITIGNORE_CHECK_FAILED', 'git init', init, 'git init failed'
+      )];
     }
 
     const result = childProcess.spawnSync(
@@ -296,10 +318,9 @@ function inspectGitignoreSemantics(content) {
       }
     );
     if (result.status !== 0 && result.status !== 1) {
-      return [{
-        code: 'GITIGNORE_CHECK_FAILED',
-        reason: (result.stderr || 'git check-ignore failed').trim()
-      }];
+      return [gitCommandFailure(
+        'GITIGNORE_CHECK_FAILED', 'git check-ignore', result, 'git check-ignore failed'
+      )];
     }
 
     const ignored = new Set(result.stdout.split('\0').filter(Boolean).map(toPosix));
@@ -315,6 +336,19 @@ function inspectGitignoreSemantics(content) {
   }
 }
 
+function findNestedCanonicalIgnoreRules(lines) {
+  const present = new Set(lines);
+  const remove = [];
+  for (const line of lines) {
+    const match = line.match(/^\/(.+)\/work-products\/\*$/);
+    if (!match) continue;
+    const prefix = match[1];
+    const family = requiredIgnoreRules.map((rule) =>
+      rule.replace('/work-products', `/${prefix}/work-products`));
+    if (family.every((rule) => present.has(rule))) remove.push(...family);
+  }
+  return [...new Set(remove)];
+}
 function planGitignore(root) {
   const ignorePath = path.join(root, '.gitignore');
   const existed = fs.existsSync(ignorePath);
@@ -324,10 +358,14 @@ function planGitignore(root) {
     .filter((record) => record.length > 0);
   const lines = records.map((record) => record.replace(/(?:\r\n|\n|\r)$/, '').trim());
   const present = new Set(lines);
-  const remove = obsoleteIgnoreRules.filter((rule) => present.has(rule));
+  const remove = [
+    ...obsoleteIgnoreRules.filter((rule) => present.has(rule)),
+    ...findNestedCanonicalIgnoreRules(lines)
+  ];
+  const removable = new Set(remove);
   const kept = records.filter((record) => {
     const line = record.replace(/(?:\r\n|\n|\r)$/, '').trim();
-    return !obsoleteIgnoreRules.includes(line);
+    return !removable.has(line);
   });
   let nextContent = kept.join('');
   const remaining = new Set(kept.map((record) =>

@@ -10,4 +10,6 @@ Capture the observed behavior and reproduction conditions. Form testable hypothe
 
 Create debug notes and other process files only under `work-products/debug/`. Report reproduction, root cause, changed behavior, tests, and any remaining uncertainty. Do not broaden the refactor beyond the failure.
 
+When maintaining UXUCode itself, every completed bug fix or optimization must update the release version consistently in both host manifests, the Claude marketplace, and both validators before completion.
+
 Use `references/workflows/debugging-and-error-recovery/`, `source-driven-development/`, `observability-and-instrumentation/`, or `browser-testing-with-devtools/` according to the evidence source.

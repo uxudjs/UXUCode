@@ -16,6 +16,11 @@ const requiredIgnoreRules = [
   '!/work-products/tests/**'
 ];
 
+function nestedIgnoreRules(prefix) {
+  return requiredIgnoreRules.map((rule) =>
+    rule.replace('/work-products', `/${prefix}/work-products`));
+}
+
 function enginePath(pkg) {
   return path.join(root, pkg, 'scripts', 'clean-work-products.js');
 }
@@ -163,6 +168,29 @@ test('preview returns NO_CHANGES for a compliant workspace without candidates', 
     assert.deepEqual(report.blockers, []);
     assert.deepEqual(report.skipped, []);
     assert.deepEqual(workspaceSnapshot(workspace), before);
+  } finally {
+    fs.rmSync(workspace, { recursive: true, force: true });
+  }
+});
+
+test('preview preserves Git spawn errors instead of reporting a generic init failure', () => {
+  const workspace = createWorkspace({
+    '.gitignore': `${requiredIgnoreRules.join('\n')}\n`
+  });
+
+  try {
+    const result = runEngine('Codex', workspace, [], { PATH: '' });
+    assert.equal(result.status, 0, result.stderr);
+    const report = JSON.parse(result.stdout);
+    const blocker = report.blockers.find(({ code }) => code === 'GITIGNORE_CHECK_FAILED');
+
+    assert.equal(report.status, 'BLOCKED');
+    assert.ok(blocker);
+    assert.equal(blocker.operation, 'git init');
+    assert.equal(blocker.errorCode, 'ENOENT');
+    assert.equal(blocker.status, null);
+    assert.equal(blocker.signal, null);
+    assert.match(blocker.reason, /spawnSync git ENOENT/);
   } finally {
     fs.rmSync(workspace, { recursive: true, force: true });
   }
@@ -571,6 +599,55 @@ test('preview recognizes supported cross-language test names', () => {
         target: 'work-products/tests/python/worker_test.py'
       }
     ]);
+  } finally {
+    fs.rmSync(workspace, { recursive: true, force: true });
+  }
+});
+
+test('preview normalizes nested work-products tests and exact canonical ignore families', () => {
+  const nestedRules = nestedIgnoreRules('cloud_layer');
+  const workspace = createWorkspace({
+    '.gitignore': `${[...requiredIgnoreRules, ...nestedRules].join('\n')}\n/custom/\n`,
+    'work-products/tests/existing.test.js': 'module.exports = {};\n',
+    'cloud_layer/work-products/tests/test_example.py':
+      'import unittest\n\nclass TestExample(unittest.TestCase):\n    pass\n'
+  });
+
+  try {
+    const preview = runPreview('Codex', workspace);
+
+    assert.equal(preview.status, 'READY');
+    assert.deepEqual(preview.moves, [
+      {
+        source: 'cloud_layer/work-products/tests/test_example.py',
+        target: 'work-products/tests/cloud_layer/test_example.py',
+        reason: 'internal-test-artifact'
+      }
+    ]);
+    assert.deepEqual(preview.gitignoreChanges, { add: [], remove: nestedRules });
+
+    const applied = runEngine('Codex', workspace, ['apply']);
+    assert.equal(applied.status, 0, applied.stderr);
+    assert.equal(JSON.parse(applied.stdout).status, 'APPLIED');
+    assert.equal(
+      fs.readFileSync(path.join(workspace, '.gitignore'), 'utf8'),
+      `${requiredIgnoreRules.join('\n')}\n/custom/\n`
+    );
+    assert.equal(
+      fs.existsSync(path.join(workspace, 'work-products', 'tests', 'existing.test.js')),
+      true
+    );
+    assert.equal(
+      fs.existsSync(path.join(
+        workspace,
+        'work-products',
+        'tests',
+        'cloud_layer',
+        'test_example.py'
+      )),
+      true
+    );
+    assert.equal(runPreview('Codex', workspace).status, 'NO_CHANGES');
   } finally {
     fs.rmSync(workspace, { recursive: true, force: true });
   }

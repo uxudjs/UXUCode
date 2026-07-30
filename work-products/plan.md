@@ -988,6 +988,59 @@
 
 **回滚：** 成对回退引擎、合同测试、规格、双宿主 Skill 与三语言说明；不对验证用项目执行 `apply`。
 
+## 任务 30：修复 Clean 的 Codex 沙箱误阻塞与嵌套规范目录
+
+**规划依据：** 2026-07-30 `@debug` 已零写入证明：managed sandbox 内 Node `spawnSync('git', ...)` 返回 `status=null`、`error.code=EPERM`，但 Clean 丢失 `result.error` 并误报 `git init failed`；沙箱外同一检查正常，Clean 合同测试 28/28。CfGfwAX 沙箱外仅剩两个真实 `TARGET_EXISTS`；GMSSL 当前还暴露嵌套 `cloud_layer/work-products/tests/` 被重复拼入目标。批准规格已明确 Git 是 ignore 语义事实源、根级 `work-products/` 是唯一规范位置且不得增加项目专属分支，因此无需新增规格。
+
+### 任务 30.1：建立 RED 合同
+
+**范围：** 为 Git 无法启动、根级规范测试幂等、嵌套 `<prefix>/work-products/tests/<rest>` 目标归一化，以及 Skill 的沙箱审批重跑增加独立夹具。
+
+**验收标准：** `PATH` 中无 Git 时稳定得到 `status=null` 与 `error.code=ENOENT`；错误报告、Skill 重试和嵌套目标分别 RED；`cloud_layer/work-products/tests/test_example.py` 的唯一目标为 `work-products/tests/cloud_layer/test_example.py`。
+
+**验证：** `node --test work-products/tests/clean-contract.test.js`；`node --test work-products/tests/workflow-contract.test.js`；确认失败均为预期断言而非测试运行器自身的无关 `spawn EPERM`。
+
+**依赖：** 任务 29及本次 `@debug`。**可能涉及：** 两个合同测试。**规模：** 小。**回滚：** 仅回退新增夹具。
+
+### 任务 30.2：结构化 Git 错误并增加沙箱兼容重试
+
+**范围：** 统一报告 Git 子进程的 `result.error`、状态、信号和 stderr，不再把 `EPERM`／`ENOENT` 降级为通用错误。保留 Git 作为 ignore 语义事实源，不实现不完整的 JavaScript matcher。双宿主 Clean Skill 仅在结构化权限错误且宿主提供审批机制时，以相同参数最多重跑一次；预览不得升级为 `apply`，真实 Git 或 ignore 错误不重试。
+
+**验收标准：** 初始化和 `check-ignore` 启动失败均保留真实错误；`TARGET_EXISTS`、`GITIGNORE_SEMANTIC_CONFLICT` 与外部 exclude 报告不回归；Claude/Codex 引擎与 Skill 分别字节一致；无第三方依赖、安装缓存修改。
+
+**验证：** 两个合同测试；`node scripts/validate-skill-parity.js`；managed sandbox 内看到结构化 `EPERM`，经审批在沙箱外重跑后 CfGfwAX 不再出现 `GITIGNORE_CHECK_FAILED`。
+
+**依赖：** 任务 30.1。**可能涉及：** 双宿主 Clean 引擎、双宿主 Clean Skill、两个合同测试。**规模：** 中。**回滚：** 成对回退，不回退 Git 语义验证与失败关闭。
+
+### 任务 30.3：规范化嵌套测试目录与 ignore 规则
+
+**范围：** 根级 `work-products/` 继续跳过；其他层级的 `<prefix>/work-products/tests/<rest>` 统一映射为 `work-products/tests/<prefix>/<rest>`。只计划删除与 canonical 六规则精确同构的非根级 UXUCode ignore 规则族；相邻注释、部分匹配和其他规则不动，冲突或歧义继续 `BLOCKED`。不得出现 GMSSL、`cloud_layer` 等项目名称分支。
+
+**验收标准：** 任意前缀使用同一算法且目标无重复 `work-products/tests`；根级六规则保留，精确非根级规则族移除，无关内容逐字节不变；既有碰撞、祖先、引用和回滚合同不回归。
+
+**验证：** Clean 合同测试；GMSSL 零写入预览映射到 `work-products/tests/cloud_layer/test_cloud_dashboard_gunicorn_config.py`；等价 fixture 应用后再次预览为 `NO_CHANGES`；不对 GMSSL 执行 `apply`。
+
+**依赖：** 任务 30.1，并与任务 30.2 串行修改共享引擎。**可能涉及：** 双宿主 Clean 引擎和 Clean 合同测试。**规模：** 中。**回滚：** 成对回退归一化、规则清理和测试。
+
+### 任务 30.4：关闭真实项目与统一回归门禁
+
+**范围：** 不修改 CfGfwAX、GMSSL 或安装缓存，只运行零写入预览和 UXUCode 本地门禁。
+
+**验收标准：** CfGfwAX 沙箱外预览只保留两个 plan/todo `TARGET_EXISTS` 且不自动合并；GMSSL 只识别真实测试、`tests/__init__.py` 不误报且目标已规范化；两个项目现有工作保持不变；本地证据不冒充安装缓存或新会话证明。
+
+**验证：** 两个合同测试；`node scripts/validate-all.js`；`git -c safe.directory=C:/Users/brand/SynologyDrive/Code/UXUCode diff --check`；双宿主引擎与 Skill SHA-256；记录两个项目预览但不运行 `apply`。
+
+**依赖：** 任务 30.2、30.3。**可能涉及：** 无新增实现文件。**规模：** 小。**回滚：** 验证零写入，失败时保持任务未完成。
+
+## 任务 30 检查点
+
+- [x] 30A：RED 逐项对应已复现缺陷。
+- [x] 30B：权限错误可诊断且可审批重跑，真实 Git／ignore 错误仍失败关闭。
+- [x] 30C：嵌套目录通用归一化，根级规范目录幂等。
+- [x] 最终门禁：任务 30.4 全部通过后进入 `@review`；不暂存、提交、推送、发布、重装插件或修改安装缓存。
+
+**完成证据：** RED 为 43/46，通过项之外仅保留结构化子进程错误、Skill 审批重跑和嵌套目录归一化三项预期失败；实现后 Clean／workflow 合同 46/46，通过统一 12 步门禁（workflow 66/66、OpenClaw 27/27）。UXUCode 预览为 `NO_CHANGES`；CfGfwAX 沙箱外只剩两个真实 `TARGET_EXISTS`；GMSSL 为 `READY`，唯一移动已归一化到根级 `work-products/tests/cloud_layer/`，两个验证仓库均保持 Git 状态不变且未执行 `apply`。
+
 ## 风险与缓解
 
 | 风险 | 影响 | 缓解 |

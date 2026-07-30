@@ -9,6 +9,8 @@ Accept either no argument or the exact argument `apply`. Reject every other argu
 
 Resolve the plugin package from this loaded Skill, then run its own `scripts/clean-work-products.js` with Node.js. Do not call the other host package or reimplement candidate classification in the conversation.
 
+If the report contains a structured subprocess permission error such as `errorCode: "EPERM"`, and the host offers sandbox approval, rerun the same engine command with the same arguments through that approval at most once. Preview must never be upgraded to `apply`. Do not retry ordinary Git failures or ignore semantic conflicts. If approval is unavailable or denied, keep the result `BLOCKED` and report the exact error.
+
 - With no argument, run the engine without arguments and report its preview. Do not modify the workspace.
 - With `apply`, run the engine with the exact `apply` argument. Execute only the complete prevalidated plan.
 - Scan test candidates repository-wide across supported cross-language `test`/`spec` filename boundaries while excluding version-control, dependency, Python bytecode-cache, and derived patch-artifact paths. Require real static test evidence for Python `*_test.py` files outside test directories.
