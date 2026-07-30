@@ -77,7 +77,7 @@ function runPreview(pkg, workspace) {
   return JSON.parse(result.stdout);
 }
 
-test('preview classifies only evidenced UXUCode artifacts and writes nothing', () => {
+test('preview classifies internal tests repository-wide and writes nothing', () => {
   const reports = [];
 
   for (const pkg of packages) {
@@ -120,7 +120,12 @@ test('preview classifies only evidenced UXUCode artifacts and writes nothing', (
         {
           source: 'tests/mode-policy-contract.test.js',
           target: 'work-products/tests/mode-policy-contract.test.js',
-          reason: 'uxucode-host-contract-test'
+          reason: 'internal-test-artifact'
+        },
+        {
+          source: 'tests/product.test.js',
+          target: 'work-products/tests/product.test.js',
+          reason: 'internal-test-artifact'
         }
       ]);
       assert.deepEqual(report.referenceUpdates, []);
@@ -129,12 +134,7 @@ test('preview classifies only evidenced UXUCode artifacts and writes nothing', (
         remove: ['/SPEC.md', '/tasks/']
       });
       assert.deepEqual(report.blockers, []);
-      assert.deepEqual(report.skipped, [
-        {
-          path: 'tests/product.test.js',
-          reason: 'ambiguous-test'
-        }
-      ]);
+      assert.deepEqual(report.skipped, []);
       reports.push(report);
     } finally {
       fs.rmSync(workspace, { recursive: true, force: true });
@@ -193,19 +193,240 @@ test('classification reports target conflicts as BLOCKED without modifying eithe
   }
 });
 
-test('preview does not follow symbolic links into possible test artifacts', (context) => {
+test('preview blocks multiple sources that map to the same target', () => {
   const workspace = createWorkspace({
     '.gitignore': `${requiredIgnoreRules.join('\n')}\n`,
-    'external-tests/mode-policy-contract.test.js':
-      "require('../Codex/hooks/mode-policy');\n"
+    'product.test.js': 'module.exports = "root";\n',
+    'tests/product.test.js': 'module.exports = "tests";\n'
   });
+
+  try {
+    const before = workspaceSnapshot(workspace);
+    const report = runPreview('Codex', workspace);
+
+    assert.equal(report.status, 'BLOCKED');
+    assert.deepEqual(report.blockers, [
+      {
+        code: 'TARGET_COLLISION',
+        target: 'work-products/tests/product.test.js',
+        sources: ['product.test.js', 'tests/product.test.js']
+      }
+    ]);
+    assert.deepEqual(workspaceSnapshot(workspace), before);
+  } finally {
+    fs.rmSync(workspace, { recursive: true, force: true });
+  }
+});
+
+test('preview blocks a symbolic-link target parent outside the repository', (context) => {
+  const workspace = createWorkspace({
+    '.gitignore': `${requiredIgnoreRules.join('\n')}\n`,
+    'product.test.js': 'module.exports = {};\n',
+    'work-products/.keep': ''
+  });
+  const externalDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'uxucode-clean-target-'));
+  const linkedTests = path.join(workspace, 'work-products', 'tests');
+
+  try {
+    fs.symlinkSync(
+      externalDirectory,
+      linkedTests,
+      process.platform === 'win32' ? 'junction' : 'dir'
+    );
+  } catch (error) {
+    if (error.code === 'EPERM' || error.code === 'EACCES') {
+      context.skip(`symbolic links are unavailable: ${error.code}`);
+      fs.rmSync(workspace, { recursive: true, force: true });
+      fs.rmSync(externalDirectory, { recursive: true, force: true });
+      return;
+    }
+    throw error;
+  }
+
+  try {
+    const before = workspaceSnapshot(workspace);
+    const report = runPreview('Codex', workspace);
+
+    assert.equal(report.status, 'BLOCKED');
+    assert.deepEqual(report.blockers, [
+      {
+        code: 'TARGET_PARENT_SYMLINK',
+        path: 'work-products/tests',
+        target: 'work-products/tests/product.test.js'
+      }
+    ]);
+    assert.deepEqual(workspaceSnapshot(workspace), before);
+    assert.deepEqual(fs.readdirSync(externalDirectory), []);
+  } finally {
+    fs.rmSync(workspace, { recursive: true, force: true });
+    fs.rmSync(externalDirectory, { recursive: true, force: true });
+  }
+});
+
+test('preview blocks a non-directory target ancestor', () => {
+  const workspace = createWorkspace({
+    '.gitignore': `${requiredIgnoreRules.join('\n')}\n`,
+    'product.test.js': 'module.exports = {};\n',
+    'work-products': 'not a directory\n'
+  });
+
+  try {
+    const before = workspaceSnapshot(workspace);
+    const report = runPreview('Codex', workspace);
+
+    assert.equal(report.status, 'BLOCKED');
+    assert.deepEqual(report.blockers, [
+      {
+        code: 'TARGET_PARENT_NOT_DIRECTORY',
+        path: 'work-products',
+        target: 'work-products/tests/product.test.js'
+      }
+    ]);
+    assert.deepEqual(workspaceSnapshot(workspace), before);
+  } finally {
+    fs.rmSync(workspace, { recursive: true, force: true });
+  }
+});
+
+test('preview skips nested dependency and version-control directories', () => {
+  const workspace = createWorkspace({
+    '.gitignore': `${requiredIgnoreRules.join('\n')}\n`,
+    'packages/app/src/product.test.js': 'module.exports = "internal";\n',
+    'packages/app/node_modules/dependency/library.test.js': 'module.exports = "dependency";\n',
+    'packages/app/.git/hooks/hook.test.js': 'module.exports = "metadata";\n'
+  });
+
+  try {
+    const report = runPreview('Codex', workspace);
+
+    assert.equal(report.status, 'READY');
+    assert.deepEqual(report.moves, [
+      {
+        source: 'packages/app/src/product.test.js',
+        target: 'work-products/tests/packages/app/src/product.test.js',
+        reason: 'internal-test-artifact'
+      }
+    ]);
+  } finally {
+    fs.rmSync(workspace, { recursive: true, force: true });
+  }
+});
+
+test('preview recognizes supported cross-language test names', () => {
+  const workspace = createWorkspace({
+    '.gitignore': `${requiredIgnoreRules.join('\n')}\n`,
+    'frontend/component.test.ts': 'export {};\n',
+    'frontend/view.spec.tsx': 'export {};\n',
+    'python/test_worker.py': 'pass\n',
+    'go/worker_test.go': 'package worker\n',
+    'fixtures/api.test.json': '{}\n',
+    'agents/test-reviewer.md': '# Review agent\n',
+    'agents/unit-test-reviewer.md': '# Unit test review agent\n'
+  });
+
+  try {
+    const report = runPreview('Codex', workspace);
+
+    assert.equal(report.status, 'READY');
+    assert.deepEqual(report.moves.map(({ source, target }) => ({ source, target })), [
+      {
+        source: 'fixtures/api.test.json',
+        target: 'work-products/tests/fixtures/api.test.json'
+      },
+      {
+        source: 'frontend/component.test.ts',
+        target: 'work-products/tests/frontend/component.test.ts'
+      },
+      {
+        source: 'frontend/view.spec.tsx',
+        target: 'work-products/tests/frontend/view.spec.tsx'
+      },
+      {
+        source: 'go/worker_test.go',
+        target: 'work-products/tests/go/worker_test.go'
+      },
+      {
+        source: 'python/test_worker.py',
+        target: 'work-products/tests/python/test_worker.py'
+      }
+    ]);
+  } finally {
+    fs.rmSync(workspace, { recursive: true, force: true });
+  }
+});
+
+test('preview blocks ambiguous bare strings that match a moved test source', () => {
+  const workspace = createWorkspace({
+    '.gitignore': `${requiredIgnoreRules.join('\n')}\n`,
+    'frontend.test.js': 'module.exports = {};\n',
+    'work-products/tests/fixture-contract.test.js':
+      "const expectedFileName = 'frontend.test.js';\nvoid expectedFileName;\n"
+  });
+
+  try {
+    const before = workspaceSnapshot(workspace);
+    const report = runPreview('Codex', workspace);
+
+    assert.equal(report.status, 'BLOCKED');
+    assert.deepEqual(report.referenceUpdates, []);
+    assert.deepEqual(report.blockers, [
+      {
+        code: 'AMBIGUOUS_REFERENCE',
+        file: 'work-products/tests/fixture-contract.test.js',
+        reference: 'frontend.test.js',
+        target: 'work-products/tests/frontend.test.js'
+      }
+    ]);
+    assert.deepEqual(workspaceSnapshot(workspace), before);
+  } finally {
+    fs.rmSync(workspace, { recursive: true, force: true });
+  }
+});
+
+test('preview blocks ambiguous bare strings that match a moved process source', () => {
+  const workspace = createWorkspace({
+    '.gitignore': `${requiredIgnoreRules.join('\n')}\n`,
+    'SPEC.md': '# Legacy specification\n',
+    'docs/reference.md': "Canonical source: 'SPEC.md'\n"
+  });
+
+  try {
+    const before = workspaceSnapshot(workspace);
+    const report = runPreview('Codex', workspace);
+
+    assert.equal(report.status, 'BLOCKED');
+    assert.deepEqual(report.referenceUpdates, []);
+    assert.deepEqual(report.blockers, [
+      {
+        code: 'AMBIGUOUS_REFERENCE',
+        file: 'docs/reference.md',
+        reference: 'SPEC.md',
+        target: 'work-products/SPEC.md'
+      }
+    ]);
+    assert.deepEqual(workspaceSnapshot(workspace), before);
+  } finally {
+    fs.rmSync(workspace, { recursive: true, force: true });
+  }
+});
+
+test('preview does not follow symbolic links into possible test artifacts', (context) => {
+  const workspace = createWorkspace({
+    '.gitignore': `${requiredIgnoreRules.join('\n')}\n`
+  });
+  const externalDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'uxucode-clean-external-'));
+  writeFixture(
+    externalDirectory,
+    'mode-policy-contract.test.js',
+    "require('../Codex/hooks/mode-policy');\n"
+  );
   const testsDirectory = path.join(workspace, 'tests');
   const linkedDirectory = path.join(testsDirectory, 'linked-contracts');
   fs.mkdirSync(testsDirectory);
 
   try {
     fs.symlinkSync(
-      path.join(workspace, 'external-tests'),
+      externalDirectory,
       linkedDirectory,
       process.platform === 'win32' ? 'junction' : 'dir'
     );
@@ -213,6 +434,7 @@ test('preview does not follow symbolic links into possible test artifacts', (con
     if (error.code === 'EPERM' || error.code === 'EACCES') {
       context.skip(`symbolic links are unavailable: ${error.code}`);
       fs.rmSync(workspace, { recursive: true, force: true });
+      fs.rmSync(externalDirectory, { recursive: true, force: true });
       return;
     }
     throw error;
@@ -233,6 +455,7 @@ test('preview does not follow symbolic links into possible test artifacts', (con
     assert.deepEqual(workspaceSnapshot(workspace), before);
   } finally {
     fs.rmSync(workspace, { recursive: true, force: true });
+    fs.rmSync(externalDirectory, { recursive: true, force: true });
   }
 });
 
@@ -243,7 +466,7 @@ test('classification keeps both host preview engines byte-identical', () => {
   );
 });
 
-test('classification does not infer auxiliary-test ownership from a host import alone', () => {
+test('classification treats project-native test files as internal artifacts', () => {
   const workspace = createWorkspace({
     '.gitignore': `${requiredIgnoreRules.join('\n')}\n`,
     'Codex/hooks/mode-policy.js': 'module.exports = {};\n',
@@ -254,16 +477,141 @@ test('classification does not infer auxiliary-test ownership from a host import 
   try {
     const report = runPreview('Codex', workspace);
 
-    assert.equal(report.status, 'NO_CHANGES');
-    assert.deepEqual(report.moves, []);
-    assert.deepEqual(report.skipped, [
+    assert.equal(report.status, 'READY');
+    assert.deepEqual(report.moves, [
       {
-        path: 'tests/product-native.test.js',
-        reason: 'ambiguous-test'
+        source: 'tests/product-native.test.js',
+        target: 'work-products/tests/product-native.test.js',
+        reason: 'internal-test-artifact'
       }
     ]);
+    assert.deepEqual(report.skipped, []);
   } finally {
     fs.rmSync(workspace, { recursive: true, force: true });
+  }
+});
+
+test('apply gathers internal tests repository-wide and relativizes project-local paths', () => {
+  for (const pkg of packages) {
+    const workspace = createWorkspace({
+      '.gitignore': `${requiredIgnoreRules.join('\n')}\n`,
+      'Codex/hooks/mode-policy.js': 'module.exports = {};\n',
+      'admin/index.html': '<main></main>\n',
+      'frontend-performance.test.mjs': "import './admin/index.html';\n",
+      'scripts/run-tests.js':
+        "const testFile = '../frontend-performance.test.mjs';\nvoid testFile;\n",
+      'work-products/tests/existing-contract.test.js':
+        "// UXUCode work-product\nrequire('../../Codex/hooks/mode-policy.js');\n"
+    });
+    const absolutePolicyPath = path.join(workspace, 'Codex', 'hooks', 'mode-policy.js')
+      .split(path.sep)
+      .join('/');
+    writeFixture(
+      workspace,
+      'mode-policy-contract.test.mjs',
+      `// UXUCode work-product\nrequire('${absolutePolicyPath}');\n`
+    );
+    writeFixture(
+      workspace,
+      'quality/nested-contract.spec.cjs',
+      "// UXUCode work-product\nrequire('../Codex/hooks/mode-policy.js');\n"
+    );
+
+    try {
+      const preview = runPreview(pkg, workspace);
+
+      assert.equal(preview.status, 'READY');
+      assert.deepEqual(preview.moves, [
+        {
+          source: 'frontend-performance.test.mjs',
+          target: 'work-products/tests/frontend-performance.test.mjs',
+          reason: 'internal-test-artifact'
+        },
+        {
+          source: 'mode-policy-contract.test.mjs',
+          target: 'work-products/tests/mode-policy-contract.test.mjs',
+          reason: 'internal-test-artifact'
+        },
+        {
+          source: 'quality/nested-contract.spec.cjs',
+          target: 'work-products/tests/quality/nested-contract.spec.cjs',
+          reason: 'internal-test-artifact'
+        }
+      ]);
+      assert.deepEqual(preview.referenceUpdates, [
+        {
+          file: 'scripts/run-tests.js',
+          from: '../frontend-performance.test.mjs',
+          to: '../work-products/tests/frontend-performance.test.mjs',
+          count: 1
+        },
+        {
+          file: 'work-products/tests/frontend-performance.test.mjs',
+          from: './admin/index.html',
+          to: '../../admin/index.html',
+          count: 1
+        },
+        {
+          file: 'work-products/tests/mode-policy-contract.test.mjs',
+          from: absolutePolicyPath,
+          to: '../../Codex/hooks/mode-policy.js',
+          count: 1
+        },
+        {
+          file: 'work-products/tests/quality/nested-contract.spec.cjs',
+          from: '../Codex/hooks/mode-policy.js',
+          to: '../../../Codex/hooks/mode-policy.js',
+          count: 1
+        }
+      ]);
+      assert.deepEqual(preview.skipped, []);
+
+      const result = runEngine(pkg, workspace, ['apply']);
+      assert.equal(result.status, 0, result.stderr);
+      assert.equal(JSON.parse(result.stdout).status, 'APPLIED');
+      assert.equal(
+        fs.readFileSync(
+          path.join(workspace, 'work-products', 'tests', 'mode-policy-contract.test.mjs'),
+          'utf8'
+        ),
+        "// UXUCode work-product\nrequire('../../Codex/hooks/mode-policy.js');\n"
+      );
+      assert.equal(
+        fs.readFileSync(
+          path.join(
+            workspace,
+            'work-products',
+            'tests',
+            'quality',
+            'nested-contract.spec.cjs'
+          ),
+          'utf8'
+        ),
+        "// UXUCode work-product\nrequire('../../../Codex/hooks/mode-policy.js');\n"
+      );
+      assert.equal(
+        fs.readFileSync(
+          path.join(workspace, 'work-products', 'tests', 'frontend-performance.test.mjs'),
+          'utf8'
+        ),
+        "import '../../admin/index.html';\n"
+      );
+      assert.equal(
+        fs.readFileSync(path.join(workspace, 'scripts', 'run-tests.js'), 'utf8'),
+        "const testFile = '../work-products/tests/frontend-performance.test.mjs';\n" +
+        'void testFile;\n'
+      );
+      assert.equal(fs.existsSync(path.join(workspace, 'frontend-performance.test.mjs')), false);
+      assert.equal(
+        fs.existsSync(
+          path.join(workspace, 'work-products', 'tests', 'existing-contract.test.js')
+        ),
+        true
+      );
+      assert.equal(runPreview(pkg, workspace).status, 'NO_CHANGES');
+    } finally {
+      fs.rmSync(workspace, { recursive: true, force: true });
+    }
   }
 });
 
@@ -282,6 +630,8 @@ test('apply moves evidenced artifacts and rewrites only resolvable references', 
       'README.md':
         '[Specification](SPEC.md "approved") and [Plan](<tasks/plan.md>).\n' +
         'Examples: SPEC.md and tasks/plan.md.\n',
+      'scripts/legacy-map.js':
+        "const legacyFiles = [['../SPEC.md', '../work-products/SPEC.md']];\n",
       'src/product.js': 'module.exports = {};\n',
       'src/My File.js': 'module.exports = {};\n'
     });
@@ -327,6 +677,10 @@ test('apply moves evidenced artifacts and rewrites only resolvable references', 
       );
       assert.equal(fs.readFileSync(path.join(workspace, 'src', 'product.js'), 'utf8'),
         'module.exports = {};\n');
+      assert.equal(
+        fs.readFileSync(path.join(workspace, 'scripts', 'legacy-map.js'), 'utf8'),
+        "const legacyFiles = [['../work-products/SPEC.md', '../work-products/SPEC.md']];\n"
+      );
       assert.equal(runPreview(pkg, workspace).status, 'NO_CHANGES');
     } finally {
       fs.rmSync(workspace, { recursive: true, force: true });

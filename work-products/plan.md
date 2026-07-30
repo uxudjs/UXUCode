@@ -10,8 +10,8 @@
 
 - 当前相关文件已有未提交修改；每个任务开始前先检查该任务文件的现有 diff，增量修复，禁止覆盖或回退用户改动。
 - Claude 与 Codex 是独立发布包。成对文件应保持语义一致，但保留各自的命令格式、Hook 输出和插件根目录契约。
-- OpenClaw 保持独立模块；本轮不迁移 `OpenClaw/tests/`，也不把 Claude/Codex 的运行时配置带入 OpenClaw。
-- UXUCode 新建测试默认进入 `work-products/tests/`，但项目原生测试发现、CI、共置约定或模块边界优先。例外必须记录可执行验证命令。
+- OpenClaw 保持独立运行时，但其内部测试与其他内部测试遵循同一 `work-products/tests/` 目录合同；迁移不得把 Claude/Codex 的运行时配置带入 OpenClaw。
+- 所有使用者无需关注、且可按受支持命名约定明确识别的内部测试统一进入 `work-products/tests/`；迁移同步修正测试发现、CI 和模块命令中的明确路径。
 - 每个行为修复先补充或调整会失败的契约断言，再修改实现或文档。
 - 三语言用户文档以简体中文为语义基准，在同一任务中同步繁体中文与英文；允许自然翻译，不允许命令、路径、默认值、风险边界或章节层级漂移。
 - README 和使用指南只保留影响用户操作决策的实现边界；维护者校验、评测阈值和证据合同后移到维护者附录或已有专项文档。
@@ -42,7 +42,7 @@
 - [ ] 根目录不再保留 UXUCode 自建的 `SPEC.md`、`tasks/plan.md`、`tasks/todo.md`。
 - [ ] 本轮规格、计划、清单与旧规格归档可区分，任何现有内容均未被覆盖或丢失。
 - [ ] 模式契约测试位于 `work-products/tests/`，相对引用仍指向正确的 Claude/Codex 文件。
-- [ ] `OpenClaw/tests/` 未移动；现有用户项目测试不受通用迁移规则影响。
+- [x] 本条原生测试例外已由任务 26 的用户明确确认取代；仓库内部测试统一迁移并同步发现路径。
 
 **验证：**
 
@@ -169,12 +169,12 @@
 
 ## 任务 5：统一各工作阶段的产物目录与原生测试例外
 
-**范围：** 对齐 build、debug、test、review、ship 与 planning reference。过程记录分别进入 `work-products/debug/`、`reviews/`、`ship/`；新测试默认进入 `work-products/tests/`，同时明确项目原生测试发现、CI、共置约定或模块边界优先，并要求记录实际执行方式。
+**范围：** 对齐 build、debug、test、review、ship 与 planning reference。过程记录分别进入 `work-products/debug/`、`reviews/`、`ship/`；所有操作创建的新测试统一进入 `work-products/tests/`，测试内仓库文件引用使用从最终位置出发的相对路径，并要求记录实际执行方式。
 
 **验收标准：**
 
 - [ ] 每个阶段只承诺自身需要的过程产物，不制造空目录或无用模板。
-- [ ] 新测试默认路径与“项目原生约定优先”的例外同时存在，不再绝对要求所有测试脱离项目测试树。
+- [x] 本条原生测试例外已由任务 26 取代；新建及可识别的内部测试统一进入 `work-products/tests/`。
 - [ ] 测试必须被统一验证入口显式执行、被原生发现机制覆盖，或记录独立命令。
 - [ ] Claude/Codex 对称文件通过技能与工作流引用一致性检查。
 
@@ -331,7 +331,7 @@
 
 - [ ] 三份指南的 12 个编号章节、二级/三级标题结构、命令、模式、默认值和路径完全对齐。
 - [ ] 所有命令块均能从相邻文字判断执行环境；不存在 `spec?`、未解释的维护者术语或在多个命令说明中重复的完整路径清单。
-- [ ] “生成文件位置”集中说明 `work-products/` 默认路径和项目原生测试目录例外；维护者附录清楚区分本地静态验证与真实宿主运行证明。
+- [ ] “生成文件位置”集中说明 `work-products/` 与 `work-products/tests/` 的唯一位置及测试相对路径合同；维护者附录清楚区分本地静态验证与真实宿主运行证明。
 
 **验证：**
 
@@ -508,12 +508,12 @@
 
 ## 任务 15：建立 `clean` 预览与候选分类合同
 
-**范围：** 先在隔离临时仓库中增加失败测试，再为 Claude/Codex 建立字节级一致的无依赖 Node.js 引擎。无参数运行只扫描和输出 `READY`、`NO_CHANGES` 或 `BLOCKED`，不得写入工作区。候选只接受规格第 13.3 节的正向证据；文件名、扩展名、Git 未跟踪状态或通用目录名不能单独构成移动依据。
+**范围：** 先在隔离临时仓库中增加失败测试，再为 Claude/Codex 建立字节级一致的无依赖 Node.js 引擎。无参数运行只扫描和输出 `READY`、`NO_CHANGES` 或 `BLOCKED`，不得写入工作区。测试候选发现覆盖整个仓库，但候选只接受规格第 13.3 节的正向证据；文件名、扩展名、Git 未跟踪状态或通用目录名不能单独构成移动依据。
 
 **验收标准：**
 
 - [x] 预览准确列出源、目标、判定依据、引用变化、ignore 变化、阻塞项和未处理项。
-- [x] 项目源码、项目原生测试、交付物、符号链接目标和模糊候选逐字节不变。
+- [x] 项目源码、交付物、符号链接目标和模糊非测试候选逐字节不变；受支持命名的内部测试进入迁移计划。
 - [x] 两个宿主引擎对同一 fixture 输出相同结果，且预览前后工作区哈希一致。
 
 **验证：**
@@ -541,7 +541,7 @@
 **验收标准：**
 
 - [x] `apply` 只移动已确认候选，保留文件内容、UTF-8、换行风格和非目标文本。
-- [x] 三类有效引用全部指向移动后的正确目标；外部 URL、绝对路径、动态路径和示例文本不被误改。
+- [x] 三类有效引用及迁移文件内可确认的仓库内绝对路径全部指向移动后的正确目标；外部 URL、仓库外绝对路径、动态路径和示例文本不被误改。
 - [x] 注入任一步骤失败后，已移动文件和已修改文本恢复到执行前字节；无法恢复时报告确切路径并返回非 0。
 
 **验证：**
@@ -805,7 +805,7 @@
 - [x] GREEN：`node --test work-products/tests/clean-contract.test.js`
 - [x] `node scripts/validate-all.js`
 - [x] `git -c safe.directory=C:/Users/brand/SynologyDrive/Code/UXUCode diff --check`
-- [ ] 重新执行 `@review`，且没有未解决的 Critical 或 Important 发现。
+- [x] 重新执行 `@review`，且没有未解决的 Critical 或 Important 发现。
 
 ## 任务 25：限制 Clean 只改写迁移相关引用
 
@@ -820,7 +820,46 @@
 - [x] `node --test work-products/tests/clean-contract.test.js`
 - [x] `node scripts/validate-all.js`
 - [x] `git -c safe.directory=C:/Users/brand/SynologyDrive/Code/UXUCode diff --check`
-- [ ] 重新执行 `@review`，且没有未解决的 Critical 或 Important 发现。
+- [x] 重新执行 `@review`，且没有未解决的 Critical 或 Important 发现。
+
+## 任务 26：修复 Clean 测试发现范围与项目内绝对路径
+
+**范围：** 修复测试候选仅扫描根目录 `tests/` 的缺陷，使全仓内受支持命名的内部测试无需额外 UXUCode 标记即可统一迁入 `work-products/tests/`；对被迁移测试中可确认指向当前仓库文件的绝对路径，按最终位置改写为相对路径。规范目录内既有测试、项目源码及仓库外路径保持不变。本任务按用户 2026-07-30 的明确确认取代此前项目原生测试例外。
+
+**验证：**
+
+- [x] RED：无 UXUCode 标记的根目录与项目原生测试在旧实现中错误返回 `NO_CHANGES`。
+- [x] GREEN：根目录、嵌套目录和项目原生测试均进入 `work-products/tests/`，不再要求额外归属标记。
+- [x] 迁移测试内的仓库绝对路径改为从 `work-products/tests/` 出发的相对路径。
+- [x] build、debug、test 与 TDD 工作流统一要求新测试位于 `work-products/tests/`，并禁止机器绑定的绝对路径。
+- [x] Claude/Codex Clean 引擎保持字节一致。
+- [x] `node --test work-products/tests/clean-contract.test.js`
+- [x] `node --test work-products/tests/workflow-contract.test.js`
+- [x] `node scripts/validate-all.js`
+- [x] `git -c safe.directory=C:/Users/brand/SynologyDrive/Code/UXUCode diff --check`
+
+## 任务 27：修复 Clean Review 的安全与完整性缺口
+
+**规划依据：** 用户已明确要求根据 `@review` 意见规划并修复；五项发现均有具体触发条件、影响与可验证修复，不存在未决产品决策。
+
+**范围：**
+
+1. 预览阶段检测多个迁移源映射到同一目标，并以 `TARGET_COLLISION` 返回 `BLOCKED`。
+2. 验证目标既存祖先，不允许符号链接、junction、非目录祖先或仓库逃逸。
+3. 全仓扫描跳过任意层级的依赖与版本控制目录。
+4. 将受支持测试命名从 JS 扩展为跨语言、跨扩展名的明确 test/spec 边界约定。
+5. 只自动改写可证明具有路径语义的相对或绝对引用；裸字符串精确命中迁移源时以 `AMBIGUOUS_REFERENCE` 返回 `BLOCKED`。
+
+**验收与回滚：**
+
+- [x] RED：重复目标、目标父目录链接、嵌套依赖、跨语言测试、非测试 `test-` 前缀，以及测试/过程迁移源的歧义裸字符串分别建立失败回归。
+- [x] GREEN：所有危险情况在预览阶段零写入 `BLOCKED` 或安全跳过；跨语言测试进入规范目录。
+- [x] Claude/Codex Clean 引擎保持字节一致。
+- [x] 规格、Clean Skill 和三语文档同步支持范围与 fail-closed 行为。
+- [x] `node --test work-products/tests/clean-contract.test.js`
+- [x] `node scripts/validate-all.js`
+- [x] `git -c safe.directory=C:/Users/brand/SynologyDrive/Code/UXUCode diff --check`
+- 回滚：恢复本任务对 Clean 引擎、合同测试、规格和文档的修改；不执行真实迁移。
 
 ## 检查点
 
@@ -833,7 +872,7 @@
 ### 检查点 B：任务 4-5 后
 
 - [ ] 清晰任务可直接规划，存在实质未决决策时仍要求规格。
-- [ ] 所有阶段使用规范目录，并保留项目原生测试例外。
+- [ ] 所有阶段使用规范目录，新测试统一位于 `work-products/tests/` 且仓库文件引用使用相对路径。
 - [ ] Claude/Codex 的语义一致性验证通过。
 
 ### 检查点 C：任务 6 后
@@ -878,12 +917,66 @@
 - [ ] `node scripts/validate-all.js` 与 `git diff --check` 返回 0。
 - [ ] 重新执行 `@review`，且没有未解决的 Critical 或 Important 发现。
 
+## 任务 28：解除 Ship NO-GO 的仓库整理阻塞
+
+**规划依据：** 已批准规格第 14 节、2026-07-30 `@ship` 的可复现 `BLOCKED` 输出，以及用户对本计划和 `@build auto` 的明确批准。目标、范围、约束、验收与回滚均已确定，无未决产品决策。
+
+### 任务 28.1：移除被取代的旧事实源
+
+**范围：** 核对根目录 `SPEC.md`、`tasks/plan.md`、`tasks/todo.md` 是已被规范事实源取代的历史规划产物，然后删除这三个受 Git 跟踪的旧源。不改写当前规范文件的既有内容，不增加归档或兼容路径。
+
+**验收：**
+
+- [x] 三个旧源在文件系统中不存在，`git status --short` 将其记录为删除。
+- [x] `work-products/SPEC.md`、`plan.md`、`todo.md` 继续可跟踪且内容完整。
+- [x] 仓库公开说明和运行时不读取旧路径。
+
+**验证：**
+
+- [x] `git -c safe.directory=C:/Users/brand/SynologyDrive/Code/UXUCode status --short`
+- [x] `rg -n "(^|[^A-Za-z0-9_-])(SPEC\\.md|tasks/plan\\.md|tasks/todo\\.md)" . --glob "!.git/**" --glob "!work-products/**"` 只允许 Clean 引擎的迁移合同与根规则说明命中。
+
+**回滚：** 从 Git 历史恢复三个旧文件，并同时恢复本任务状态；不得让恢复文件重新成为受支持事实源。
+
+### 任务 28.2：迁移 OpenClaw 内部测试及其执行路径
+
+**范围：** 将两个 OpenClaw 测试移动到 `work-products/tests/OpenClaw/tests/`，按最终位置重算其相对引用；同步 `scripts/validate-all.js`、`OpenClaw/README.md`、`OpenClaw/evaluation/README.md` 与文档校验器中的命令路径。
+
+**验收：**
+
+- [x] `OpenClaw/tests/` 不再包含测试源；两个新路径正常跟踪。
+- [x] 测试仍访问 `OpenClaw/` 下原有脚本、模板和评测 fixture，不复制产品文件。
+- [x] 统一入口和专项文档只展示新测试路径。
+
+**验证：**
+
+- [x] RED：移动后未改相对路径时，聚焦测试因模块或 fixture 路径失败。
+- [x] GREEN：`node --test work-products/tests/OpenClaw/tests/validate-profile.test.js work-products/tests/OpenClaw/tests/evaluation.test.js`
+- [x] 公开文档、统一入口和校验器中无以旧目录开头的可执行测试命令。
+
+**回滚：** 同时恢复两个测试源、相对引用、统一入口和两份专项文档；不得留下双份测试。
+
+### 任务 28.3：关闭最终 Clean 与发布前本地门禁
+
+**范围：** 运行双宿主 Clean 预览、统一验证、差异检查和当前 diff 审查；只在没有未解决 Critical/Important 问题时关闭任务清单。
+
+**验收与验证：**
+
+- [x] Claude/Codex Clean 预览均为 `NO_CHANGES` 且输出一致。
+- [x] `node scripts/validate-all.js` 12 步通过。
+- [x] `git -c safe.directory=C:/Users/brand/SynologyDrive/Code/UXUCode diff --check` 返回 0。
+- [x] `git ls-files --deleted` 精确包含三个旧事实源和两个旧测试源，新测试路径未被忽略且可跟踪。
+- [x] 当前 diff 无未解释的 Critical 或 Important 问题。
+- [x] 明确保留真实 Marketplace、Hook、Gateway 与生产行为为未验证。
+
+**回滚：** 任务 28.1 与 28.2 各自独立回滚；验证记录可重跑，不修改产品状态。
+
 ## 风险与缓解
 
 | 风险 | 影响 | 缓解 |
 |---|---|---|
 | 覆盖当前未提交修改 | 高 | 每任务先读现有 diff，只做增量补丁；禁止 reset/checkout。 |
-| `work-products/tests/` 脱离原生发现机制 | 高 | 明确原生约定优先；统一入口显式执行仓库契约测试。 |
+| `work-products/tests/` 脱离原生发现机制 | 高 | 迁移时同步更新发现配置与可运行命令；统一入口显式执行仓库契约测试。 |
 | router 收紧后误伤合法参数 | 高 | 同时测试无参数、带参数、尾随空白与非法边界。 |
 | 可选 spec 被误解为不再需要 spec | 中 | 用正反两组规划依据断言锁定触发条件。 |
 | 验证入口遗漏或错误吞掉退出码 | 高 | 对步骤清单、顺序、fail-fast 和退出传播做契约测试。 |

@@ -155,6 +155,50 @@ test('guide validator rejects missing clean apply and safety boundaries', () => 
   );
 });
 
+test('guide validator requires canonical test placement and relative repository paths', () => {
+  const missingDestination = guides[2].replace(
+    'into `work-products/tests/`',
+    'within the project'
+  );
+  const missingRelativePolicy = guides[2].replace(
+    'Tests must reference repository files with relative paths from their final location, never machine-specific absolute paths.',
+    'Tests may reference repository files according to local conventions.'
+  );
+
+  assert.ok(
+    validateGuides([guides[0], guides[1], missingDestination])
+      .some((failure) => failure.includes('canonical internal-test destination')),
+    'expected the guide validator to require the clean destination'
+  );
+  assert.ok(
+    validateGuides([guides[0], guides[1], missingRelativePolicy])
+      .some((failure) => failure.includes('relative test-path policy')),
+    'expected the guide validator to require relative repository paths'
+  );
+});
+
+test('documentation validators require the complete clean safety boundary', () => {
+  const missingGuideBoundary = guides[2].replace(
+    'ambiguous bare strings',
+    'ambiguous values'
+  );
+  const missingReadmeBoundary = readme.replace(
+    'duplicate targets',
+    'conflicts'
+  );
+
+  assert.ok(
+    validateGuides([guides[0], guides[1], missingGuideBoundary])
+      .some((failure) => failure.includes('clean safety contract')),
+    'expected the guide validator to require ambiguous bare-string blocking'
+  );
+  assert.ok(
+    validateReadme(missingReadmeBoundary)
+      .some((failure) => failure.includes('clean safety contract')),
+    'expected the README validator to require duplicate-target blocking'
+  );
+});
+
 test('README validator requires the concise clean contract in every language', () => {
   const missingEnglishClean = transformSection(
     readme,

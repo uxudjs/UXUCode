@@ -1,6 +1,6 @@
 ---
 name: clean
-description: Preview or safely organize confirmed UXUCode process artifacts misplaced outside work-products/, including required relative-reference and repository .gitignore synchronization. Use when the workspace may contain misplaced SPEC, task, or UXUCode auxiliary test files; run without arguments for a zero-write preview and with the exact apply argument to execute.
+description: Preview or safely organize UXUCode process artifacts and supported internal test files misplaced outside work-products/, including required project-local reference and repository .gitignore synchronization. Run without arguments for a zero-write preview and with the exact apply argument to execute.
 ---
 
 # Clean
@@ -11,8 +11,10 @@ Resolve the plugin package from this loaded Skill, then run its own `scripts/cle
 
 - With no argument, run the engine without arguments and report its preview. Do not modify the workspace.
 - With `apply`, run the engine with the exact `apply` argument. Execute only the complete prevalidated plan.
+- Scan test candidates repository-wide across supported cross-language `test`/`spec` filename boundaries while excluding version-control and dependency directories. Relativize project-local absolute paths in moved text files.
+- Block planned target collisions, linked or escaping target ancestors, and ambiguous bare strings instead of overwriting files or guessing path semantics.
 - For `BLOCKED`, report every blocker and leave all files unchanged.
 - For `APPLIED`, summarize moved files, reference updates, `.gitignore` changes, and read-only external exclude findings.
 - For `NO_CHANGES`, state that the workspace already satisfies the contract.
 
-Never broaden this into general cleanup. Leave project source, project-native tests, deliverables, ambiguous files, Git index/history, user-level excludes, and `.git/info/exclude` unchanged.
+Never broaden this into general deletion. Leave project source, deliverables, ambiguous non-test files, Git index/history, user-level excludes, and `.git/info/exclude` unchanged.

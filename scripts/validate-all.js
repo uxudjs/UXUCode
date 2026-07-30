@@ -31,8 +31,8 @@ const steps = [
     command: node,
     args: [
       '--test',
-      'OpenClaw/tests/validate-profile.test.js',
-      'OpenClaw/tests/evaluation.test.js'
+      'work-products/tests/OpenClaw/tests/validate-profile.test.js',
+      'work-products/tests/OpenClaw/tests/evaluation.test.js'
     ]
   },
   { name: 'git diff check', command: 'git', args: ['diff', '--check'] }

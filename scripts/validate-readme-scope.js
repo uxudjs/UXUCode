@@ -169,6 +169,17 @@ function validateReadme(readme) {
     if (!/(?:不是删除命令|不是刪除命令|is not a delete command)/.test(section)) {
       failures.push(definition.marker + ': clean contract is missing the non-deletion boundary');
     }
+    for (const [pattern, label] of [
+      [/(?:跨语言|跨語言|cross-language)/i, 'cross-language test discovery'],
+      [/(?:依赖|依賴|dependency)/i, 'dependency-directory exclusion'],
+      [/(?:重复目标|重複目標|duplicate targets)/i, 'duplicate-target blocker'],
+      [/(?:目标祖先|目標祖先|target ancestors)/i, 'target-ancestor blocker'],
+      [/(?:裸字符串|裸字串|bare strings)/i, 'ambiguous bare-string blocker']
+    ]) {
+      if (!pattern.test(section)) {
+        failures.push(definition.marker + ': clean safety contract is missing ' + label);
+      }
+    }
     if (section.includes('/uxu-code:organize') ||
         /(^|[^A-Za-z0-9_-])@organize(?:$|[^A-Za-z0-9_-])/.test(section)) {
       failures.push(definition.marker + ': forbidden organize alias');

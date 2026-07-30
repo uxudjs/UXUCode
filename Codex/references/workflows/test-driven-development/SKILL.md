@@ -5,6 +5,8 @@ description: 以测试驱动开发。适用于实现任何逻辑、修复任何 
 
 # Test-Driven Development
 
+Create test files and related test artifacts only under `work-products/tests/`. When they refer to repository files, use relative paths from each test artifact's final location; never persist a machine-specific absolute path.
+
 ## Overview
 
 Write a failing test before writing the code that makes it pass. For bug fixes, reproduce the bug with a test before attempting a fix. Tests are proof — "seems right" is not done. A codebase with good tests is an AI agent's superpower; a codebase without tests is a liability.

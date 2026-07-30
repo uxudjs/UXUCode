@@ -11,7 +11,7 @@ List exactly these public commands: `help`, `spec`, `plan`, `build`, `debug`, `t
 
 Recommend `spec? → plan → build → review → simplify → ship`: use `spec` when requirements or material risks are unresolved, but allow `plan` to start from thorough debug evidence or clear user requirements. Explain that `build auto` requires an approved stable plan and reliable tests.
 
-Explain that every newly created UXUCode process, plan, task, review, ship, and test file belongs under `work-products/`; product source and deliverables keep their project-native locations.
+Explain that every newly created UXUCode process, plan, task, review, ship, and test file belongs under `work-products/`, with tests specifically under `work-products/tests/`. Test artifacts must reference repository files with relative paths from their final location, never machine-specific absolute paths; product source and deliverables keep their project-native locations.
 
 Explain that `clean` organizes confirmed misplaced UXUCode process artifacts; it is not a delete command. No argument previews with zero writes, while the exact `apply` argument executes the validated moves, reference updates, and repository `.gitignore` synchronization.
 

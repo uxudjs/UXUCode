@@ -19,9 +19,9 @@ const legacyFiles = [
   ['tasks/plan.md', 'work-products/plan.md', 'legacy-plan-path'],
   ['tasks/todo.md', 'work-products/todo.md', 'legacy-todo-path']
 ];
-const testNamePattern = /\.(?:test|spec)\.(?:c|m)?js$/i;
-const hostContractPattern = /(?:^|[\\/])(?:Codex|Claude)[\\/](?:hooks|skills|references)[\\/]/;
-const workProductMarkerPattern = /(?:^|\r?\n)\s*(?:\/\/|#|<!--)\s*UXUCode work-product\b/i;
+const delimitedTestNamePattern = /(?:^test[._]|[._](?:test|spec)[._])/i;
+const camelCaseTestNamePattern = /(?:Test|Tests)\.[^.]+$/;
+const ignoredDirectoryNames = new Set(['.git', 'node_modules', '.venv', 'venv', 'vendor']);
 const ignoreSemanticProbes = [
   { path: 'work-products/SPEC.md', expected: 'tracked' },
   { path: 'work-products/plan.md', expected: 'tracked' },
@@ -42,6 +42,10 @@ function toPosix(relativePath) {
   return relativePath.split(path.sep).join('/');
 }
 
+function isSupportedTestName(fileName) {
+  return delimitedTestNamePattern.test(fileName) || camelCaseTestNamePattern.test(fileName);
+}
+
 function findRepositoryRoot(start) {
   let current = path.resolve(start);
   while (true) {
@@ -57,7 +61,7 @@ function pathEntry(relativePath, root) {
   try {
     return { absolutePath, stat: fs.lstatSync(absolutePath) };
   } catch (error) {
-    if (error.code === 'ENOENT') return null;
+    if (error.code === 'ENOENT' || error.code === 'ENOTDIR') return null;
     throw error;
   }
 }
@@ -98,25 +102,24 @@ function visitTests(directory, root, report) {
       continue;
     }
     if (entry.isDirectory()) {
+      if (ignoredDirectoryNames.has(entry.name.toLowerCase()) ||
+          relativePath === 'work-products') {
+        continue;
+      }
       visitTests(absolutePath, root, report);
       continue;
     }
-    if (!entry.isFile() || !testNamePattern.test(entry.name)) continue;
+    if (!entry.isFile() || !isSupportedTestName(entry.name)) continue;
 
-    const readable = readTextFile(absolutePath);
-    if (readable.error ||
-        !workProductMarkerPattern.test(readable.text) ||
-        !hostContractPattern.test(readable.text)) {
-      report.skipped.push({ path: relativePath, reason: 'ambiguous-test' });
-      continue;
-    }
-    const testRelativePath = toPosix(path.relative(path.join(root, 'tests'), absolutePath));
+    const testRelativePath = relativePath.startsWith('tests/')
+      ? relativePath.slice('tests/'.length)
+      : relativePath;
     addCandidate(
       report,
       root,
       relativePath,
       `work-products/tests/${testRelativePath}`,
-      'uxucode-host-contract-test'
+      'internal-test-artifact'
     );
   }
 }
@@ -288,6 +291,81 @@ function isInsideRoot(root, target) {
     (!relativePath.startsWith(`..${path.sep}`) && relativePath !== '..' && !path.isAbsolute(relativePath));
 }
 
+function inspectTargetParent(root, target) {
+  const absoluteTarget = path.resolve(root, target);
+  const parent = path.dirname(absoluteTarget);
+  const relativeParent = path.relative(root, parent);
+  if (!isInsideRoot(root, parent)) {
+    return { code: 'TARGET_PARENT_OUTSIDE_REPOSITORY', path: toPosix(relativeParent), target };
+  }
+
+  const rootRealPath = fs.realpathSync(root);
+  let current = root;
+  for (const segment of relativeParent.split(path.sep).filter(Boolean)) {
+    current = path.join(current, segment);
+    let stat;
+    try {
+      stat = fs.lstatSync(current);
+    } catch (error) {
+      if (error.code === 'ENOENT') break;
+      return {
+        code: 'TARGET_PARENT_UNREADABLE',
+        path: toPosix(path.relative(root, current)),
+        target,
+        reason: error.code || 'unknown'
+      };
+    }
+    const currentPath = toPosix(path.relative(root, current));
+    if (stat.isSymbolicLink()) {
+      return { code: 'TARGET_PARENT_SYMLINK', path: currentPath, target };
+    }
+    if (!stat.isDirectory()) {
+      return { code: 'TARGET_PARENT_NOT_DIRECTORY', path: currentPath, target };
+    }
+    let currentRealPath;
+    try {
+      currentRealPath = fs.realpathSync(current);
+    } catch (error) {
+      return {
+        code: 'TARGET_PARENT_UNREADABLE',
+        path: currentPath,
+        target,
+        reason: error.code || 'unknown'
+      };
+    }
+    if (!isInsideRoot(rootRealPath, currentRealPath)) {
+      return { code: 'TARGET_PARENT_OUTSIDE_REPOSITORY', path: currentPath, target };
+    }
+  }
+  return null;
+}
+
+function addMoveSafetyBlockers(root, report) {
+  const targets = new Map();
+  for (const move of report.moves) {
+    const key = process.platform === 'win32' ? move.target.toLowerCase() : move.target;
+    const existing = targets.get(key);
+    if (existing) {
+      existing.sources.push(move.source);
+    } else {
+      targets.set(key, { target: move.target, sources: [move.source] });
+    }
+    const parentBlocker = inspectTargetParent(root, move.target);
+    if (parentBlocker &&
+        !report.blockers.some((blocker) =>
+          blocker.code === parentBlocker.code &&
+          blocker.path === parentBlocker.path &&
+          blocker.target === parentBlocker.target)) {
+      report.blockers.push(parentBlocker);
+    }
+  }
+  for (const { target, sources } of targets.values()) {
+    if (sources.length > 1) {
+      report.blockers.push({ code: 'TARGET_COLLISION', target, sources });
+    }
+  }
+}
+
 function readTextFile(filePath) {
   try {
     const buffer = fs.readFileSync(filePath);
@@ -318,7 +396,7 @@ function collectTextFiles(root, report) {
       return;
     }
     for (const entry of entries) {
-      if (entry.name === '.git' || entry.name === 'node_modules') continue;
+      if (ignoredDirectoryNames.has(entry.name.toLowerCase())) continue;
       const absolutePath = path.join(directory, entry.name);
       const relativePath = toPosix(path.relative(root, absolutePath));
       if (entry.isSymbolicLink()) continue;
@@ -340,7 +418,6 @@ function collectTextFiles(root, report) {
 }
 
 function resolveReference(root, source, finalSource, reference, moveMap) {
-  if (/^(?:[a-z][a-z0-9+.-]*:|#|\/)/i.test(reference)) return null;
   const hashIndex = reference.indexOf('#');
   const pathPart = hashIndex >= 0 ? reference.slice(0, hashIndex) : reference;
   const suffix = hashIndex >= 0 ? reference.slice(hashIndex) : '';
@@ -352,7 +429,11 @@ function resolveReference(root, source, finalSource, reference, moveMap) {
   } catch {
     return null;
   }
-  const currentTarget = path.resolve(root, path.dirname(source), decodedPath);
+  const isAbsolutePath = path.isAbsolute(decodedPath) || /^[a-z]:[\\/]/i.test(decodedPath);
+  if (!isAbsolutePath && /^(?:[a-z][a-z0-9+.-]*:|#)/i.test(reference)) return null;
+  const currentTarget = isAbsolutePath
+    ? path.resolve(decodedPath)
+    : path.resolve(root, path.dirname(source), decodedPath);
   if (!isInsideRoot(root, currentTarget)) return null;
   const currentRelative = toPosix(path.relative(root, currentTarget));
   const sourceWasMoved = source !== finalSource;
@@ -374,11 +455,44 @@ function formatReference(reference, rewritten, preserveSpaces) {
   return `${encodeURI(pathPart)}${suffix}`;
 }
 
-function rewriteRelativeReferences(root, source, target, content, moveMap, updates, checks) {
+function rewriteRelativeReferences(
+  root,
+  source,
+  target,
+  content,
+  moveMap,
+  updates,
+  checks,
+  blockers
+) {
   const markdownPattern =
     /(!?\[[^\]\r\n]*\]\()([ \t]*)(?:<([^>\r\n]+)>|((?:\\.|[^)\s])+))((?:[ \t]+(?:"[^"\r\n]*"|'[^'\r\n]*'|\([^)\r\n]*\)))?[ \t]*)(\))/g;
-  const quotedPattern = /(['"])(\.\.?\/[^'"\r\n]+)\1/g;
-  let next = content.replace(
+  const quotedPattern = /(['"])((?:\.\.?[\\/]|[a-z]:[\\/]|\/)[^'"\r\n]+)\1/gi;
+  const moveSourcePattern = [...moveMap.keys()]
+    .sort((left, right) => right.length - left.length)
+    .map((value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+    .join('|');
+  let next = content;
+  if (moveSourcePattern) {
+    const quotedMovePattern = new RegExp(`(['"])(${moveSourcePattern})\\1`, 'g');
+    next = next.replace(quotedMovePattern, (match, quote, reference) => {
+      const finalTarget = moveMap.get(reference);
+      if (!blockers.some((blocker) =>
+        blocker.code === 'AMBIGUOUS_REFERENCE' &&
+        blocker.file === target &&
+        blocker.reference === reference &&
+        blocker.target === finalTarget)) {
+        blockers.push({
+          code: 'AMBIGUOUS_REFERENCE',
+          file: target,
+          reference,
+          target: finalTarget
+        });
+      }
+      return match;
+    });
+  }
+  next = next.replace(
     markdownPattern,
     (match, prefix, spacing, angleReference, bareReference, title, suffix) => {
     const reference = angleReference || bareReference;
@@ -425,17 +539,14 @@ function buildPlan(workspace = process.cwd()) {
   }
 
   for (const candidate of legacyFiles) addCandidate(report, root, ...candidate);
-  const testsPath = path.join(root, 'tests');
-  if (fs.existsSync(testsPath) && fs.lstatSync(testsPath).isDirectory()) {
-    visitTests(testsPath, root, report);
-  }
+  visitTests(root, root, report);
   const gitignorePlan = planGitignore(root);
   report.gitignoreChanges = gitignorePlan.report;
   report.blockers.push(...gitignorePlan.blockers);
   report.externalIgnoreSources = inspectExternalIgnores(root);
   report.moves.sort(comparePaths);
-  report.blockers.sort(comparePaths);
   report.skipped.sort(comparePaths);
+  addMoveSafetyBlockers(root, report);
 
   const moveMap = new Map(report.moves.map(({ source, target }) => [source, target]));
   const updates = [];
@@ -454,7 +565,8 @@ function buildPlan(workspace = process.cwd()) {
       content,
       moveMap,
       updates,
-      referenceChecks
+      referenceChecks,
+      report.blockers
     );
     const next = Buffer.from(content, 'utf8');
     if (!next.equals(original)) changes.push({ source: file, output, original, next });
@@ -465,6 +577,7 @@ function buildPlan(workspace = process.cwd()) {
     const rightKey = `${right.file}\0${right.from}\0${right.to}`;
     return leftKey < rightKey ? -1 : leftKey > rightKey ? 1 : 0;
   });
+  report.blockers.sort(comparePaths);
   const hasChanges = report.moves.length > 0 ||
     report.referenceUpdates.length > 0 ||
     report.gitignoreChanges.add.length > 0 ||
@@ -521,7 +634,13 @@ function applyWorkspace(workspace = process.cwd(), dependencies = {}) {
     for (const move of plan.report.moves) {
       const source = path.join(plan.root, move.source);
       const target = path.join(plan.root, move.target);
+      const parentBlocker = inspectTargetParent(plan.root, move.target);
+      if (parentBlocker) throw new Error(`${parentBlocker.code}: ${parentBlocker.path}`);
       ensureDirectory(path.dirname(target));
+      const createdParentBlocker = inspectTargetParent(plan.root, move.target);
+      if (createdParentBlocker) {
+        throw new Error(`${createdParentBlocker.code}: ${createdParentBlocker.path}`);
+      }
       fs.renameSync(source, target);
       moved.push(move);
       completed({ type: 'move', source: move.source, target: move.target });

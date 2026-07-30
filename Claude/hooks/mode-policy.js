@@ -8,7 +8,7 @@ const policies = {
   off: 'Correctness, safety, explicit requirements, and validation evidence remain required.'
 };
 
-const workflowPolicy = 'Plan may proceed without a specification when thorough debug evidence or clear user requirements provide the objective, scope, constraints, and verifiable acceptance criteria; require spec when material ambiguity or risk remains. Create all UXUCode workflow artifacts, including test files, only under `work-products/`; product source files and final deliverables may use project-native or explicitly requested locations.';
+const workflowPolicy = 'Plan may proceed without a specification when thorough debug evidence or clear user requirements provide the objective, scope, constraints, and verifiable acceptance criteria; require spec when material ambiguity or risk remains. Create all UXUCode workflow artifacts only under `work-products/`, including test files specifically under `work-products/tests/`. Test artifacts must reference repository files with relative paths from their final location, never machine-specific absolute paths; product source files and final deliverables may use project-native or explicitly requested locations.';
 
 function resolveMode(value) {
   return supportedModes.includes(value) ? value : 'standard';

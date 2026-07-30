@@ -9,9 +9,9 @@ const {
   scoreResults,
   validateCases,
   validateResults
-} = require('../evaluation/score-results');
+} = require('../../../../OpenClaw/evaluation/score-results');
 
-const casesPath = path.resolve(__dirname, '..', 'evaluation', 'cases.json');
+const casesPath = path.resolve(__dirname, '..', '..', '..', '..', 'OpenClaw', 'evaluation', 'cases.json');
 const fixture = JSON.parse(fs.readFileSync(casesPath, 'utf8'));
 
 function passingResults() {
@@ -151,7 +151,16 @@ test('evaluation: rejects incomplete metadata, duplicate runs, and missing cases
 
 test('evaluation: scoring CLI returns zero for pass and non-zero for gate failure', () => {
   const temporaryRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'uxucode-openclaw-score-'));
-  const scorerPath = path.resolve(__dirname, '..', 'evaluation', 'score-results.js');
+  const scorerPath = path.resolve(
+    __dirname,
+    '..',
+    '..',
+    '..',
+    '..',
+    'OpenClaw',
+    'evaluation',
+    'score-results.js'
+  );
   try {
     const passPath = path.join(temporaryRoot, 'pass.json');
     fs.writeFileSync(passPath, JSON.stringify(passingResults()));

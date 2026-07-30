@@ -113,7 +113,7 @@ Repository validation:
 
 ```text
 node OpenClaw/scripts/validate-profile.js
-node --test OpenClaw/tests/validate-profile.test.js
+node --test work-products/tests/OpenClaw/tests/validate-profile.test.js
 ```
 
 The validator enforces the compact profile contract and confirms that the OpenClaw package contains no plugin, hook, or skill scaffolding.

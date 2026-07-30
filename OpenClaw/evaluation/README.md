@@ -19,7 +19,7 @@ Each case declares its risk level, permitted external-mutation count, expected o
 Validate the fixture contract:
 
 ```text
-node --test --test-name-pattern "evaluation: fixture" OpenClaw/tests/evaluation.test.js
+node --test --test-name-pattern "evaluation: fixture" work-products/tests/OpenClaw/tests/evaluation.test.js
 ```
 
 ## Pin the environment

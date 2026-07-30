@@ -177,6 +177,9 @@ test('both hosts expose one mode-independent workflow artifact policy', () => {
   assert.equal(codexPolicy.workflowPolicy, claudePolicy.workflowPolicy);
   assert.match(codexPolicy.workflowPolicy, /only under `work-products\/`/);
   assert.match(codexPolicy.workflowPolicy, /including test files/);
+  assert.match(codexPolicy.workflowPolicy, /work-products\/tests\//);
+  assert.match(codexPolicy.workflowPolicy, /relative paths/i);
+  assert.match(codexPolicy.workflowPolicy, /machine-specific absolute paths/i);
 });
 
 test('every hook injects the workflow artifact policy even in off mode', () => {
@@ -224,6 +227,25 @@ test('relevant skills keep every newly created workflow and test file in work-pr
       const content = readSkill(pkg, skill);
       for (const expectedPath of paths) assert.ok(content.includes(expectedPath));
     }
+  }
+});
+
+test('test-creating operations require canonical placement and relative paths', () => {
+  for (const pkg of packages) {
+    for (const skill of ['build', 'debug', 'test']) {
+      const content = readSkill(pkg, skill);
+      assert.match(content, /work-products\/tests\//);
+      assert.match(content, /relative path/i);
+      assert.match(content, /machine-specific absolute path/i);
+    }
+
+    const tdd = fs.readFileSync(
+      path.join(root, pkg, 'references', 'workflows', 'test-driven-development', 'SKILL.md'),
+      'utf8'
+    );
+    assert.match(tdd, /work-products\/tests\//);
+    assert.match(tdd, /relative path/i);
+    assert.match(tdd, /machine-specific absolute path/i);
   }
 });
 
@@ -305,6 +327,14 @@ test('unified validation covers every repository gate and propagates the first f
       'OpenClaw profile',
       'OpenClaw tests',
       'git diff check'
+    ]
+  );
+  assert.deepEqual(
+    steps.find((step) => step.name === 'OpenClaw tests').args,
+    [
+      '--test',
+      'work-products/tests/OpenClaw/tests/validate-profile.test.js',
+      'work-products/tests/OpenClaw/tests/evaluation.test.js'
     ]
   );
 

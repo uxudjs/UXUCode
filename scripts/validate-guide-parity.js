@@ -11,7 +11,6 @@ const definitions = [
     systemTerminal: '在系统终端',
     claudeSession: '进入 Claude Code 会话后',
     newOpenClawSession: '启动新的 OpenClaw 会话',
-    testException: '以项目约定为准',
     evidenceBoundary: '不证明真实 Marketplace 安装'
   },
   {
@@ -19,7 +18,6 @@ const definitions = [
     systemTerminal: '在系統終端',
     claudeSession: '進入 Claude Code 工作階段後',
     newOpenClawSession: '啟動新的 OpenClaw 工作階段',
-    testException: '以專案約定為準',
     evidenceBoundary: '不證明真實 Marketplace 安裝'
   },
   {
@@ -27,7 +25,6 @@ const definitions = [
     systemTerminal: 'In a system terminal',
     claudeSession: 'After entering the Claude Code session',
     newOpenClawSession: 'Start a new OpenClaw session',
-    testException: 'follow the project convention',
     evidenceBoundary: 'does not prove a live Marketplace installation'
   }
 ];
@@ -189,16 +186,33 @@ guides.forEach((guide, index) => {
   if (!/(?:不是删除命令|不是刪除命令|is not a delete command)/.test(commandReference)) {
     failures.push(file + ': clean contract is missing the non-deletion boundary');
   }
+  for (const [pattern, label] of [
+    [/(?:跨语言|跨語言|cross-language)/i, 'cross-language test discovery'],
+    [/(?:依赖|依賴|dependency)/i, 'dependency-directory exclusion'],
+    [/(?:重复目标|重複目標|duplicate targets)/i, 'duplicate-target blocker'],
+    [/(?:目标祖先|目標祖先|target ancestors)/i, 'target-ancestor blocker'],
+    [/(?:裸字符串|裸字串|bare strings)/i, 'ambiguous bare-string blocker']
+  ]) {
+    if (!pattern.test(commandReference)) {
+      failures.push(file + ': clean safety contract is missing ' + label);
+    }
+  }
   if (guide.includes('/uxu-code:organize') || /(^|[^A-Za-z0-9_-])@organize(?:$|[^A-Za-z0-9_-])/.test(guide)) {
     failures.push(file + ': forbidden organize alias');
   }
 
   for (const generatedPath of generatedPaths) {
     if (!generatedFiles.includes(generatedPath)) failures.push(file + ': generated-files table is missing ' + generatedPath);
-    if (count(guide, generatedPath) !== 1) failures.push(file + ': ' + generatedPath + ' must appear only in the generated-files section');
+    if (generatedPath !== 'work-products/tests/' && count(guide, generatedPath) !== 1) {
+      failures.push(file + ': ' + generatedPath + ' must appear only in the generated-files section');
+    }
   }
-  if (!generatedFiles.includes(definition.testException)) {
-    failures.push(file + ': generated-files section is missing the project-native test-location exception');
+  if (!commandReference.includes('work-products/tests/')) {
+    failures.push(file + ': clean contract is missing the canonical internal-test destination');
+  }
+  if (!/(?:相对路径|相對路徑|relative paths)/.test(generatedFiles) ||
+      !/(?:绝对路径|絕對路徑|absolute paths)/.test(generatedFiles)) {
+    failures.push(file + ': generated-files section is missing the relative test-path policy');
   }
   for (const required of ['.gitignore', 'core.excludesFile', '.git/info/exclude']) {
     if (!generatedFiles.includes(required)) {
@@ -246,7 +260,7 @@ guides.forEach((guide, index) => {
   for (const forbidden of [
     'spec?',
     'node OpenClaw/evaluation/score-results.js',
-    'node --test OpenClaw/tests/validate-profile.test.js OpenClaw/tests/evaluation.test.js'
+    'node --test work-products/tests/OpenClaw/tests/validate-profile.test.js work-products/tests/OpenClaw/tests/evaluation.test.js'
   ]) {
     if (guide.includes(forbidden)) failures.push(file + ': maintainer evaluation detail is outside the dedicated OpenClaw documentation: ' + forbidden);
   }

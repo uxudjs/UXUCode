@@ -9,14 +9,14 @@ const {
   END_MARKER,
   validatePackage,
   validateProfile
-} = require('../scripts/validate-profile');
+} = require('../../../../OpenClaw/scripts/validate-profile');
 const {
   installProfile,
   parseArgs,
   renderProfile
-} = require('../scripts/install-profile');
+} = require('../../../../OpenClaw/scripts/install-profile');
 
-const root = path.resolve(__dirname, '..');
+const root = path.resolve(__dirname, '..', '..', '..', '..', 'OpenClaw');
 const fragmentPath = path.join(root, 'AGENTS.fragment.md');
 const templateNames = ['SOUL.md', 'IDENTITY.md'];
 

@@ -26,9 +26,9 @@ UXUCode 把需求澄清、计划、实现、调试、测试、评审、简化和
 
 UXUCode 会把生成的规格、计划和过程记录集中保存在 `work-products/`，避免打乱项目原有目录。产品源码和最终交付文件仍遵循项目现有结构。
 
-`work-products/` 中的正式规格、实施计划、任务清单和测试是可进入版本控制的正式项目事实；调试记录、评审报告、发布门禁报告和其他未声明过程文件默认只保留在本地。仓库静态校验通过不代表已安装的插件缓存已经重新加载这些变更。
+`work-products/` 中的正式规格、实施计划、任务清单和测试是可进入版本控制的正式项目事实；调试记录、评审报告、发布门禁报告和其他未声明过程文件默认只保留在本地。任何操作创建的新测试都放入 `work-products/tests/`，测试引用仓库文件时使用从最终位置出发的相对路径，不写入机器绑定的绝对路径。仓库静态校验通过不代表已安装的插件缓存已经重新加载这些变更。
 
-如果历史 UXUCode 过程文件错放在目录外，先用 `/uxu-code:clean` 或 `@clean` 零写入预览；确认后仅以精确的 `apply` 参数执行整理。`clean` 不是删除命令，只移动可确认归属的文件；遇到冲突或歧义会返回 `BLOCKED` 并保持文件不变。
+如果历史 UXUCode 过程文件错放在目录外，先用 `/uxu-code:clean` 或 `@clean` 零写入预览；确认后仅以精确的 `apply` 参数执行整理。`clean` 不是删除命令；它会跨语言扫描全仓内按 `test`／`spec` 边界命名的内部测试并统一迁入 `work-products/tests/`，同时跳过依赖与版本控制目录；迁移文本中的仓库内绝对路径会改为相对路径。重复目标、目标祖先链接／逃逸或歧义裸字符串会返回 `BLOCKED` 并保持文件不变。
 
 在代码仓库中，建议配合 [colbymchenry/codegraph](https://github.com/colbymchenry/codegraph) 使用，以便更快定位相关代码和调用路径。
 
@@ -169,9 +169,9 @@ UXUCode 把需求釐清、計畫、實作、除錯、測試、評審、簡化和
 
 UXUCode 會把產生的規格、計畫和過程記錄集中保存在 `work-products/`，避免打亂專案原有目錄。產品原始碼和最終交付檔案仍遵循專案現有結構。
 
-`work-products/` 中的正式規格、實施計畫、任務清單和測試是可納入版本控制的正式專案事實；除錯記錄、評審報告、發佈門禁報告和其他未聲明的過程檔案預設只保留在本機。儲存庫靜態驗證通過不代表已安裝的外掛快取已重新載入這些變更。
+`work-products/` 中的正式規格、實施計畫、任務清單和測試是可納入版本控制的正式專案事實；除錯記錄、評審報告、發佈門禁報告和其他未聲明的過程檔案預設只保留在本機。任何操作建立的新測試都放入 `work-products/tests/`，測試引用儲存庫檔案時使用從最終位置出發的相對路徑，不寫入綁定特定機器的絕對路徑。儲存庫靜態驗證通過不代表已安裝的外掛快取已重新載入這些變更。
 
-如果歷史 UXUCode 過程檔案錯放在目錄外，先用 `/uxu-code:clean` 或 `@clean` 零寫入預覽；確認後僅以精確的 `apply` 參數執行整理。`clean` 不是刪除命令，只移動可確認歸屬的檔案；遇到衝突或歧義會回傳 `BLOCKED` 並保持檔案不變。
+如果歷史 UXUCode 過程檔案錯放在目錄外，先用 `/uxu-code:clean` 或 `@clean` 零寫入預覽；確認後僅以精確的 `apply` 參數執行整理。`clean` 不是刪除命令；它會跨語言掃描整個儲存庫內按 `test`／`spec` 邊界命名的內部測試並統一遷入 `work-products/tests/`，同時跳過依賴與版本控制目錄；遷移文字檔中的儲存庫內絕對路徑會改為相對路徑。重複目標、目標祖先連結／逃逸或歧義裸字串會回傳 `BLOCKED` 並保持檔案不變。
 
 在程式碼儲存庫中，建議搭配 [colbymchenry/codegraph](https://github.com/colbymchenry/codegraph) 使用，以便更快定位相關程式碼和呼叫路徑。
 
@@ -312,9 +312,9 @@ Start with `spec` when the scope still needs definition; when the request is alr
 
 UXUCode keeps generated specifications, plans, and process records together under `work-products/` so the project's existing layout stays organized. Product source code and final deliverables continue to follow the project's own structure.
 
-Under `work-products/`, formal specifications, implementation plans, task lists, and tests are formal project facts that can be tracked in version control; debug records, review reports, release-gate reports, and other undeclared process files remain local by default. Passing repository static validation does not mean the installed plugin cache has reloaded these changes.
+Under `work-products/`, formal specifications, implementation plans, task lists, and tests are formal project facts that can be tracked in version control; debug records, review reports, release-gate reports, and other undeclared process files remain local by default. Every operation places newly created tests under `work-products/tests/`; tests reference repository files with relative paths from their final location, never machine-specific absolute paths. Passing repository static validation does not mean the installed plugin cache has reloaded these changes.
 
-If historical UXUCode process files are misplaced outside that directory, run `/uxu-code:clean` or `@clean` first for a zero-write preview, then use only the exact `apply` argument after review. `clean` is not a delete command: it moves only confirmed artifacts and returns `BLOCKED` without changes on conflicts or ambiguity.
+If historical UXUCode process files are misplaced outside that directory, run `/uxu-code:clean` or `@clean` first for a zero-write preview, then use only the exact `apply` argument after review. `clean` is not a delete command. It scans cross-language internal tests named with supported `test`/`spec` boundaries into `work-products/tests/` while excluding dependency and version-control directories. It rewrites project-local absolute paths in moved text files as relative paths; duplicate targets, linked or escaping target ancestors, and ambiguous bare strings return `BLOCKED` without changes.
 
 For code repositories, we recommend using UXUCode with [colbymchenry/codegraph](https://github.com/colbymchenry/codegraph) to locate related code and call paths faster.
 

@@ -154,7 +154,7 @@ One `build` run completes only the next task by default, which keeps review and 
 | Show current status | `/uxu-code:status` | `@status` | Mode, task progress, validation, and gate state |
 | Organize misplaced process files | `/uxu-code:clean` | `@clean` | A zero-write preview plus move, reference, and ignore changes |
 
-`clean` is not a delete command. Calling it without arguments only previews; after reviewing moves, reference rewrites, and repository `.gitignore` changes, only `/uxu-code:clean apply` or `@clean apply` executes them. It handles only confirmed misplaced UXUCode specifications, tasks, and auxiliary tests. Project source, project-native tests, deliverables, and files with unclear ownership are never moved automatically. A target conflict, ambiguous path, or unsafe rewrite returns `BLOCKED` without writes; a compliant workspace returns `NO_CHANGES`.
+`clean` is not a delete command. Calling it without arguments only previews; after reviewing moves, reference rewrites, and repository `.gitignore` changes, only `/uxu-code:clean apply` or `@clean apply` executes them. It scans cross-language internal tests named with supported `test`/`spec` boundaries into `work-products/tests/` while excluding dependency and version-control directories at any depth. Project source, deliverables, and ambiguous non-test files are never moved automatically. Project-local absolute paths in moved text files are rewritten relative to their final location; paths outside the repository remain unchanged. Duplicate targets, linked or escaping target ancestors, ambiguous bare strings, or unsafe rewrites return `BLOCKED` without writes; a compliant workspace returns `NO_CHANGES`.
 
 ## 7. Choose a Mode
 
@@ -186,7 +186,7 @@ Under `work-products/`, formal specifications, implementation plans, task lists,
 
 `clean apply` minimally synchronizes the repository's own `.gitignore`: formal facts remain trackable, other local process artifacts stay ignored by default, and no old root-path rule is retained. User-level `core.excludesFile` and repository `.git/info/exclude` effects are reported but never modified.
 
-Product source and final deliverables remain in project-native locations. If the project's test framework, CI, colocated-test layout, or packaging rules require a fixed directory, follow the project convention and record the validation command; existing tests may also be edited in place.
+Product source and final deliverables remain in project-native locations. Every operation that creates a test or related test artifact must place it under `work-products/tests/`. Tests must reference repository files with relative paths from their final location, never machine-specific absolute paths. Explicit old paths in test-framework, CI, or packaging rules must be updated with the migration.
 
 ## 9. Update, Remove, and Troubleshoot
 
