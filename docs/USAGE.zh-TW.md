@@ -154,7 +154,12 @@ node OpenClaw/scripts/install-profile.js --workspace "<請替換為OpenClaw工�
 | 查看目前狀態 | `/uxu-code:status` | `@status` | 模式、任務進度、驗證和門禁狀態 |
 | 整理錯放的過程檔案 | `/uxu-code:clean` | `@clean` | 零寫入預覽、移動與引用／ignore 變更 |
 
-`clean` 不是刪除命令。無參數呼叫只預覽；檢查移動、引用改寫和儲存庫 `.gitignore` 變更後，只有 `/uxu-code:clean apply` 或 `@clean apply` 才會執行。它會跨語言掃描整個儲存庫內按 `test`／`spec` 邊界命名的內部測試並統一遷入 `work-products/tests/`，同時跳過任意層級的依賴、版本控制、`__pycache__` 和補丁衍生檔案；測試目錄外的 Python `*_test.py` 還需具備真實靜態測試證據。可證明的儲存庫根路徑運算式、統一 diff 路徑及被移動文字檔中的儲存庫內絕對路徑會同步改寫，儲存庫外路徑不會改寫。重複目標、目標祖先連結／逃逸、缺少路徑結構證據的裸字串或無法安全改寫時回傳 `BLOCKED` 且不寫入；無需整理時回傳 `NO_CHANGES`。
+`clean` 不是刪除命令。無參數呼叫只產生零寫入預覽；檢查完整對應、引用和儲存庫 `.gitignore` 變更後，只有 `/uxu-code:clean apply` 或 `@clean apply` 才會執行。測試命名只用於跨語言發現候選，不證明歸屬；未獲固定歷史對應或 `work-products/clean-migration.json` 中精確項目授權的產品原生測試保留原位。該版本 1 清單的每個項目必須明確宣告 `source`、`target`、`tracking` 和 `rewritePolicy`。
+掃描會跳過任意層級的依賴、版本控制與 `__pycache__` 目錄。
+
+`tracking` 的 `tracked`／`local` 決定目標應保持可追蹤或本機忽略；`rewritePolicy` 的 `references`、`preserve-content` 和 `mutable-patch` 分別允許安全引用改寫、要求逐位元組保持內容、或僅允許改寫明確授權的 `.patch`／`.diff` 統一 diff 路徑。`SHA256SUMS` 等已識別校驗和會保護綁定內容，策略不相容或校驗失敗時停止。其他層級的 `<prefix>/work-products/tests/<rest>` 會正規化到根層級 `work-products/tests/<prefix>/<rest>`，且只移除與根層級規範精確同構的非根層級 ignore 規則族；相鄰註解、部分比對和其他規則保持不變。
+
+根層級 `tasks/` 會先完整核對；存在未對應項目時回傳 `BLOCKED` 並保留該目錄。重複目標、目標祖先連結／逃逸、缺少路徑結構證據的裸字串或無法安全改寫也會在任何寫入前回傳 `BLOCKED`。`version: 2` 報告以 `preservedProductFiles`、`unclassifiedLegacyFiles`、`integrityProtectedFiles` 和 `inactiveManifestEntries` 區分保留、未分類、完整性保護及已滿足／非活動清單項目；無需整理時回傳 `NO_CHANGES`。
 
 ## 7. 模式選擇
 
@@ -228,6 +233,7 @@ OpenClaw 移除時，先備份 `AGENTS.md`，再只刪除由 UXUCode 標記的�
 - Claude Code：確認 `/plugin ...` 命令是在 Claude Code 工作階段內執行，並在安裝或更新後執行 `/reload-plugins`。
 - Codex：確認命令在儲存庫根目錄執行，複製目錄仍存在，並在安裝或更新後重新啟動。
 - OpenClaw：確認 `--workspace` 使用絕對路徑，先查看 `--dry-run` 輸出，再啟動新工作階段。
+- Clean：僅在結構化權限錯誤且宿主提供核准機制時，才會以相同參數最多重跑一次；預覽絕不升級為 `apply`。其他 Git 或 ignore 錯誤繼續回傳 `BLOCKED`。
 - 命令入口不可用時，先重新執行第 4 節的 `help` 驗證，再檢查宿主外掛狀態。
 
 ## 10. 進階設定

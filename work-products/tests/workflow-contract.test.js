@@ -120,6 +120,28 @@ test('both clean skills retry only structured sandbox permission failures', () =
   }
 });
 
+test('both clean and help skills describe manifest authorization and report v2', () => {
+  for (const pkg of packages) {
+    const clean = readSkill(pkg, 'clean');
+    const help = readSkill(pkg, 'help');
+
+    assert.match(clean, /only as discovery candidates/i);
+    assert.match(clean, /work-products\/clean-migration\.json/);
+    assert.match(clean, /preservedProductFiles/);
+    assert.match(clean, /unclassifiedLegacyFiles/);
+    assert.match(clean, /integrityProtectedFiles/);
+    assert.match(clean, /inactiveManifestEntries/);
+    assert.match(clean, /`version: 2`/);
+    assert.match(clean, /mutable-patch.*only when.*\.patch.*\.diff/i);
+    assert.match(clean, /`preserve-content`/);
+    assert.match(clean, /`mutable-patch`/);
+    assert.match(clean, /checksum-coupled mutable artifacts/);
+    assert.match(help, /zero-write report v2 preview/);
+    assert.match(help, /Test-like names are discovery only/);
+    assert.match(help, /work-products\/clean-migration\.json/);
+  }
+});
+
 function ignoredPathsInTemporaryRepository(relativePaths) {
   const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'uxucode-gitignore-contract-'));
   const globalExcludes = path.join(tempRoot, 'global-excludes');
@@ -488,8 +510,8 @@ test('audit and performance guidance stays ecosystem-neutral and evidence-gated'
   assert.match(notices, /Excluded from adoption:/);
 });
 
-test('release metadata and maintenance workflows enforce the 4.2.0 version contract', () => {
-  const expectedVersion = '4.2.0';
+test('release metadata and maintenance workflows enforce the 5.0.1 version contract', () => {
+  const expectedVersion = '5.0.1';
   const maintenanceContract =
     /every completed bug fix or optimization must update the release version consistently/;
   const claudeManifest = JSON.parse(
@@ -511,7 +533,7 @@ test('release metadata and maintenance workflows enforce the 4.2.0 version contr
       path.join(root, pkg, 'scripts', 'validate-plugin.js'),
       'utf8'
     );
-    assert.match(validator, /expected version 4\.2\.0/);
+    assert.match(validator, /expected version 5\.0\.1/);
     for (const skill of ['build', 'debug', 'simplify']) {
       assert.match(readSkill(pkg, skill), maintenanceContract);
     }

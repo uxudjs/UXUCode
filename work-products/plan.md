@@ -1041,6 +1041,204 @@
 
 **完成证据：** RED 为 43/46，通过项之外仅保留结构化子进程错误、Skill 审批重跑和嵌套目录归一化三项预期失败；实现后 Clean／workflow 合同 46/46，通过统一 12 步门禁（workflow 66/66、OpenClaw 27/27）。UXUCode 预览为 `NO_CHANGES`；CfGfwAX 沙箱外只剩两个真实 `TARGET_EXISTS`；GMSSL 为 `READY`，唯一移动已归一化到根级 `work-products/tests/cloud_layer/`，两个验证仓库均保持 Git 状态不变且未执行 `apply`。
 
+## 任务 31：修复 Clean 归属、显式迁移与完整性安全合同
+
+**规划依据：** 用户已批准 `work-products/SPEC.md` 第 15 节并显式调用 `@plan`；`work-products/debug/clean-command-defects-2026-07-31.md` 已用隔离仓库复现 legacy 残留、项目测试误迁移、特殊过程产物不可见和补丁哈希失效四类缺陷。目标、接口、无兼容策略、回滚和可测验收均已明确，无未决产品决策。
+
+**实现决策：**
+
+- Claude/Codex 继续各自打包，两个 `clean-work-products.js` 与两个 Clean Skill 分别保持字节一致，不新增共享运行时模块。
+- `work-products/tests/clean-contract.test.js` 是行为事实源；每个行为切片先建立可归因 RED，再修改引擎。
+- `work-products/clean-migration.json` 是持久、可跟踪的逐文件路由合同；UXUCode 仓库本身没有实际映射需求时不创建空清单，只在隔离 fixture 中验证。
+- JSON 报告一次性升级为 v2，不保留 v1 双写、别名或回退分支。
+- report v2 是破坏性接口变更，因此发布版本目标为 `5.0.0`；当前未提交的 4.2.1 文档与版本修改必须保留并在最终差异中可追溯。
+
+### 任务 31.1：建立归属、legacy 原子性与 report v2 的 RED 合同
+
+**范围：** 修正当前把 `product.test.mjs` 自动迁移及统一 diff 自动改写视为正确行为的断言；增加 `tasks/` 残留、普通项目测试保留、report v2 分类和 BLOCKED 零写入夹具。测试文件继续只使用从 `work-products/tests/` 最终位置出发的仓库相对路径。
+
+**验收标准：**
+
+- 旧引擎对 `tasks/plan.md + tasks/evidence.md` 错误返回 `READY`、错误移除 `/tasks/` 的断言稳定 RED。
+- 旧引擎把无授权 `product.test.mjs` 标为 `internal-test-artifact`，且缺少 v2 分类字段的断言稳定 RED。
+- 每个失败均来自预期行为差异，不是 fixture、Git、临时目录或子进程错误。
+
+**验证：** `node --test work-products/tests/clean-contract.test.js`，记录精确预期失败名称与数量。
+
+**依赖：** 已批准 SPEC 第 15 节。**可能涉及：** `work-products/tests/clean-contract.test.js`。**规模：** 小。**回滚：** 只回退新增/修正的 RED 夹具，不修改实现。
+
+### 任务 31.2：实现 P0 归属分类、legacy 全量对账与 report v2 骨架
+
+**范围：** 将测试 discovery 与 move authorization 分离；无显式授权的测试保持原位并进入 `preservedProductFiles`。在完整 `moveMap` 前枚举根 `tasks/`，未覆盖条目阻塞全部写入和 `/tasks/` 移除。将双宿主报告切换到 v2 基础字段和稳定排序。
+
+**验收标准：**
+
+- 普通项目测试不移动、不阻塞，且分类报告稳定；固定 legacy 映射继续工作。
+- `tasks/` 任一残留产生结构化 blocker，preview/apply 后文件与 `.gitignore` 字节不变。
+- 两套引擎输出相同 v2 shape，既有目标、链接、歧义、外部 exclude、内存和回滚合同不回归。
+
+**验证：** `node --test work-products/tests/clean-contract.test.js`；比较两个引擎 SHA-256。
+
+**依赖：** 任务 31.1。**可能涉及：** 两个 `scripts/clean-work-products.js`、`work-products/tests/clean-contract.test.js`。**规模：** 中。**回滚：** 成对回退引擎和对应 GREEN 断言，不恢复错误的正向合同。
+
+## 检查点 31A：P0 失败关闭
+
+- [x] 归属与 legacy RED 已转绿，普通项目测试保持原位。
+- [x] 任一 legacy 残留阻塞所有写入并保留 `/tasks/`。
+- [x] report v2 基础字段、稳定排序和双宿主一致性成立。
+
+### 任务 31.3：建立显式清单 schema、生命周期与 tracking 的 RED 合同
+
+**范围：** 为清单缺失/有效、未知版本/字段、非规范路径、逃逸、重复源/目标、固定事实源覆盖、链接祖先、inactive/satisfied/再次出现生命周期，以及 tracked/local Git 语义建立隔离 fixture。
+
+**验收标准：**
+
+- 每个非法输入得到 SPEC 指定的结构化 blocker，且工作区零写入。
+- 缺失源进入 `inactiveManifestEntries`；缺失源且目标存在为已满足；源再次出现且目标存在返回 `TARGET_EXISTS`。
+- tracked 目标需要最窄例外，local 目标保持忽略；旧引擎因不识别清单而稳定 RED。
+
+**验证：** `node --test work-products/tests/clean-contract.test.js`，确认失败只对应清单和 tracking 新合同。
+
+**依赖：** 检查点 31A。**可能涉及：** `work-products/tests/clean-contract.test.js`。**规模：** 中。**回滚：** 只回退本任务夹具。
+
+### 任务 31.4：实现持久 manifest、完整 moveMap 与动态 Git 语义
+
+**范围：** 解析并严格校验 `work-products/clean-migration.json`，将存在源的显式映射合入完整 moveMap；实现 inactive/satisfied 生命周期、tracking 元数据和最窄动态 ignore 规则。仓库根 `.gitignore` 仅增加 manifest 自身的跟踪例外，不创建空 manifest。
+
+**验收标准：**
+
+- schema、路径、唯一性、目标安全和项目无关边界全部失败关闭，不含 CfGfwAX/xhttp 分支。
+- 显式 benchmark/test/debug/rollback 映射得到正确目标与授权来源；移动文件内部及外部精确引用从最终位置重算。
+- `git check-ignore --no-index` 证明 manifest 与 tracked 目标可跟踪、local 目标保持忽略；规则重复生成无变化。
+
+**验证：** `node --test work-products/tests/clean-contract.test.js`；隔离 fixture 运行 preview/apply/preview；`git check-ignore` 语义断言；双引擎 SHA-256。
+
+**依赖：** 任务 31.3。**可能涉及：** 两个 clean 引擎、`work-products/tests/clean-contract.test.js`、`.gitignore`。**规模：** 中。**回滚：** 成对回退 manifest/parser、动态规则、根 ignore 例外和对应测试。
+
+## 检查点 31B：显式迁移能力
+
+- [x] 清单边界、生命周期、目标安全和项目无关性全部通过。
+- [x] tracked/local Git 语义由真实 Git 验证，未放开整个 `work-products/`。
+- [x] apply 后二次 preview 为 `NO_CHANGES`，清单不被自动删除或修改。
+
+### 任务 31.5：建立补丁策略与校验耦合的 RED 合同
+
+**范围：** 增加 `references`、`preserve-content`、`mutable-patch` 三策略；GNU `SHA256SUMS*`／`SHA512SUMS*` 精确绑定；patch 字节/哈希保持；耦合 mutable patch 阻塞和 apply 零写入夹具。
+
+**验收标准：**
+
+- 普通 `references` 不得用于 `.patch`／`.diff`；缺少显式策略不能触发 diff 头改写。
+- `preserve-content` 迁移前后字节与摘要一致，但外部对补丁路径的精确引用可更新。
+- 被校验清单绑定的 `mutable-patch` 返回 `INTEGRITY_COUPLED_ARTIFACT`，旧引擎的静默哈希失效稳定 RED。
+
+**验证：** `node --test work-products/tests/clean-contract.test.js`，同时核对 SHA-256/SHA-512 夹具的预期摘要。
+
+**依赖：** 检查点 31B。**可能涉及：** `work-products/tests/clean-contract.test.js`。**规模：** 小。**回滚：** 只回退完整性 RED 夹具。
+
+### 任务 31.6：实现 rewrite policy、checksum 识别与哈希复核
+
+**范围：** 将引用改写受每项 `rewritePolicy` 约束；识别 SPEC 指定文件名和 GNU 格式的 SHA-256/SHA-512 精确绑定；preview 记录保护关系，apply 验证 preserve-content 目标摘要。未知格式只报告/跳过，不猜测改写或重算校验清单。
+
+**验收标准：**
+
+- 只有 `mutable-patch` 可改写未耦合 patch 的 unified-diff 头；普通文本仍沿用无歧义引用合同。
+- preserve-content 任一字节或哈希漂移使事务失败并恢复；完整性 blocker 在写前产生。
+- v2 `integrityProtectedFiles` 内容稳定，既有 `AMBIGUOUS_REFERENCE` 与逆补丁证据不回归。
+
+**验证：** `node --test work-products/tests/clean-contract.test.js`；双引擎 SHA-256；针对 preserve-content fixture 做 apply 前后摘要比较。
+
+**依赖：** 任务 31.5。**可能涉及：** 两个 clean 引擎、`work-products/tests/clean-contract.test.js`。**规模：** 中。**回滚：** 成对回退策略、checksum 解析、事务复核和对应测试。
+
+## 检查点 31C：完整性与事务
+
+- [x] patch 默认不改内容，显式 mutable 且无完整性耦合时才允许改写。
+- [x] SHA-256/SHA-512 绑定被报告并保护，clean 不自动重算清单。
+- [x] 所有 BLOCKED fixture 的文件、manifest 和 `.gitignore` 字节不变。
+
+### 任务 31.7：同步双宿主 Clean/Help 合同与路由回归
+
+**范围：** 更新双宿主 Clean Skill 和 Help 对测试归属、manifest、report v2、完整性及零写入边界的说明；路由命令与参数不变，仅更新 workflow 合同以锁定 Skill parity 和 exact invocation。
+
+**验收标准：** 两个 Clean Skill 字节一致，两个 Help Skill 字节一致；仍只接受 `@clean`/`@clean apply` 与 Claude 对应形式；不新增别名、其他参数或缓存路径；结构化权限重试合同保留。
+
+**验证：** `node --test work-products/tests/workflow-contract.test.js`；`node scripts/validate-skill-parity.js`。
+
+**依赖：** 检查点 31C。**可能涉及：** 双宿主 `clean/SKILL.md`、双宿主 `help/SKILL.md`、`work-products/tests/workflow-contract.test.js`。**规模：** 中。**回滚：** 成对回退 Skill 与新增合同；路由实现无需变更。
+
+### 任务 31.8：同步三语言完整指南与 guide 校验
+
+**范围：** 以简体中文为语义基准，同步三份 `docs/USAGE.*.md` 的文件名只发现、manifest schema/生命周期、tracking、patch 策略、report v2 和 BLOCKED/NO_CHANGES 说明；更新 guide parity 与负向契约测试。
+
+**验收标准：** 三语言命令、字段、枚举、路径和失败语义一一对应且译文自然；删除“命名即内部测试”和“统一 diff 总是改写”的旧承诺；校验器既能拒绝缺失新安全边界，也不绑定整段文案。
+
+**验证：** `node scripts/validate-guide-parity.js`；`node --test work-products/tests/documentation-validator-contract.test.js`。
+
+**依赖：** 任务 31.7。**可能涉及：** 三份 `docs/USAGE.*.md`、`scripts/validate-guide-parity.js`、文档校验器合同测试。**规模：** 中。**回滚：** 三语言、校验器和测试作为同一切片回退。
+
+### 任务 31.9：同步三语言 README 摘要与 README 校验
+
+**范围：** 更新单文件 README 的简体、繁体和英文 clean 摘要，只保留用户决策所需的 discovery/authorization、manifest、完整性和 v2 状态边界；详细 schema 留在完整指南。同步 README scope 校验和负向合同。
+
+**验收标准：** 三个语言段落语义一致、不堆积实现细节；不再声称 test/spec 名称足以迁移；仍明确 preview 零写入、精确 apply、BLOCKED 和非删除边界。
+
+**验证：** `node scripts/validate-readme-scope.js`；`node --test work-products/tests/documentation-validator-contract.test.js`。
+
+**依赖：** 任务 31.8，并与其串行修改共享文档合同测试。**可能涉及：** `README.md`、`scripts/validate-readme-scope.js`、文档校验器合同测试。**规模：** 小。**回滚：** 三语言 README 段落、校验器和测试同时回退。
+
+## 检查点 31D：宿主与文档一致性
+
+- [x] 双宿主 Skill/help parity、exact route 和权限重试合同通过。
+- [x] README 与三份指南不再公开旧错误行为，新接口与枚举完全同步。
+- [x] 文档校验对每个新边界均有通过和拒绝夹具。
+
+### 任务 31.10：同步 5.0.0 发布事实源
+
+**范围：** 因 report v2 移除 v1 合同，将两个 host manifest、Claude marketplace 与两个 host validator 同步到 `5.0.0`；保留 Claude/Codex 独立包边界和当前 4.2.1 未提交修改的其他内容。
+
+**验收标准：** 五个事实源版本一致；Claude marketplace 版本等于 manifest；两套 validator 精确断言 5.0.0；不重装插件、不修改缓存、不提交或发布。
+
+**验证：** `node Claude/scripts/validate-plugin.js`；`node Codex/scripts/validate-plugin.js`；定向读取五个版本值。
+
+**依赖：** 检查点 31D。**可能涉及：** 两个 plugin manifest、Claude marketplace、两个 plugin validator。**规模：** 中。**回滚：** 五个版本事实源作为单一切片恢复，不保留混合版本。
+
+### 任务 31.11：更新版本合同并关闭本地门禁
+
+**范围：** 将 workflow release contract 切换到 5.0.0，运行聚焦、文档、统一、差异和双宿主哈希门禁；只对 UXUCode 与 CfGfwAX 运行零写入 preview，不执行真实项目 apply。
+
+**验收标准：**
+
+- Clean、workflow、documentation 合同全部通过，统一 12 步入口和 `diff --check` 返回 0。
+- UXUCode preview 为 `NO_CHANGES`；CfGfwAX 当前样本已无 legacy 项且项目测试均在规范目录，preview 为 `READY`，仅建议加入 `!/work-products/clean-migration.json`；合同夹具另行证明项目测试保留及未映射 legacy 项结构化 `BLOCKED`，两仓库 Git 状态前后相同。
+- 双宿主引擎与 Clean Skill SHA-256 分别一致；结论不冒充安装缓存、新会话、Marketplace 或生产证明。
+
+**验证：** `node --test work-products/tests/clean-contract.test.js work-products/tests/workflow-contract.test.js work-products/tests/documentation-validator-contract.test.js`；`node scripts/validate-all.js`；`git -c safe.directory=C:/Users/brand/SynologyDrive/Code/UXUCode diff --check`；双宿主哈希；两仓库 preview 前后 `git status --short` 比较。
+
+**依赖：** 任务 31.10。**可能涉及：** `work-products/tests/workflow-contract.test.js` 及计划/todo 状态记录。**规模：** 小。**回滚：** 验证本身零写入；失败时保持任务未完成，不回退用户既有改动。
+
+## 任务 31 最终检查点
+
+- [x] 31A：归属、legacy 原子性和 report v2 基础合同通过。
+- [x] 31B：manifest、tracking 与幂等合同通过。
+- [x] 31C：patch/checksum 完整性与事务合同通过。
+- [x] 31D：双宿主、三语言文档和校验合同通过。
+- [x] 最终门禁：5.0.0 事实源一致，统一验证、差异检查、零写入真实项目 preview 与 `@review` 均无未解决 Critical/Important 问题。
+
+**完成证据：** Clean、workflow、documentation 合同分别为 43/43、18/18、17/17；统一 12 步门禁为 workflow 84/84、OpenClaw 27/27，`diff --check` 返回 0。双宿主引擎 SHA-256 同为 `626A551E97A29CE3A7388389BABB845066263B02CA7C11E48F1E7F0498A8F94C`，Clean Skill 同为 `3ABE39FCF9E8248F5A9EC4F7C4AB9417E10B15FC4F6192A30A3DE215F3C40AF1`。权限外重试的零写入 preview 中，UXUCode 为 `NO_CHANGES`，CfGfwAX 为仅补迁移清单精确 Git 例外的 `READY`，两仓库 Git 状态不变且未执行 `apply`；最终 `@review` 无未解决 Critical/Important 问题。
+
+## 任务 32：修复 5.0.0 Clean 复审缺陷并发布 5.0.1 合同
+
+**状态：** 已完成（2026-08-02，用户显式调用 `@debug`）。本任务以新的可复现证据取代任务 31 的最终复审结论，不改写任务 31 的历史实施记录。
+
+**范围：** 修复单文件 tracked 例外放行同目录本地文件、固定事实源后代未受保护，以及大小写不敏感文件系统将同一物理源计划两次的问题；同步双宿主引擎、合同测试和 5.0.1 发布事实源，不修改三语言既有正确合同。
+
+**根因与修复：** 动态 ignore 规则改为按目标稳定排序，并为每级祖先生成“放行目录、重新忽略目录内容、精确放行目标”的有序规则；既有宽泛规则会原子重排。manifest 使用仓库文件系统大小写语义比较固定源、固定目标及其后代，并在完整 move 集合上阻塞重复物理源。
+
+**验证：** 三个新增反例修复前均 RED，修复后连同旧规则升级用例全部通过；Clean、workflow、documentation 合同合计 80/80，通过统一 12 步门禁与 `diff --check`。双宿主引擎 SHA-256 同为 `3D4F4325583BF36940E145F9DD5D32374F5040B0718A56FD874EC84466540D97`。这些是仓库本地证据，不代表插件重装、新任务加载、Marketplace 或生产行为。
+
+**执行顺序：** 31.1 → 31.2 → 31A → 31.3 → 31.4 → 31B → 31.5 → 31.6 → 31C → 31.7 → 31.8 → 31.9 → 31D → 31.10 → 31.11。共享引擎、共享文档合同和版本事实源必须串行修改；不得并行写同一文件。
+
+**授权边界：** 本计划不授权暂存、提交、推送、发布、部署、插件重装、缓存修改或任何真实项目 `clean apply`。
+
 ## 风险与缓解
 
 | 风险 | 影响 | 缓解 |

@@ -154,7 +154,12 @@ node OpenClaw/scripts/install-profile.js --workspace "<请替换为OpenClaw工�
 | 查看当前状态 | `/uxu-code:status` | `@status` | 模式、任务进度、验证和门禁状态 |
 | 整理错放的过程文件 | `/uxu-code:clean` | `@clean` | 零写入预览、移动与引用／ignore 变化 |
 
-`clean` 不是删除命令。无参数调用只预览；检查移动、引用改写和仓库 `.gitignore` 变化后，只有 `/uxu-code:clean apply` 或 `@clean apply` 才会执行。它会跨语言扫描整个仓库内按 `test`／`spec` 边界命名的内部测试并统一迁入 `work-products/tests/`，同时跳过任意层级的依赖、版本控制、`__pycache__` 和补丁派生文件；测试目录外的 Python `*_test.py` 还需具有真实静态测试证据。可证明的仓库根路径表达式、统一 diff 路径及被移动文本中的仓库内绝对路径会同步改写，仓库外路径不会改写。重复目标、目标祖先链接／逃逸、缺少路径结构证据的裸字符串或无法安全改写时返回 `BLOCKED` 且不写入；无需整理时返回 `NO_CHANGES`。
+`clean` 不是删除命令。无参数调用只生成零写入预览；检查完整映射、引用和仓库 `.gitignore` 变化后，只有 `/uxu-code:clean apply` 或 `@clean apply` 才会执行。测试命名只用于跨语言发现候选，不证明归属；未获固定历史映射或 `work-products/clean-migration.json` 中精确条目授权的产品原生测试保留原位。该版本 1 清单的每项必须显式声明 `source`、`target`、`tracking` 和 `rewritePolicy`。
+扫描会跳过任意层级的依赖、版本控制与 `__pycache__` 目录。
+
+`tracking` 的 `tracked`／`local` 决定目标应保持可跟踪还是本地忽略；`rewritePolicy` 的 `references`、`preserve-content` 和 `mutable-patch` 分别允许安全引用改写、要求逐字节保持内容、或仅允许改写显式授权的 `.patch`／`.diff` 统一 diff 路径。`SHA256SUMS` 等已识别校验和会保护绑定内容，策略不兼容或校验失败时停止。其他层级的 `<prefix>/work-products/tests/<rest>` 会归一到根级 `work-products/tests/<prefix>/<rest>`，且只移除与根级规范精确同构的非根级 ignore 规则族；相邻注释、部分匹配和其他规则保持不变。
+
+根级 `tasks/` 会先完整核对；存在未映射条目时返回 `BLOCKED` 并保留该目录。重复目标、目标祖先链接／逃逸、缺少路径结构证据的裸字符串或无法安全改写也会在任何写入前返回 `BLOCKED`。`version: 2` 报告以 `preservedProductFiles`、`unclassifiedLegacyFiles`、`integrityProtectedFiles` 和 `inactiveManifestEntries` 区分保留、未分类、完整性保护及已满足／非活动清单项；无需整理时返回 `NO_CHANGES`。
 
 ## 7. 模式选择
 
@@ -228,6 +233,7 @@ OpenClaw 移除时，先备份 `AGENTS.md`，再只删除由 UXUCode 标记的�
 - Claude Code：确认 `/plugin ...` 命令是在 Claude Code 会话内执行，并在安装或更新后运行 `/reload-plugins`。
 - Codex：确认命令在仓库根目录执行，克隆目录仍存在，并在安装或更新后重启。
 - OpenClaw：确认 `--workspace` 使用绝对路径，先查看 `--dry-run` 输出，再启动新会话。
+- Clean：仅在结构化权限错误且宿主提供审批机制时，才会以相同参数最多重跑一次；预览绝不升级为 `apply`。其他 Git 或 ignore 错误继续返回 `BLOCKED`。
 - 命令入口不可用时，先重新运行第 4 节的 `help` 验证，再检查宿主插件状态。
 
 ## 10. 高级配置

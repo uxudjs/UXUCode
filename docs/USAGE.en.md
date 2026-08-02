@@ -154,7 +154,12 @@ One `build` run completes only the next task by default, which keeps review and 
 | Show current status | `/uxu-code:status` | `@status` | Mode, task progress, validation, and gate state |
 | Organize misplaced process files | `/uxu-code:clean` | `@clean` | A zero-write preview plus move, reference, and ignore changes |
 
-`clean` is not a delete command. Calling it without arguments only previews; after reviewing moves, reference rewrites, and repository `.gitignore` changes, only `/uxu-code:clean apply` or `@clean apply` executes them. It scans cross-language internal tests named with supported `test`/`spec` boundaries into `work-products/tests/` while excluding dependency, version-control, `__pycache__`, and derived patch-artifact paths at any depth; Python `*_test.py` files outside test directories also require real static test evidence. Proven repository-root expressions, unified-diff paths, and project-local absolute paths in moved text files are rewritten together; paths outside the repository remain unchanged. Duplicate targets, linked or escaping target ancestors, bare strings without path-structure evidence, or unsafe rewrites return `BLOCKED` without writes; a compliant workspace returns `NO_CHANGES`.
+`clean` is not a delete command. Calling it without arguments produces only a zero-write preview; after reviewing the complete mapping, references, and repository `.gitignore` changes, only `/uxu-code:clean apply` or `@clean apply` executes them. Test naming is only for cross-language candidate discovery and does not prove ownership; project-native tests without a fixed legacy mapping or an exact entry in `work-products/clean-migration.json` remain in place. Every entry in this version 1 manifest must explicitly declare `source`, `target`, `tracking`, and `rewritePolicy`.
+Scanning skips dependency, version-control, and `__pycache__` directories at any depth.
+
+The `tracked` or `local` value of `tracking` controls whether the target remains trackable or locally ignored. The `references`, `preserve-content`, and `mutable-patch` values of `rewritePolicy` respectively permit safe reference rewriting, require byte-for-byte content preservation, or permit unified-diff path rewriting only for an explicitly authorized `.patch` or `.diff`. Recognized checksums such as `SHA256SUMS` protect bound content and stop incompatible policies or mismatches. Nested `<prefix>/work-products/tests/<rest>` paths are normalized to root-level `work-products/tests/<prefix>/<rest>`, and only non-root ignore-rule families exactly matching the root contract are removed; adjacent comments, partial matches, and other rules remain unchanged.
+
+Root `tasks/` is fully reconciled first; any unmapped entry returns `BLOCKED` and preserves the directory. Duplicate targets, linked or escaping target ancestors, bare strings without path-structure evidence, or unsafe rewrites also return `BLOCKED` before any write. The `version: 2` report distinguishes preserved, unclassified, integrity-protected, and satisfied or inactive manifest entries through `preservedProductFiles`, `unclassifiedLegacyFiles`, `integrityProtectedFiles`, and `inactiveManifestEntries`; a compliant workspace returns `NO_CHANGES`.
 
 ## 7. Choose a Mode
 
@@ -228,6 +233,7 @@ For OpenClaw removal, back up `AGENTS.md`, then delete only the paired boundarie
 - Claude Code: confirm that `/plugin ...` commands run inside a Claude Code session, then run `/reload-plugins` after installation or update.
 - Codex: confirm that commands run from the repository root, the cloned directory still exists, and Codex was restarted after installation or update.
 - OpenClaw: confirm that `--workspace` is an absolute path, inspect `--dry-run` first, then start a new session.
+- Clean: retry only for a structured permission error when the host offers approval, using the same arguments at most once; a preview is never upgraded to `apply`. Other Git or ignore errors remain `BLOCKED`.
 - If a command entry is unavailable, repeat the `help` check in section 4 before inspecting the host's plugin status.
 
 ## 10. Advanced Configuration

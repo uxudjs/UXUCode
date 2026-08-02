@@ -627,3 +627,185 @@ OpenClaw 不新增伪插件或命令入口；其工作区模板只在现有产�
 - **测试迁移后引用失效：** 先按最终目录重算相对路径，再运行两个聚焦测试和统一入口。
 - **文档命令漂移：** OpenClaw 专项 README 与统一入口同批更新，并通过仓库搜索确认无旧测试命令残留。
 - **回滚：** 将五个移动/删除源、路径引用和文档命令作为一个可逆切片恢复；不得只恢复旧文件而留下双事实源。
+
+## 15. `clean` 归属、显式迁移与完整性安全修订
+
+状态：已批准（2026-08-01，用户在本节后显式调用 `@plan`）
+
+本节批准后取代第 13.3、13.4、13.5、13.6、13.9、13.10 节中与本节冲突的候选归属、`tasks/` 清理、引用改写、ignore、报告和验收规则；其他既有安全合同继续有效。
+
+### 15.1 目标、使用者与成功条件
+
+目标是在不猜测项目文件用途的前提下，使项目维护者能够：
+
+- 安全发现测试和遗留过程产物，但只有充分授权时才迁移；
+- 在移除 `/tasks/` ignore 前证明整个遗留目录已纳入同一次原子迁移；
+- 用通用、项目无关的逐文件清单授权特殊过程产物；
+- 默认保护补丁、回滚文件和校验清单的字节完整性；
+- 从预览报告区分自动确认、显式授权、保留、未分类和完整性保护结果。
+
+成功必须同时满足：不会误移动项目原生测试，不会留下半迁移的 `tasks/`，不会静默破坏补丁哈希，且显式迁移后的引用、Git 跟踪语义和二次预览均可验证。
+
+### 15.2 测试发现、归属与迁移授权
+
+测试文件名只证明“可能是测试”，不证明其属于 UXUCode 过程产物。全仓扫描继续使用第 13.3 节的跨语言命名模式，但命中后必须分离三个阶段：
+
+1. **discovery：** 记录测试候选，不产生移动授权；
+2. **ownership：** 判断是否有 UXUCode 归属证据；
+3. **authorization：** 只有固定 legacy 映射或第 15.4 节显式清单才能生成移动。
+
+分类合同：
+
+- `confirmed-internal`：固定 legacy 事实源，或 `work-products/clean-migration.json` 对该精确源路径给出有效映射；允许迁移。
+- `preserved-product`：测试候选没有上述 UXUCode 授权；默认保持原位并报告，不因普通项目存在大量原生测试而阻塞。
+- `unclassified-legacy`：位于已识别 legacy 目录但没有完整映射；必须 `BLOCKED`。
+
+位于 `tests/`、使用 `node:test`／pytest／unittest、被 Git 跟踪或符合 `test`／`spec` 命名，均不能单独升级为 `confirmed-internal`。现有“受支持测试命名足以确认内部测试”的合同废止。`clean` 不尝试从业务内容猜测项目测试归属。
+
+### 15.3 legacy 目录完整迁移
+
+只要仓库存在根目录 `tasks/`，预览必须在任何写入前枚举其中所有条目，并与完整 `moveMap` 对账：
+
+- `tasks/plan.md` 与 `tasks/todo.md` 继续使用固定 legacy 映射；
+- 其他常规文件必须由显式清单逐项授权；
+- 链接、不可读条目、目录或未映射文件均以 `LEGACY_DIRECTORY_REMAINS` 或更具体 blocker 报告；
+- 存在任一未覆盖条目时，状态为 `BLOCKED`，不得移动任何文件、改写引用或修改 `.gitignore`；
+- 只有 `tasks/` 不存在，或本次原子迁移覆盖其全部内容时，才允许计划删除 `/tasks/`；
+- `apply` 只删除本次迁移后确认为空的 legacy 目录，非空目录绝不删除。
+
+不得以“先迁移已知文件并继续保留 `/tasks/`”表示 clean 已完成，也不得在存在残留时先移除 ignore 保护。
+
+### 15.4 显式迁移清单接口
+
+新增持久、可正常 Git 跟踪的仓库合同：`work-products/clean-migration.json`。它声明“当精确源路径存在时，应迁往何处”，不是命令别名、脚本或项目专属分支。
+
+最小 schema：
+
+```json
+{
+  "version": 1,
+  "moves": [
+    {
+      "source": "xhttp_stream_benchmark.mjs",
+      "target": "work-products/benchmarks/xhttp_stream_benchmark.mjs",
+      "tracking": "tracked",
+      "rewritePolicy": "references"
+    }
+  ]
+}
+```
+
+边界合同：
+
+- 顶层只允许 `version` 与 `moves`；`version` 必须精确为 `1`，未知字段或未知枚举值阻塞。
+- 每项只允许 `source`、`target`、`tracking`、`rewritePolicy`，四项均必填。
+- 路径必须是使用 `/` 的规范仓库相对路径；禁止绝对路径、反斜杠、空段、`.`、`..`、通配符、NUL 和仓库逃逸。
+- `source` 必须位于 `work-products/`、`.git/`、版本控制目录和第三方依赖目录之外；`target` 必须严格位于根目录 `work-products/` 内。
+- 清单不得覆盖 `work-products/SPEC.md`、`work-products/plan.md`、`work-products/todo.md`、`work-products/clean-migration.json` 或其他固定事实源。
+- 源和目标分别唯一；按当前文件系统大小写语义检测重复、碰撞、既有目标和链接祖先。
+- `tracking` 只允许 `tracked` 或 `local`；`rewritePolicy` 只允许 `references`、`preserve-content` 或 `mutable-patch`。
+- 源存在时执行完整预检；源不存在时该条目作为 `inactiveManifestEntry` 报告且不阻塞，清单本身不由 `apply` 删除或改写。
+- 源不存在、目标存在表示映射已满足；源之后再次出现而目标仍存在时按 `TARGET_EXISTS` 失败关闭，不覆盖。
+
+清单可声明任意项目的明确过程产物，但 clean 引擎、Skill、测试和文档不得包含 CfGfwAX、xhttp 或其他项目名称分支。
+
+### 15.5 tracking 与 `.gitignore` 合同
+
+`work-products/clean-migration.json` 必须像 SPEC、plan、todo 和合同测试一样可正常 Git 跟踪，不得依赖 `git add -f`。
+
+- `tracking: tracked`：预览生成只放行该目标所需的最窄祖先和文件例外，不得取消整个 `work-products/` 的忽略；用真实 `git check-ignore --no-index` 验证目标可跟踪。
+- `tracking: local`：不得增加放行规则，并验证目标继续被仓库 `.gitignore` 忽略。
+- 动态规则必须可重复生成、顺序稳定，且仅修改 UXUCode 管理的精确规则；用户规则、注释、全局 excludes 和 `.git/info/exclude` 继续只保留或报告。
+- `/tasks/` 的移除受第 15.3 节完整迁移门禁约束，不能由静态 obsolete 列表独立决定。
+
+### 15.6 引用策略与完整性保护
+
+每个移动项的策略定义如下：
+
+- `references`：允许按既有无歧义规则更新移动文件内部引用和外部调用方引用。
+- `preserve-content`：只允许移动；目标文件字节必须与源文件完全一致，但外部文件指向该源的精确引用仍可更新。
+- `mutable-patch`：仅用于明确允许更新 unified-diff 头的 `.patch`／`.diff`；仍须通过歧义、目标和完整性预检。
+
+默认与限制：
+
+- `.patch`／`.diff` 只能使用 `preserve-content` 或显式 `mutable-patch`；不得以普通 `references` 静默改写。
+- 未经清单授权的 `.patch`／`.diff` 继续不作为测试候选，但在已识别 legacy 目录中必须作为未分类项阻塞。
+- clean 至少必须识别名为 `SHA256SUMS`、`SHA256SUMS.txt`、`SHA512SUMS` 或 `SHA512SUMS.txt` 的 UTF-8 文本清单，以及 `<十六进制摘要><两个空格><仓库相对路径>` 的 GNU 格式；其中对迁移源或目标路径的精确绑定进入 `integrityProtectedFiles`。其他格式不得猜测改写。
+- `preserve-content` 在预览记录源哈希，在 apply 后复核目标哈希完全相同。
+- `mutable-patch` 一旦与校验清单绑定，返回 `INTEGRITY_COUPLED_ARTIFACT`；本次修订不自动重算或改写校验清单。
+- 统一 diff 路径不再单独构成可改写授权；只有该文件的 `rewritePolicy` 允许时才处理。
+
+任何完整性检查失败均必须在写入前阻塞；不得通过同步改坏哈希、删除清单或降低校验强度完成迁移。
+
+### 15.7 预览报告 v2
+
+JSON 报告升级为 `version: 2`，仓库内调用方和合同测试一次性同步，不保留 v1 双写或兼容分支。报告至少包含：
+
+- `moves`：自动固定映射与显式授权移动，含授权来源、tracking 和 rewrite policy；
+- `preservedProductFiles`：发现但保持原位的普通项目测试；
+- `unclassifiedLegacyFiles`：阻塞 legacy 完整迁移的条目；
+- `integrityProtectedFiles`：补丁、校验关系、预期哈希和采取的保护策略；
+- `inactiveManifestEntries`：源当前不存在的持久映射；
+- `referenceUpdates`、`gitignoreChanges`、`externalIgnoreSources`、`skipped` 与 `blockers`；
+- `status: READY|NO_CHANGES|BLOCKED`。
+
+发现 legacy 目录但存在未分类项时不得返回 `READY` 或 `NO_CHANGES`。`NO_CHANGES` 可以包含仅供说明的 preserved 或 inactive 条目，但必须明确没有待写入变化和 blocker。
+
+### 15.8 原子执行、幂等与错误语义
+
+- preview 必须零写入；apply 必须重新扫描并验证当前清单、源、目标、引用、哈希和 ignore 语义。
+- 任一 blocker 使整个 apply 返回非零且工作区字节不变，包括 `.gitignore` 和清单。
+- 成功 apply 后再次 preview 必须为 `NO_CHANGES`；已满足或 inactive 的持久映射不得制造重复移动。
+- 只有本次创建的空 legacy 目录可删除；不得删除其他空目录、未跟踪文件或清单。
+- Claude 与 Codex 引擎及 Clean Skill 必须分别保持字节一致。
+- Git 子进程权限、启动和语义错误继续结构化报告；不得用不完整的 JavaScript ignore matcher 代替 Git。
+
+### 15.9 范围、非目标与约束
+
+本次范围包括：规格、双宿主 clean 引擎与 Skill、合同测试、help／路由说明、README 与三份 `docs/USAGE.*.md`、ignore/文档校验器和版本事实源。
+
+非目标：
+
+- 不把全部 benchmark、patch、tests 或 `tasks/` 内容自动归为 UXUCode 产物；
+- 不支持 glob、目录级批量移动或自然语言猜测；
+- 不自动生成、删除或重写项目业务文件和校验清单；
+- 不为旧报告 v1、旧路径或错误测试归属增加兼容层；
+- 不执行真实项目 `apply`、插件重装、提交、推送、发布或部署。
+
+实现只使用 Node.js 标准库，保留逐文件扫描与受限内存合同，并保存所有既有无关未提交改动。
+
+### 15.10 测试策略与验收标准
+
+先在 `work-products/tests/clean-contract.test.js` 建立 RED，至少覆盖：
+
+1. `tasks/plan.md` 与未映射 `tasks/evidence.md` 共存时 `BLOCKED`、保留 `/tasks/` 且零写入；
+2. 只有项目测试证据的 `product.test.mjs` 保持原位并进入 `preservedProductFiles`；
+3. 有精确 manifest 映射的内部测试迁入 `work-products/tests/`，并从最终位置重算引用；
+4. 显式 tracked benchmark 迁移、内外引用正确且目标可跟踪；
+5. local debug／rollback 目标继续忽略并进入正确报告分类；
+6. `preserve-content` reverse patch 迁移前后 SHA-256 一致；
+7. 完整性绑定的 `mutable-patch`、非法 schema、路径逃逸、重复映射、目标冲突和链接祖先全部失败关闭；
+8. apply 成功后二次 preview 为 `NO_CHANGES`，Claude/Codex v2 报告一致。
+
+完成标准：
+
+- 上述 RED 在旧实现上按预期失败，修复后全部通过；不得用删除或放宽既有安全断言变绿。
+- `node --test work-products/tests/clean-contract.test.js` 通过。
+- `node scripts/validate-all.js` 全部通过。
+- `git -c safe.directory=C:/Users/brand/SynologyDrive/Code/UXUCode diff --check` 返回 0。
+- `git check-ignore` 证明 SPEC、manifest、tracked 目标和测试可跟踪，local 目标保持忽略。
+- 双宿主引擎与 Clean Skill 的 SHA-256 分别一致。
+- 双宿主 manifest、Claude marketplace、两个 validator 和版本合同同步到同一个新版本。
+- 本地结果只证明仓库静态与隔离测试，不声称已安装缓存、新会话或生产行为已更新。
+
+### 15.11 风险、回滚与批准门
+
+- **误保留真正的内部测试：** 以显式清单补足授权；宁可报告并保留，也不根据名称误移动。
+- **持久清单陈旧：** 缺失源作为 inactive 明示报告；重新出现且目标冲突时失败关闭。
+- **动态 ignore 规则过宽：** 只生成目标级最窄例外，并用真实 Git 行为验证。
+- **report v2 破坏调用方：** 同批更新全部仓库内消费者和合同，不维护双版本。
+- **补丁迁移后不可回滚：** 默认 preserve-content 并复核哈希；完整性耦合的可变补丁直接阻塞。
+
+回滚必须成对恢复规格、测试、双宿主引擎/Skill、文档、ignore 和版本元数据；不得只回退引擎而留下 report v2 或 manifest 合同，也不得恢复“文件名即内部归属”的旧行为作为兼容模式。
+
+本节获用户批准后才可进入 `@plan`；在批准前不得实施业务代码。

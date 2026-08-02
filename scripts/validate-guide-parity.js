@@ -7,25 +7,49 @@ const root = path.resolve(__dirname, '..');
 const files = ['USAGE.zh-CN.md', 'USAGE.zh-TW.md', 'USAGE.en.md'];
 const definitions = [
   {
+    readmeMarker: '# 🇨🇳 简体中文',
+    readmeNext: '# 🇹🇼 繁體中文',
+    readmePlanning: '需求已经清楚时，也可以直接进入 `plan`',
+    guidePlanning: '已有明确要求，需要拆分计划并逐项实施',
+    readmeBacklink: '[返回 README](../README.md)',
     workspacePlaceholder: '<请替换为OpenClaw工作区绝对路径>',
     systemTerminal: '在系统终端',
     claudeSession: '进入 Claude Code 会话后',
     newOpenClawSession: '启动新的 OpenClaw 会话',
-    evidenceBoundary: '不证明真实 Marketplace 安装'
+    evidenceBoundary: '不证明真实 Marketplace 安装',
+    nestedCleanContract: '其他层级的 `<prefix>/work-products/tests/<rest>` 会归一到根级 `work-products/tests/<prefix>/<rest>`',
+    cleanDiscoveryContract: '只用于跨语言发现候选，不证明归属',
+    permissionRetryContract: '仅在结构化权限错误且宿主提供审批机制时'
   },
   {
+    readmeMarker: '# 🇹🇼 繁體中文',
+    readmeNext: '# 🇺🇸 English',
+    readmePlanning: '需求已經清楚時，也可以直接進入 `plan`',
+    guidePlanning: '已有明確要求，需要拆分計畫並逐項實作',
+    readmeBacklink: '[返回 README](../README.md)',
     workspacePlaceholder: '<請替換為OpenClaw工作區絕對路徑>',
     systemTerminal: '在系統終端',
     claudeSession: '進入 Claude Code 工作階段後',
     newOpenClawSession: '啟動新的 OpenClaw 工作階段',
-    evidenceBoundary: '不證明真實 Marketplace 安裝'
+    evidenceBoundary: '不證明真實 Marketplace 安裝',
+    nestedCleanContract: '其他層級的 `<prefix>/work-products/tests/<rest>` 會正規化到根層級 `work-products/tests/<prefix>/<rest>`',
+    cleanDiscoveryContract: '只用於跨語言發現候選，不證明歸屬',
+    permissionRetryContract: '僅在結構化權限錯誤且宿主提供核准機制時'
   },
   {
+    readmeMarker: '# 🇺🇸 English',
+    readmeNext: '## Star History',
+    readmePlanning: 'when the request is already clear, you can go directly to `plan`',
+    guidePlanning: 'the request is clear and needs a dependency-ordered implementation plan',
+    readmeBacklink: '[Back to README](../README.md)',
     workspacePlaceholder: '<replace-with-absolute-openclaw-workspace-path>',
     systemTerminal: 'In a system terminal',
     claudeSession: 'After entering the Claude Code session',
     newOpenClawSession: 'Start a new OpenClaw session',
-    evidenceBoundary: 'does not prove a live Marketplace installation'
+    evidenceBoundary: 'does not prove a live Marketplace installation',
+    nestedCleanContract: 'Nested `<prefix>/work-products/tests/<rest>` paths are normalized to root-level `work-products/tests/<prefix>/<rest>`',
+    cleanDiscoveryContract: 'only for cross-language candidate discovery and does not prove ownership',
+    permissionRetryContract: 'only for a structured permission error when the host offers approval'
   }
 ];
 const commands = ['help', 'spec', 'plan', 'build', 'debug', 'test', 'review', 'simplify', 'ship', 'mode', 'audit', 'debt', 'commit', 'compress', 'stats', 'status', 'clean'];
@@ -90,13 +114,23 @@ function requireOrdered(scope, tokens, message, failures) {
   }
 }
 
-function validateGuides(guides) {
+function validateGuides(guides, readme) {
 const failures = [];
 const baselineLevels = headingLevels(guides[0]);
 
 guides.forEach((guide, index) => {
   const file = files[index];
   const definition = definitions[index];
+  const readmeSection = typeof readme === 'string'
+    ? sectionBetween(readme, definition.readmeMarker, definition.readmeNext)
+    : '';
+  if (count(guide, definition.readmeBacklink) !== 1) {
+    failures.push(file + ': expected exactly one README backlink');
+  }
+  if (!readmeSection.includes(definition.readmePlanning) ||
+      !guide.includes(definition.guidePlanning)) {
+    failures.push(file + ': README and guide planning semantics are not aligned');
+  }
   const guideStructure = structure(guide);
   if (JSON.stringify(guideStructure) !== JSON.stringify(expectedStructure)) {
     failures.push(file + ': expected the aligned 12-section user-guide structure');
@@ -197,6 +231,38 @@ guides.forEach((guide, index) => {
       failures.push(file + ': clean safety contract is missing ' + label);
     }
   }
+  for (const required of [
+    '`work-products/clean-migration.json`',
+    '`source`',
+    '`target`',
+    '`tracking`',
+    '`rewritePolicy`',
+    '`tracked`',
+    '`local`',
+    '`references`',
+    '`preserve-content`',
+    '`mutable-patch`',
+    '`SHA256SUMS`',
+    '`version: 2`',
+    '`preservedProductFiles`',
+    '`unclassifiedLegacyFiles`',
+    '`integrityProtectedFiles`',
+    '`inactiveManifestEntries`'
+  ]) {
+    if (!commandReference.includes(required)) {
+      failures.push(file + ': Clean v2 contract is missing ' + required);
+    }
+  }
+  if (!commandReference.includes(definition.cleanDiscoveryContract)) {
+    failures.push(file + ': Clean v2 contract is missing the discovery-versus-ownership boundary');
+  }
+
+  if (!commandReference.includes(definition.nestedCleanContract)) {
+    failures.push(file + ': clean contract is missing nested work-products normalization');
+  }
+  if (!guide.includes(definition.permissionRetryContract)) {
+    failures.push(file + ': clean contract is missing the permission retry boundary');
+  }
   if (guide.includes('/uxu-code:organize') || /(^|[^A-Za-z0-9_-])@organize(?:$|[^A-Za-z0-9_-])/.test(guide)) {
     failures.push(file + ': forbidden organize alias');
   }
@@ -282,14 +348,15 @@ return failures;
 
 function main() {
   const guides = files.map((file) => fs.readFileSync(path.join(root, 'docs', file), 'utf8'));
-  const failures = validateGuides(guides);
+  const readme = fs.readFileSync(path.join(root, 'README.md'), 'utf8');
+  const failures = validateGuides(guides, readme);
   if (failures.length) {
     console.error('Guide user-journey validation failed:');
     failures.forEach((failure) => console.error('- ' + failure));
     process.exitCode = 1;
     return;
   }
-  console.log('Guide parity passed: 12 aligned user-facing sections, host execution contexts, commands, modes, generated-file locations, and maintainer evidence boundaries.');
+  console.log('Guide parity passed: README linkage, 12 aligned user-facing sections, host execution contexts, commands, modes, generated-file locations, and maintainer evidence boundaries.');
 }
 
 if (require.main === module) main();

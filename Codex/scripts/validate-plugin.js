@@ -26,7 +26,7 @@ const hooks = readJson('hooks/hooks.json');
 
 if (manifest) {
   if (manifest.name !== 'uxu-code') fail('manifest: unexpected plugin name');
-  if (manifest.version !== '4.2.0') fail('manifest: expected version 4.2.0');
+  if (manifest.version !== '5.0.1') fail('manifest: expected version 5.0.1');
   if (manifest.skills !== './skills/') fail('manifest: skills must be ./skills/');
   if (manifest.hooks !== './hooks/hooks.json') fail('manifest: hooks must be ./hooks/hooks.json');
 }

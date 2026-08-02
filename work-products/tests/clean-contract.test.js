@@ -1,5 +1,6 @@
 const assert = require('node:assert/strict');
 const childProcess = require('node:child_process');
+const crypto = require('node:crypto');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
@@ -12,6 +13,7 @@ const requiredIgnoreRules = [
   '!/work-products/SPEC.md',
   '!/work-products/plan.md',
   '!/work-products/todo.md',
+  '!/work-products/clean-migration.json',
   '!/work-products/tests/',
   '!/work-products/tests/**'
 ];
@@ -82,12 +84,28 @@ function runPreview(pkg, workspace) {
   return JSON.parse(result.stdout);
 }
 
-test('preview classifies internal tests repository-wide and writes nothing', () => {
+function migrationManifest(moves, extra = {}) {
+  return `${JSON.stringify({ version: 1, moves, ...extra }, null, 2)}\n`;
+}
+
+function digest(algorithm, content) {
+  return crypto.createHash(algorithm).update(content).digest('hex');
+}
+
+test('preview classifies fixed and manifest-authorized artifacts while preserving product tests', () => {
   const reports = [];
 
   for (const pkg of packages) {
     const workspace = createWorkspace({
       '.gitignore': '/SPEC.md\n/tasks/\n/custom/\n',
+      'work-products/clean-migration.json': migrationManifest([
+        {
+          source: 'tests/mode-policy-contract.test.js',
+          target: 'work-products/tests/mode-policy-contract.test.js',
+          tracking: 'tracked',
+          rewritePolicy: 'references'
+        }
+      ]),
       'SPEC.md': '# Legacy UXUCode specification\n',
       'tasks/plan.md': '# UXUCode implementation plan\n',
       'tasks/todo.md': '# UXUCode task list\n',
@@ -100,38 +118,42 @@ test('preview classifies internal tests repository-wide and writes nothing', () 
     try {
       const before = workspaceSnapshot(workspace);
       const report = runPreview(pkg, workspace);
-      const after = workspaceSnapshot(workspace);
 
-      assert.deepEqual(after, before);
-      assert.equal(report.version, 1);
+      assert.deepEqual(workspaceSnapshot(workspace), before);
+      assert.equal(report.version, 2);
       assert.equal(report.mode, 'preview');
       assert.equal(report.status, 'READY');
-      assert.deepEqual(report.moves, [
-        {
-          source: 'SPEC.md',
-          target: 'work-products/SPEC.md',
-          reason: 'legacy-spec-path'
-        },
-        {
-          source: 'tasks/plan.md',
-          target: 'work-products/plan.md',
-          reason: 'legacy-plan-path'
-        },
-        {
-          source: 'tasks/todo.md',
-          target: 'work-products/todo.md',
-          reason: 'legacy-todo-path'
-        },
-        {
-          source: 'tests/mode-policy-contract.test.js',
-          target: 'work-products/tests/mode-policy-contract.test.js',
-          reason: 'internal-test-artifact'
-        },
-        {
-          source: 'tests/product.test.js',
-          target: 'work-products/tests/product.test.js',
-          reason: 'internal-test-artifact'
-        }
+      assert.deepEqual(
+        report.moves.map(({ source, target, authorization }) => ({
+          source,
+          target,
+          authorization
+        })),
+        [
+          {
+            source: 'SPEC.md',
+            target: 'work-products/SPEC.md',
+            authorization: 'fixed-legacy'
+          },
+          {
+            source: 'tasks/plan.md',
+            target: 'work-products/plan.md',
+            authorization: 'fixed-legacy'
+          },
+          {
+            source: 'tasks/todo.md',
+            target: 'work-products/todo.md',
+            authorization: 'fixed-legacy'
+          },
+          {
+            source: 'tests/mode-policy-contract.test.js',
+            target: 'work-products/tests/mode-policy-contract.test.js',
+            authorization: 'manifest'
+          }
+        ]
+      );
+      assert.deepEqual(report.preservedProductFiles, [
+        { path: 'tests/product.test.js', reason: 'test-name-only' }
       ]);
       assert.deepEqual(report.referenceUpdates, []);
       assert.deepEqual(report.gitignoreChanges, {
@@ -139,7 +161,6 @@ test('preview classifies internal tests repository-wide and writes nothing', () 
         remove: ['/SPEC.md', '/tasks/']
       });
       assert.deepEqual(report.blockers, []);
-      assert.deepEqual(report.skipped, []);
       reports.push(report);
     } finally {
       fs.rmSync(workspace, { recursive: true, force: true });
@@ -170,6 +191,603 @@ test('preview returns NO_CHANGES for a compliant workspace without candidates', 
     assert.deepEqual(workspaceSnapshot(workspace), before);
   } finally {
     fs.rmSync(workspace, { recursive: true, force: true });
+  }
+});
+
+test('preview blocks an incompletely mapped legacy tasks directory without planning writes', () => {
+  for (const pkg of packages) {
+    const workspace = createWorkspace({
+      '.gitignore': `${requiredIgnoreRules.join('\n')}\n/tasks/\n`,
+      'tasks/plan.md': '# Plan\n',
+      'tasks/evidence.md': '# Project evidence\n'
+    });
+
+    try {
+      const before = workspaceSnapshot(workspace);
+      const preview = runPreview(pkg, workspace);
+
+      assert.equal(preview.status, 'BLOCKED');
+      assert.equal(preview.version, 2);
+      assert.deepEqual(preview.unclassifiedLegacyFiles, [
+        { path: 'tasks/evidence.md', reason: 'manifest-entry-required' }
+      ]);
+      assert.ok(
+        preview.blockers.some((blocker) =>
+          blocker.code === 'LEGACY_DIRECTORY_REMAINS' &&
+          blocker.path === 'tasks/evidence.md')
+      );
+      assert.deepEqual(preview.gitignoreChanges.remove, []);
+      assert.deepEqual(workspaceSnapshot(workspace), before);
+
+      const applied = runEngine(pkg, workspace, ['apply']);
+      assert.notEqual(applied.status, 0);
+      assert.equal(JSON.parse(applied.stdout).status, 'BLOCKED');
+      assert.deepEqual(workspaceSnapshot(workspace), before);
+    } finally {
+      fs.rmSync(workspace, { recursive: true, force: true });
+    }
+  }
+});
+
+test('preview preserves an unauthorized project test and reports the v2 classification', () => {
+  for (const pkg of packages) {
+    const workspace = createWorkspace({
+      '.gitignore': `${requiredIgnoreRules.join('\n')}\n`,
+      'src/product.js': 'module.exports = {};\n',
+      'product.test.mjs': "import './src/product.js';\n"
+    });
+
+    try {
+      const before = workspaceSnapshot(workspace);
+      const report = runPreview(pkg, workspace);
+
+      assert.equal(report.status, 'NO_CHANGES');
+      assert.equal(report.version, 2);
+      assert.deepEqual(report.moves, []);
+      assert.deepEqual(report.preservedProductFiles, [
+        { path: 'product.test.mjs', reason: 'test-name-only' }
+      ]);
+      assert.deepEqual(report.unclassifiedLegacyFiles, []);
+      assert.deepEqual(report.integrityProtectedFiles, []);
+      assert.deepEqual(report.inactiveManifestEntries, []);
+      assert.deepEqual(workspaceSnapshot(workspace), before);
+    } finally {
+      fs.rmSync(workspace, { recursive: true, force: true });
+    }
+  }
+});
+
+test('manifest explicitly authorizes an internal test and keeps its references valid', () => {
+  for (const pkg of packages) {
+    const workspace = createWorkspace({
+      '.gitignore': `${requiredIgnoreRules.join('\n')}\n`,
+      'work-products/clean-migration.json': migrationManifest([
+        {
+          source: 'product.test.mjs',
+          target: 'work-products/tests/product.test.mjs',
+          tracking: 'tracked',
+          rewritePolicy: 'references'
+        }
+      ]),
+      'product.test.mjs': "import './src/product.js';\n",
+      'src/product.js': 'export default {};\n'
+    });
+
+    try {
+      const preview = runPreview(pkg, workspace);
+      assert.equal(preview.status, 'READY', JSON.stringify(preview.blockers));
+      assert.deepEqual(preview.moves, [
+        {
+          source: 'product.test.mjs',
+          target: 'work-products/tests/product.test.mjs',
+          reason: 'manifest-entry',
+          authorization: 'manifest',
+          tracking: 'tracked',
+          rewritePolicy: 'references'
+        }
+      ]);
+      assert.deepEqual(preview.preservedProductFiles, []);
+
+      const applied = runEngine(pkg, workspace, ['apply']);
+      assert.equal(applied.status, 0, applied.stderr);
+      assert.equal(JSON.parse(applied.stdout).status, 'APPLIED');
+      assert.equal(
+        fs.readFileSync(
+          path.join(workspace, 'work-products', 'tests', 'product.test.mjs'),
+          'utf8'
+        ),
+        "import '../../src/product.js';\n"
+      );
+      assert.equal(fs.existsSync(path.join(workspace, 'product.test.mjs')), false);
+      const second = runPreview(pkg, workspace);
+      assert.equal(second.status, 'NO_CHANGES');
+      assert.deepEqual(second.inactiveManifestEntries, [
+        {
+          source: 'product.test.mjs',
+          target: 'work-products/tests/product.test.mjs',
+          tracking: 'tracked',
+          rewritePolicy: 'references',
+          state: 'satisfied'
+        }
+      ]);
+    } finally {
+      fs.rmSync(workspace, { recursive: true, force: true });
+    }
+  }
+});
+
+test('manifest rejects unknown schema, unsafe paths, duplicates, and fixed fact overrides', () => {
+  const cases = [
+    {
+      name: 'unknown version',
+      manifest: { version: 2, moves: [] },
+      reason: 'version'
+    },
+    {
+      name: 'unknown top-level field',
+      manifest: { version: 1, moves: [], note: 'no' },
+      reason: 'top-level-fields'
+    },
+    {
+      name: 'repository escape',
+      manifest: {
+        version: 1,
+        moves: [{
+          source: '../outside.txt',
+          target: 'work-products/debug/outside.txt',
+          tracking: 'local',
+          rewritePolicy: 'preserve-content'
+        }]
+      },
+      reason: 'source-path'
+    },
+    {
+      name: 'duplicate source',
+      manifest: {
+        version: 1,
+        moves: [
+          {
+            source: 'evidence.txt',
+            target: 'work-products/debug/a.txt',
+            tracking: 'local',
+            rewritePolicy: 'preserve-content'
+          },
+          {
+            source: 'evidence.txt',
+            target: 'work-products/debug/b.txt',
+            tracking: 'local',
+            rewritePolicy: 'preserve-content'
+          }
+        ]
+      },
+      reason: 'duplicate-source'
+    },
+    {
+      name: 'fixed target override',
+      manifest: {
+        version: 1,
+        moves: [{
+          source: 'custom-spec.md',
+          target: 'work-products/SPEC.md',
+          tracking: 'tracked',
+          rewritePolicy: 'references'
+        }]
+      },
+      reason: 'fixed-fact'
+    },
+    {
+      name: 'fixed target descendant override',
+      manifest: {
+        version: 1,
+        moves: [{
+          source: 'custom-spec-child.md',
+          target: 'work-products/SPEC.md/child.md',
+          tracking: 'tracked',
+          rewritePolicy: 'references'
+        }]
+      },
+      reason: 'fixed-fact'
+    },
+    {
+      name: 'mutable patch policy on a plain file',
+      manifest: {
+        version: 1,
+        moves: [{
+          source: 'notes.txt',
+          target: 'work-products/debug/notes.txt',
+          tracking: 'local',
+          rewritePolicy: 'mutable-patch'
+        }]
+      },
+      reason: 'mutable-patch-policy'
+    }
+  ];
+
+  for (const fixture of cases) {
+    const workspace = createWorkspace({
+      '.gitignore': `${requiredIgnoreRules.join('\n')}\n`,
+      'work-products/clean-migration.json': `${JSON.stringify(fixture.manifest)}\n`
+    });
+    try {
+      const before = workspaceSnapshot(workspace);
+      const report = runPreview('Codex', workspace);
+      assert.equal(report.status, 'BLOCKED', fixture.name);
+      assert.ok(
+        report.blockers.some((blocker) =>
+          blocker.code === 'MANIFEST_INVALID' && blocker.reason === fixture.reason),
+        fixture.name
+      );
+      assert.deepEqual(workspaceSnapshot(workspace), before, fixture.name);
+    } finally {
+      fs.rmSync(workspace, { recursive: true, force: true });
+    }
+  }
+});
+
+test('manifest rejects a case-insensitive alias of a fixed source', (context) => {
+  const workspace = createWorkspace({
+    '.gitignore': `${requiredIgnoreRules.join('\n')}\n`,
+    'SPEC.md': 'legacy specification\n',
+    'work-products/clean-migration.json': migrationManifest([{
+      source: 'spec.md',
+      target: 'work-products/tests/spec-copy.md',
+      tracking: 'tracked',
+      rewritePolicy: 'references'
+    }])
+  });
+
+  try {
+    if (!fs.existsSync(path.join(workspace, 'spec.md'))) {
+      context.skip('requires a case-insensitive filesystem');
+      return;
+    }
+    const before = workspaceSnapshot(workspace);
+    const report = runPreview('Codex', workspace);
+
+    assert.equal(report.status, 'BLOCKED');
+    assert.ok(report.blockers.some((blocker) =>
+      blocker.code === 'MANIFEST_INVALID' && blocker.reason === 'fixed-fact'));
+    assert.deepEqual(workspaceSnapshot(workspace), before);
+  } finally {
+    fs.rmSync(workspace, { recursive: true, force: true });
+  }
+});
+
+test('manifest lifecycle distinguishes inactive, satisfied, and target conflicts', () => {
+  const move = {
+    source: 'evidence.md',
+    target: 'work-products/debug/evidence.md',
+    tracking: 'local',
+    rewritePolicy: 'preserve-content'
+  };
+  const workspace = createWorkspace({
+    '.gitignore': `${requiredIgnoreRules.join('\n')}\n`,
+    'work-products/clean-migration.json': migrationManifest([move])
+  });
+
+  try {
+    let report = runPreview('Codex', workspace);
+    assert.equal(report.status, 'NO_CHANGES');
+    assert.deepEqual(report.inactiveManifestEntries, [{ ...move, state: 'inactive' }]);
+
+    writeFixture(workspace, move.target, '# Already migrated\n');
+    report = runPreview('Codex', workspace);
+    assert.equal(report.status, 'NO_CHANGES');
+    assert.deepEqual(report.inactiveManifestEntries, [{ ...move, state: 'satisfied' }]);
+
+    writeFixture(workspace, move.source, '# Reappeared\n');
+    report = runPreview('Codex', workspace);
+    assert.equal(report.status, 'BLOCKED');
+    assert.ok(report.blockers.some((blocker) => blocker.code === 'TARGET_EXISTS'));
+  } finally {
+    fs.rmSync(workspace, { recursive: true, force: true });
+  }
+});
+test('manifest lifecycle rejects a non-file satisfied target', () => {
+  const move = {
+    source: 'evidence.md',
+    target: 'work-products/debug/evidence.md',
+    tracking: 'local',
+    rewritePolicy: 'preserve-content'
+  };
+  const workspace = createWorkspace({
+    '.gitignore': `${requiredIgnoreRules.join('\n')}\n`,
+    'work-products/clean-migration.json': migrationManifest([move])
+  });
+  fs.mkdirSync(path.join(workspace, move.target), { recursive: true });
+
+  try {
+    const before = workspaceSnapshot(workspace);
+    const report = runPreview('Codex', workspace);
+
+    assert.equal(report.status, 'BLOCKED');
+    assert.ok(report.blockers.some((blocker) =>
+      blocker.code === 'MANIFEST_TARGET_UNSAFE' &&
+      blocker.target === move.target &&
+      blocker.reason === 'not-regular-file'));
+    assert.deepEqual(workspaceSnapshot(workspace), before);
+  } finally {
+    fs.rmSync(workspace, { recursive: true, force: true });
+  }
+});
+
+
+test('manifest generates narrow tracked exceptions and preserves local targets as ignored', () => {
+  const moves = [
+    {
+      source: 'benchmark.mjs',
+      target: 'work-products/benchmarks/benchmark.mjs',
+      tracking: 'tracked',
+      rewritePolicy: 'references'
+    },
+    {
+      source: 'rollback.txt',
+      target: 'work-products/debug/rollback.txt',
+      tracking: 'local',
+      rewritePolicy: 'preserve-content'
+    }
+  ];
+  const workspace = createWorkspace({
+    '.gitignore': `${requiredIgnoreRules.join('\n')}\n`,
+    'work-products/clean-migration.json': migrationManifest(moves),
+    'benchmark.mjs': 'export default 1;\n',
+    'rollback.txt': 'local rollback evidence\n',
+    'work-products/benchmarks/private.log': 'private benchmark evidence\n'
+  });
+
+  try {
+    const preview = runPreview('Codex', workspace);
+    assert.equal(preview.status, 'READY', JSON.stringify(preview.blockers));
+    assert.ok(preview.gitignoreChanges.add.includes('!/work-products/benchmarks/'));
+    assert.ok(preview.gitignoreChanges.add.includes('!/work-products/benchmarks/benchmark.mjs'));
+    assert.ok(!preview.gitignoreChanges.add.includes('!/work-products/debug/rollback.txt'));
+
+    const applied = runEngine('Codex', workspace, ['apply']);
+    assert.equal(applied.status, 0, applied.stderr);
+    const isolatedGlobalConfig = path.join(workspace, '.git', 'isolated-global-config');
+    fs.writeFileSync(isolatedGlobalConfig, '');
+    for (const [probe, expectedStatus] of [
+      ['work-products/clean-migration.json', 1],
+      ['work-products/benchmarks/benchmark.mjs', 1],
+      ['work-products/benchmarks/private.log', 0],
+      ['work-products/debug/rollback.txt', 0]
+    ]) {
+      const result = childProcess.spawnSync('git', ['check-ignore', '--no-index', probe], {
+        cwd: workspace,
+        encoding: 'utf8',
+        env: {
+          ...process.env,
+          GIT_CONFIG_GLOBAL: isolatedGlobalConfig,
+          GIT_CONFIG_NOSYSTEM: '1'
+        }
+      });
+      assert.equal(result.status, expectedStatus, `${probe}: ${result.stderr}`);
+    }
+    assert.equal(runPreview('Codex', workspace).status, 'NO_CHANGES');
+  } finally {
+    fs.rmSync(workspace, { recursive: true, force: true });
+  }
+});
+
+test('apply repairs previously broad tracked exceptions without exposing siblings', () => {
+  const target = 'work-products/benchmarks/benchmark.mjs';
+  const workspace = createWorkspace({
+    '.gitignore': `${requiredIgnoreRules.join('\n')}\n` +
+      '!/work-products/benchmarks/\n' +
+      `!/${target}\n`,
+    'work-products/clean-migration.json': migrationManifest([{
+      source: 'benchmark.mjs',
+      target,
+      tracking: 'tracked',
+      rewritePolicy: 'references'
+    }]),
+    [target]: 'export default 1;\n',
+    'work-products/benchmarks/private.log': 'private benchmark evidence\n'
+  });
+
+  try {
+    const preview = runPreview('Codex', workspace);
+    assert.equal(preview.status, 'READY', JSON.stringify(preview.blockers));
+    assert.ok(preview.gitignoreChanges.add.includes('/work-products/benchmarks/*'));
+
+    const applied = runEngine('Codex', workspace, ['apply']);
+    assert.equal(applied.status, 0, applied.stderr);
+    for (const [probe, expectedStatus] of [
+      [target, 1],
+      ['work-products/benchmarks/private.log', 0]
+    ]) {
+      const result = childProcess.spawnSync('git', ['check-ignore', '--no-index', probe], {
+        cwd: workspace,
+        encoding: 'utf8'
+      });
+      assert.equal(result.status, expectedStatus, `${probe}: ${result.stderr}`);
+    }
+    assert.equal(runPreview('Codex', workspace).status, 'NO_CHANGES');
+  } finally {
+    fs.rmSync(workspace, { recursive: true, force: true });
+  }
+});
+
+test('preserve-content moves a reverse patch byte-identically and reports checksum protection', () => {
+  const patchContent =
+    'diff --git a/src/current.js b/src/current.js\n' +
+    '--- a/src/current.js\n' +
+    '+++ b/src/current.js\n';
+  const patchHash = digest('sha256', patchContent);
+  const workspace = createWorkspace({
+    '.gitignore': `${requiredIgnoreRules.join('\n')}\n`,
+    'work-products/clean-migration.json': migrationManifest([
+      {
+        source: 'rollback.reverse.patch',
+        target: 'work-products/ship/rollback.reverse.patch',
+        tracking: 'local',
+        rewritePolicy: 'preserve-content'
+      }
+    ]),
+    'rollback.reverse.patch': patchContent,
+    'SHA256SUMS': `${patchHash}  rollback.reverse.patch\n`,
+    'README.md': '[Rollback](rollback.reverse.patch)\n'
+  });
+
+  try {
+    const beforePatch = fs.readFileSync(path.join(workspace, 'rollback.reverse.patch'));
+    const checksumBefore = fs.readFileSync(path.join(workspace, 'SHA256SUMS'));
+    const preview = runPreview('Codex', workspace);
+
+    assert.equal(preview.status, 'READY', JSON.stringify(preview.blockers));
+    assert.deepEqual(preview.integrityProtectedFiles, [
+      {
+        source: 'rollback.reverse.patch',
+        target: 'work-products/ship/rollback.reverse.patch',
+        rewritePolicy: 'preserve-content',
+        algorithm: 'sha256',
+        expectedHash: patchHash,
+        checksums: [
+          {
+            file: 'SHA256SUMS',
+            algorithm: 'sha256',
+            expectedHash: patchHash,
+            path: 'rollback.reverse.patch'
+          }
+        ]
+      }
+    ]);
+
+    const applied = runEngine('Codex', workspace, ['apply']);
+    assert.equal(applied.status, 0, applied.stderr);
+    const target = fs.readFileSync(
+      path.join(workspace, 'work-products', 'ship', 'rollback.reverse.patch')
+    );
+    assert.deepEqual(target, beforePatch);
+    assert.equal(digest('sha256', target), patchHash);
+    assert.deepEqual(fs.readFileSync(path.join(workspace, 'SHA256SUMS')), checksumBefore);
+    assert.equal(
+      fs.readFileSync(path.join(workspace, 'README.md'), 'utf8'),
+      '[Rollback](work-products/ship/rollback.reverse.patch)\n'
+    );
+  } finally {
+    fs.rmSync(workspace, { recursive: true, force: true });
+  }
+});
+
+test('mutable patch coupled to SHA512SUMS is BLOCKED before any write', () => {
+  const patchContent =
+    'diff --git a/legacy.txt b/legacy.txt\n' +
+    '--- a/legacy.txt\n' +
+    '+++ b/legacy.txt\n';
+  const patchHash = digest('sha512', patchContent);
+  const workspace = createWorkspace({
+    '.gitignore': `${requiredIgnoreRules.join('\n')}\n`,
+    'work-products/clean-migration.json': migrationManifest([
+      {
+        source: 'change.patch',
+        target: 'work-products/ship/change.patch',
+        tracking: 'local',
+        rewritePolicy: 'mutable-patch'
+      },
+      {
+        source: 'legacy.txt',
+        target: 'work-products/debug/legacy.txt',
+        tracking: 'local',
+        rewritePolicy: 'preserve-content'
+      }
+    ]),
+    'change.patch': patchContent,
+    'legacy.txt': 'legacy\n',
+    'SHA512SUMS.txt': `${patchHash}  change.patch\n`
+  });
+
+  try {
+    const before = workspaceSnapshot(workspace);
+    const preview = runPreview('Claude', workspace);
+    assert.equal(preview.status, 'BLOCKED');
+    assert.ok(
+      preview.blockers.some((blocker) =>
+        blocker.code === 'INTEGRITY_COUPLED_ARTIFACT' && blocker.source === 'change.patch')
+    );
+    const applied = runEngine('Claude', workspace, ['apply']);
+    assert.notEqual(applied.status, 0);
+    assert.equal(JSON.parse(applied.stdout).status, 'BLOCKED');
+    assert.deepEqual(workspaceSnapshot(workspace), before);
+  } finally {
+    fs.rmSync(workspace, { recursive: true, force: true });
+  }
+});
+
+test('patch policies reject references and allow an uncoupled mutable patch rewrite', () => {
+  const invalidWorkspace = createWorkspace({
+    '.gitignore': `${requiredIgnoreRules.join('\n')}\n`,
+    'work-products/clean-migration.json': migrationManifest([
+      {
+        source: 'change.diff',
+        target: 'work-products/ship/change.txt',
+        tracking: 'local',
+        rewritePolicy: 'references'
+      },
+      {
+        source: 'change.txt',
+        target: 'work-products/ship/change.diff',
+        tracking: 'local',
+        rewritePolicy: 'references'
+      }
+    ]),
+    'change.diff': '--- a/legacy.txt\n+++ b/legacy.txt\n',
+    'change.txt': 'patch source\n'
+  });
+  try {
+    const invalid = runPreview('Codex', invalidWorkspace);
+    assert.equal(invalid.status, 'BLOCKED');
+    assert.ok(invalid.blockers.some((blocker) =>
+      blocker.code === 'MANIFEST_INVALID' && blocker.reason === 'patch-policy'));
+    assert.equal(invalid.blockers.filter((blocker) =>
+      blocker.code === 'MANIFEST_INVALID' && blocker.reason === 'patch-policy').length, 2);
+
+  } finally {
+    fs.rmSync(invalidWorkspace, { recursive: true, force: true });
+  }
+
+  const mutableWorkspace = createWorkspace({
+    '.gitignore': `${requiredIgnoreRules.join('\n')}\n`,
+    'work-products/clean-migration.json': migrationManifest([
+      {
+        source: 'change.patch',
+        target: 'work-products/ship/change.patch',
+        tracking: 'local',
+        rewritePolicy: 'mutable-patch'
+      },
+      {
+        source: 'legacy.txt',
+        target: 'work-products/debug/legacy.txt',
+        tracking: 'local',
+        rewritePolicy: 'preserve-content'
+      }
+    ]),
+    'change.patch':
+      'diff --git a/legacy.txt b/legacy.txt\n' +
+      '--- a/legacy.txt\n' +
+      '+++ b/legacy.txt\n' +
+      '@@ -1 +1 @@\n' +
+      '+const path = "./legacy.txt";\n' +
+      '+[doc](legacy.txt)\n',
+    'legacy.txt': 'legacy\n'
+  });
+  try {
+    const applied = runEngine('Codex', mutableWorkspace, ['apply']);
+    assert.equal(applied.status, 0, applied.stderr);
+    assert.equal(
+      fs.readFileSync(
+        path.join(mutableWorkspace, 'work-products', 'ship', 'change.patch'),
+        'utf8'
+      ),
+      'diff --git a/work-products/debug/legacy.txt b/work-products/debug/legacy.txt\n' +
+      '--- a/work-products/debug/legacy.txt\n' +
+      '+++ b/work-products/debug/legacy.txt\n' +
+      '@@ -1 +1 @@\n' +
+      '+const path = "./legacy.txt";\n' +
+      '+[doc](legacy.txt)\n'
+    );
+  } finally {
+    fs.rmSync(mutableWorkspace, { recursive: true, force: true });
   }
 });
 
@@ -217,9 +835,22 @@ test('preview ignores generated Python bytecode caches', () => {
   }
 });
 
-test('preview keeps a non-test Python patch helper and rewrites proven repository paths', () => {
+test('manifest moves a test, rewrites proven code paths, and preserves unowned patch bytes', () => {
+  const patchContent =
+    'diff --git a/tests/test_lifecycle_reconstruction.py ' +
+    'b/tests/test_lifecycle_reconstruction.py\n' +
+    '--- a/tests/test_lifecycle_reconstruction.py\n' +
+    '+++ b/tests/test_lifecycle_reconstruction.py\n';
   const workspace = createWorkspace({
     '.gitignore': `${requiredIgnoreRules.join('\n')}\n`,
+    'work-products/clean-migration.json': migrationManifest([
+      {
+        source: 'tests/test_lifecycle_reconstruction.py',
+        target: 'work-products/tests/test_lifecycle_reconstruction.py',
+        tracking: 'tracked',
+        rewritePolicy: 'references'
+      }
+    ]),
     'tests/test_lifecycle_reconstruction.py':
       'def test_lifecycle_reconstruction():\n    assert True\n',
     'work/patches/fix_302_test.py':
@@ -235,24 +866,24 @@ test('preview keeps a non-test Python patch helper and rewrites proven repositor
       '))\n',
     'work/patches/test_lifecycle_reconstruction.py.new':
       'def test_staged_copy():\n    assert True\n',
-    'work/patches/lifecycle.patch':
-      'diff --git a/tests/test_lifecycle_reconstruction.py ' +
-      'b/tests/test_lifecycle_reconstruction.py\n' +
-      '--- a/tests/test_lifecycle_reconstruction.py\n' +
-      '+++ b/tests/test_lifecycle_reconstruction.py\n'
+    'work/patches/lifecycle.patch': patchContent
   });
 
   try {
     const preview = runPreview('Codex', workspace);
-
     assert.equal(preview.status, 'READY');
-    assert.deepEqual(preview.moves, [
-      {
+    assert.deepEqual(
+      preview.moves.map(({ source, target, authorization }) => ({
+        source,
+        target,
+        authorization
+      })),
+      [{
         source: 'tests/test_lifecycle_reconstruction.py',
         target: 'work-products/tests/test_lifecycle_reconstruction.py',
-        reason: 'internal-test-artifact'
-      }
-    ]);
+        authorization: 'manifest'
+      }]
+    );
     assert.deepEqual(preview.blockers, []);
 
     const result = runEngine('Codex', workspace, ['apply']);
@@ -272,20 +903,12 @@ test('preview keeps a non-test Python patch helper and rewrites proven repositor
       '))\n'
     );
     assert.equal(
-      fs.existsSync(path.join(
-        workspace,
-        'work',
-        'patches',
-        'test_lifecycle_reconstruction.py.new'
-      )),
+      fs.existsSync(path.join(workspace, 'work', 'patches', 'test_lifecycle_reconstruction.py.new')),
       true
     );
     assert.equal(
       fs.readFileSync(path.join(workspace, 'work', 'patches', 'lifecycle.patch'), 'utf8'),
-      'diff --git a/work-products/tests/test_lifecycle_reconstruction.py ' +
-      'b/work-products/tests/test_lifecycle_reconstruction.py\n' +
-      '--- a/work-products/tests/test_lifecycle_reconstruction.py\n' +
-      '+++ b/work-products/tests/test_lifecycle_reconstruction.py\n'
+      patchContent
     );
     assert.equal(runPreview('Codex', workspace).status, 'NO_CHANGES');
   } finally {
@@ -437,9 +1060,23 @@ test('classification reports target conflicts as BLOCKED without modifying eithe
   }
 });
 
-test('preview blocks multiple sources that map to the same target', () => {
+test('manifest rejects multiple sources that map to the same target', () => {
   const workspace = createWorkspace({
     '.gitignore': `${requiredIgnoreRules.join('\n')}\n`,
+    'work-products/clean-migration.json': migrationManifest([
+      {
+        source: 'product.test.js',
+        target: 'work-products/tests/product.test.js',
+        tracking: 'tracked',
+        rewritePolicy: 'references'
+      },
+      {
+        source: 'tests/product.test.js',
+        target: 'work-products/tests/product.test.js',
+        tracking: 'tracked',
+        rewritePolicy: 'references'
+      }
+    ]),
     'product.test.js': 'module.exports = "root";\n',
     'tests/product.test.js': 'module.exports = "tests";\n'
   });
@@ -449,13 +1086,8 @@ test('preview blocks multiple sources that map to the same target', () => {
     const report = runPreview('Codex', workspace);
 
     assert.equal(report.status, 'BLOCKED');
-    assert.deepEqual(report.blockers, [
-      {
-        code: 'TARGET_COLLISION',
-        target: 'work-products/tests/product.test.js',
-        sources: ['product.test.js', 'tests/product.test.js']
-      }
-    ]);
+    assert.ok(report.blockers.some((blocker) =>
+      blocker.code === 'MANIFEST_INVALID' && blocker.reason === 'duplicate-target'));
     assert.deepEqual(workspaceSnapshot(workspace), before);
   } finally {
     fs.rmSync(workspace, { recursive: true, force: true });
@@ -465,8 +1097,15 @@ test('preview blocks multiple sources that map to the same target', () => {
 test('preview blocks a symbolic-link target parent outside the repository', (context) => {
   const workspace = createWorkspace({
     '.gitignore': `${requiredIgnoreRules.join('\n')}\n`,
-    'product.test.js': 'module.exports = {};\n',
-    'work-products/.keep': ''
+    'work-products/clean-migration.json': migrationManifest([
+      {
+        source: 'product.test.js',
+        target: 'work-products/tests/product.test.js',
+        tracking: 'tracked',
+        rewritePolicy: 'references'
+      }
+    ]),
+    'product.test.js': 'module.exports = {};\n'
   });
   const externalDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'uxucode-clean-target-'));
   const linkedTests = path.join(workspace, 'work-products', 'tests');
@@ -492,15 +1131,160 @@ test('preview blocks a symbolic-link target parent outside the repository', (con
     const report = runPreview('Codex', workspace);
 
     assert.equal(report.status, 'BLOCKED');
-    assert.deepEqual(report.blockers, [
-      {
-        code: 'TARGET_PARENT_SYMLINK',
-        path: 'work-products/tests',
-        target: 'work-products/tests/product.test.js'
-      }
-    ]);
+    assert.ok(report.blockers.some((blocker) =>
+      blocker.code === 'TARGET_PARENT_SYMLINK' &&
+      blocker.path === 'work-products/tests' &&
+      blocker.target === 'work-products/tests/product.test.js'));
     assert.deepEqual(workspaceSnapshot(workspace), before);
     assert.deepEqual(fs.readdirSync(externalDirectory), []);
+  } finally {
+    fs.rmSync(workspace, { recursive: true, force: true });
+    fs.rmSync(externalDirectory, { recursive: true, force: true });
+  }
+});
+test('preview blocks an earlier target link before a missing descendant', (context) => {
+  const workspace = createWorkspace({
+    '.gitignore': `${requiredIgnoreRules.join('\n')}\n`,
+    'work-products/clean-migration.json': migrationManifest([
+      {
+        source: 'product.test.js',
+        target: 'work-products/linked/missing/product.test.js',
+        tracking: 'tracked',
+        rewritePolicy: 'references'
+      }
+    ]),
+    'product.test.js': 'module.exports = {};\n'
+  });
+  const externalDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'uxucode-clean-ancestor-'));
+  const linkedTarget = path.join(workspace, 'work-products', 'linked');
+
+  try {
+    fs.symlinkSync(
+      externalDirectory,
+      linkedTarget,
+      process.platform === 'win32' ? 'junction' : 'dir'
+    );
+  } catch (error) {
+    if (error.code === 'EPERM' || error.code === 'EACCES') {
+      context.skip(`symbolic links are unavailable: ${error.code}`);
+      fs.rmSync(workspace, { recursive: true, force: true });
+      fs.rmSync(externalDirectory, { recursive: true, force: true });
+      return;
+    }
+    throw error;
+  }
+
+  try {
+    const before = workspaceSnapshot(workspace);
+    const report = runPreview('Codex', workspace);
+
+    assert.equal(report.status, 'BLOCKED');
+    assert.ok(report.blockers.some((blocker) =>
+      blocker.code === 'TARGET_PARENT_SYMLINK' &&
+      blocker.path === 'work-products/linked' &&
+      blocker.target === 'work-products/linked/missing/product.test.js'));
+    assert.deepEqual(workspaceSnapshot(workspace), before);
+    assert.deepEqual(fs.readdirSync(externalDirectory), []);
+  } finally {
+    fs.rmSync(workspace, { recursive: true, force: true });
+    fs.rmSync(externalDirectory, { recursive: true, force: true });
+  }
+});
+
+test('preview blocks a manifest source under a symbolic-link ancestor', (context) => {
+  const workspace = createWorkspace({
+    '.gitignore': `${requiredIgnoreRules.join('\n')}\n`,
+    'work-products/clean-migration.json': migrationManifest([
+      {
+        source: 'linked/artifact.txt',
+        target: 'work-products/debug/artifact.txt',
+        tracking: 'local',
+        rewritePolicy: 'preserve-content'
+      }
+    ])
+  });
+  const externalDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'uxucode-clean-source-'));
+  const linkedSource = path.join(workspace, 'linked');
+  writeFixture(externalDirectory, 'artifact.txt', 'external\n');
+
+  try {
+    fs.symlinkSync(
+      externalDirectory,
+      linkedSource,
+      process.platform === 'win32' ? 'junction' : 'dir'
+    );
+  } catch (error) {
+    if (error.code === 'EPERM' || error.code === 'EACCES') {
+      context.skip(`symbolic links are unavailable: ${error.code}`);
+      fs.rmSync(workspace, { recursive: true, force: true });
+      fs.rmSync(externalDirectory, { recursive: true, force: true });
+      return;
+    }
+    throw error;
+  }
+
+  try {
+    const before = workspaceSnapshot(workspace);
+    const report = runPreview('Codex', workspace);
+
+    assert.equal(report.status, 'BLOCKED');
+    assert.ok(report.blockers.some((blocker) =>
+      blocker.code === 'MANIFEST_SOURCE_UNSAFE' &&
+      blocker.reason === 'ancestor-symbolic-link' &&
+      blocker.path === 'linked' &&
+      blocker.source === 'linked/artifact.txt'));
+    assert.deepEqual(workspaceSnapshot(workspace), before);
+    assert.equal(fs.readFileSync(path.join(externalDirectory, 'artifact.txt'), 'utf8'), 'external\n');
+  } finally {
+    fs.rmSync(workspace, { recursive: true, force: true });
+    fs.rmSync(externalDirectory, { recursive: true, force: true });
+  }
+});
+
+
+test('preview blocks an inactive manifest target under a symbolic-link ancestor', (context) => {
+  const workspace = createWorkspace({
+    '.gitignore': `${requiredIgnoreRules.join('\n')}\n`,
+    'work-products/clean-migration.json': migrationManifest([
+      {
+        source: 'missing.test.js',
+        target: 'work-products/tests/satisfied.test.js',
+        tracking: 'tracked',
+        rewritePolicy: 'references'
+      }
+    ])
+  });
+  const externalDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'uxucode-clean-inactive-'));
+  const linkedTests = path.join(workspace, 'work-products', 'tests');
+  writeFixture(externalDirectory, 'satisfied.test.js', 'external\n');
+
+  try {
+    fs.symlinkSync(
+      externalDirectory,
+      linkedTests,
+      process.platform === 'win32' ? 'junction' : 'dir'
+    );
+  } catch (error) {
+    if (error.code === 'EPERM' || error.code === 'EACCES') {
+      context.skip(`symbolic links are unavailable: ${error.code}`);
+      fs.rmSync(workspace, { recursive: true, force: true });
+      fs.rmSync(externalDirectory, { recursive: true, force: true });
+      return;
+    }
+    throw error;
+  }
+
+  try {
+    const before = workspaceSnapshot(workspace);
+    const report = runPreview('Claude', workspace);
+
+    assert.equal(report.status, 'BLOCKED');
+    assert.ok(report.blockers.some((blocker) =>
+      blocker.code === 'TARGET_PARENT_SYMLINK' &&
+      blocker.path === 'work-products/tests' &&
+      blocker.target === 'work-products/tests/satisfied.test.js'));
+    assert.deepEqual(workspaceSnapshot(workspace), before);
+    assert.equal(fs.readFileSync(path.join(externalDirectory, 'satisfied.test.js'), 'utf8'), 'external\n');
   } finally {
     fs.rmSync(workspace, { recursive: true, force: true });
     fs.rmSync(externalDirectory, { recursive: true, force: true });
@@ -510,8 +1294,16 @@ test('preview blocks a symbolic-link target parent outside the repository', (con
 test('preview blocks a non-directory target ancestor', () => {
   const workspace = createWorkspace({
     '.gitignore': `${requiredIgnoreRules.join('\n')}\n`,
+    'work-products/clean-migration.json': migrationManifest([
+      {
+        source: 'product.test.js',
+        target: 'work-products/results/product.test.js',
+        tracking: 'tracked',
+        rewritePolicy: 'references'
+      }
+    ]),
     'product.test.js': 'module.exports = {};\n',
-    'work-products': 'not a directory\n'
+    'work-products/results': 'not a directory\n'
   });
 
   try {
@@ -519,44 +1311,40 @@ test('preview blocks a non-directory target ancestor', () => {
     const report = runPreview('Codex', workspace);
 
     assert.equal(report.status, 'BLOCKED');
-    assert.deepEqual(report.blockers, [
-      {
-        code: 'TARGET_PARENT_NOT_DIRECTORY',
-        path: 'work-products',
-        target: 'work-products/tests/product.test.js'
-      }
-    ]);
+    assert.ok(report.blockers.some((blocker) =>
+      blocker.code === 'TARGET_PARENT_NOT_DIRECTORY' &&
+      blocker.path === 'work-products/results' &&
+      blocker.target === 'work-products/results/product.test.js'));
     assert.deepEqual(workspaceSnapshot(workspace), before);
   } finally {
     fs.rmSync(workspace, { recursive: true, force: true });
   }
 });
 
-test('preview skips nested dependency and version-control directories', () => {
+test('preview discovers project tests but skips nested dependency and version-control directories', () => {
   const workspace = createWorkspace({
     '.gitignore': `${requiredIgnoreRules.join('\n')}\n`,
-    'packages/app/src/product.test.js': 'module.exports = "internal";\n',
+    'packages/app/src/product.test.js': 'module.exports = "product";\n',
     'packages/app/node_modules/dependency/library.test.js': 'module.exports = "dependency";\n',
-    'packages/app/.git/hooks/hook.test.js': 'module.exports = "metadata";\n'
+    'packages/app/.git/hooks/hook.test.js': 'module.exports = "metadata";\n',
+    'packages/app/.hg/store/mercurial.test.js': 'module.exports = "metadata";\n',
+    'packages/app/.svn/pristine/subversion.test.js': 'module.exports = "metadata";\n'
   });
 
   try {
     const report = runPreview('Codex', workspace);
 
-    assert.equal(report.status, 'READY');
-    assert.deepEqual(report.moves, [
-      {
-        source: 'packages/app/src/product.test.js',
-        target: 'work-products/tests/packages/app/src/product.test.js',
-        reason: 'internal-test-artifact'
-      }
+    assert.equal(report.status, 'NO_CHANGES');
+    assert.deepEqual(report.moves, []);
+    assert.deepEqual(report.preservedProductFiles, [
+      { path: 'packages/app/src/product.test.js', reason: 'test-name-only' }
     ]);
   } finally {
     fs.rmSync(workspace, { recursive: true, force: true });
   }
 });
 
-test('preview recognizes supported cross-language test names', () => {
+test('preview reports supported cross-language test names without authorizing moves', () => {
   const workspace = createWorkspace({
     '.gitignore': `${requiredIgnoreRules.join('\n')}\n`,
     'frontend/component.test.ts': 'export {};\n',
@@ -572,42 +1360,33 @@ test('preview recognizes supported cross-language test names', () => {
   try {
     const report = runPreview('Codex', workspace);
 
-    assert.equal(report.status, 'READY');
-    assert.deepEqual(report.moves.map(({ source, target }) => ({ source, target })), [
-      {
-        source: 'fixtures/api.test.json',
-        target: 'work-products/tests/fixtures/api.test.json'
-      },
-      {
-        source: 'frontend/component.test.ts',
-        target: 'work-products/tests/frontend/component.test.ts'
-      },
-      {
-        source: 'frontend/view.spec.tsx',
-        target: 'work-products/tests/frontend/view.spec.tsx'
-      },
-      {
-        source: 'go/worker_test.go',
-        target: 'work-products/tests/go/worker_test.go'
-      },
-      {
-        source: 'python/test_worker.py',
-        target: 'work-products/tests/python/test_worker.py'
-      },
-      {
-        source: 'python/worker_test.py',
-        target: 'work-products/tests/python/worker_test.py'
-      }
+    assert.equal(report.status, 'NO_CHANGES');
+    assert.deepEqual(report.moves, []);
+    assert.deepEqual(report.preservedProductFiles, [
+      { path: 'fixtures/api.test.json', reason: 'test-name-only' },
+      { path: 'frontend/component.test.ts', reason: 'test-name-only' },
+      { path: 'frontend/view.spec.tsx', reason: 'test-name-only' },
+      { path: 'go/worker_test.go', reason: 'test-name-only' },
+      { path: 'python/test_worker.py', reason: 'test-name-only' },
+      { path: 'python/worker_test.py', reason: 'test-name-only' }
     ]);
   } finally {
     fs.rmSync(workspace, { recursive: true, force: true });
   }
 });
 
-test('preview normalizes nested work-products tests and exact canonical ignore families', () => {
+test('manifest normalizes nested work-products tests and exact canonical ignore families', () => {
   const nestedRules = nestedIgnoreRules('cloud_layer');
   const workspace = createWorkspace({
     '.gitignore': `${[...requiredIgnoreRules, ...nestedRules].join('\n')}\n/custom/\n`,
+    'work-products/clean-migration.json': migrationManifest([
+      {
+        source: 'cloud_layer/work-products/tests/test_example.py',
+        target: 'work-products/tests/cloud_layer/test_example.py',
+        tracking: 'tracked',
+        rewritePolicy: 'references'
+      }
+    ]),
     'work-products/tests/existing.test.js': 'module.exports = {};\n',
     'cloud_layer/work-products/tests/test_example.py':
       'import unittest\n\nclass TestExample(unittest.TestCase):\n    pass\n'
@@ -617,13 +1396,18 @@ test('preview normalizes nested work-products tests and exact canonical ignore f
     const preview = runPreview('Codex', workspace);
 
     assert.equal(preview.status, 'READY');
-    assert.deepEqual(preview.moves, [
-      {
+    assert.deepEqual(
+      preview.moves.map(({ source, target, authorization }) => ({
+        source,
+        target,
+        authorization
+      })),
+      [{
         source: 'cloud_layer/work-products/tests/test_example.py',
         target: 'work-products/tests/cloud_layer/test_example.py',
-        reason: 'internal-test-artifact'
-      }
-    ]);
+        authorization: 'manifest'
+      }]
+    );
     assert.deepEqual(preview.gitignoreChanges, { add: [], remove: nestedRules });
 
     const applied = runEngine('Codex', workspace, ['apply']);
@@ -653,9 +1437,17 @@ test('preview normalizes nested work-products tests and exact canonical ignore f
   }
 });
 
-test('preview blocks ambiguous bare strings that match a moved test source', () => {
+test('preview blocks ambiguous bare strings that match a manifest-authorized test source', () => {
   const workspace = createWorkspace({
     '.gitignore': `${requiredIgnoreRules.join('\n')}\n`,
+    'work-products/clean-migration.json': migrationManifest([
+      {
+        source: 'frontend.test.js',
+        target: 'work-products/tests/frontend.test.js',
+        tracking: 'tracked',
+        rewritePolicy: 'references'
+      }
+    ]),
     'frontend.test.js': 'module.exports = {};\n',
     'work-products/tests/fixture-contract.test.js':
       "const expectedFileName = 'frontend.test.js';\n" +
@@ -669,14 +1461,11 @@ test('preview blocks ambiguous bare strings that match a moved test source', () 
 
     assert.equal(report.status, 'BLOCKED');
     assert.deepEqual(report.referenceUpdates, []);
-    assert.deepEqual(report.blockers, [
-      {
-        code: 'AMBIGUOUS_REFERENCE',
-        file: 'work-products/tests/fixture-contract.test.js',
-        reference: 'frontend.test.js',
-        target: 'work-products/tests/frontend.test.js'
-      }
-    ]);
+    assert.ok(report.blockers.some((blocker) =>
+      blocker.code === 'AMBIGUOUS_REFERENCE' &&
+      blocker.file === 'work-products/tests/fixture-contract.test.js' &&
+      blocker.reference === 'frontend.test.js' &&
+      blocker.target === 'work-products/tests/frontend.test.js'));
     assert.deepEqual(workspaceSnapshot(workspace), before);
   } finally {
     fs.rmSync(workspace, { recursive: true, force: true });
@@ -766,7 +1555,7 @@ test('classification keeps both host preview engines byte-identical', () => {
   );
 });
 
-test('classification treats project-native test files as internal artifacts', () => {
+test('classification preserves project-native test files without manifest authorization', () => {
   const workspace = createWorkspace({
     '.gitignore': `${requiredIgnoreRules.join('\n')}\n`,
     'Codex/hooks/mode-policy.js': 'module.exports = {};\n',
@@ -777,24 +1566,41 @@ test('classification treats project-native test files as internal artifacts', ()
   try {
     const report = runPreview('Codex', workspace);
 
-    assert.equal(report.status, 'READY');
-    assert.deepEqual(report.moves, [
-      {
-        source: 'tests/product-native.test.js',
-        target: 'work-products/tests/product-native.test.js',
-        reason: 'internal-test-artifact'
-      }
+    assert.equal(report.status, 'NO_CHANGES');
+    assert.deepEqual(report.moves, []);
+    assert.deepEqual(report.preservedProductFiles, [
+      { path: 'tests/product-native.test.js', reason: 'test-name-only' }
     ]);
-    assert.deepEqual(report.skipped, []);
   } finally {
     fs.rmSync(workspace, { recursive: true, force: true });
   }
 });
 
-test('apply gathers internal tests repository-wide and relativizes project-local paths', () => {
+test('apply moves manifest-authorized tests and relativizes project-local paths', () => {
+  const manifestMoves = [
+    {
+      source: 'frontend-performance.test.mjs',
+      target: 'work-products/tests/frontend-performance.test.mjs',
+      tracking: 'tracked',
+      rewritePolicy: 'references'
+    },
+    {
+      source: 'mode-policy-contract.test.mjs',
+      target: 'work-products/tests/mode-policy-contract.test.mjs',
+      tracking: 'tracked',
+      rewritePolicy: 'references'
+    },
+    {
+      source: 'quality/nested-contract.spec.cjs',
+      target: 'work-products/tests/quality/nested-contract.spec.cjs',
+      tracking: 'tracked',
+      rewritePolicy: 'references'
+    }
+  ];
   for (const pkg of packages) {
     const workspace = createWorkspace({
       '.gitignore': `${requiredIgnoreRules.join('\n')}\n`,
+      'work-products/clean-migration.json': migrationManifest(manifestMoves),
       'Codex/hooks/mode-policy.js': 'module.exports = {};\n',
       'admin/index.html': '<main></main>\n',
       'frontend-performance.test.mjs': "import './admin/index.html';\n",
@@ -821,23 +1627,18 @@ test('apply gathers internal tests repository-wide and relativizes project-local
       const preview = runPreview(pkg, workspace);
 
       assert.equal(preview.status, 'READY');
-      assert.deepEqual(preview.moves, [
-        {
-          source: 'frontend-performance.test.mjs',
-          target: 'work-products/tests/frontend-performance.test.mjs',
-          reason: 'internal-test-artifact'
-        },
-        {
-          source: 'mode-policy-contract.test.mjs',
-          target: 'work-products/tests/mode-policy-contract.test.mjs',
-          reason: 'internal-test-artifact'
-        },
-        {
-          source: 'quality/nested-contract.spec.cjs',
-          target: 'work-products/tests/quality/nested-contract.spec.cjs',
-          reason: 'internal-test-artifact'
-        }
-      ]);
+      assert.deepEqual(
+        preview.moves.map(({ source, target, authorization }) => ({
+          source,
+          target,
+          authorization
+        })),
+        manifestMoves.map(({ source, target }) => ({
+          source,
+          target,
+          authorization: 'manifest'
+        }))
+      );
       assert.deepEqual(preview.referenceUpdates, [
         {
           file: 'scripts/run-tests.js',
@@ -864,7 +1665,6 @@ test('apply gathers internal tests repository-wide and relativizes project-local
           count: 1
         }
       ]);
-      assert.deepEqual(preview.skipped, []);
 
       const result = runEngine(pkg, workspace, ['apply']);
       assert.equal(result.status, 0, result.stderr);
@@ -878,13 +1678,7 @@ test('apply gathers internal tests repository-wide and relativizes project-local
       );
       assert.equal(
         fs.readFileSync(
-          path.join(
-            workspace,
-            'work-products',
-            'tests',
-            'quality',
-            'nested-contract.spec.cjs'
-          ),
+          path.join(workspace, 'work-products', 'tests', 'quality', 'nested-contract.spec.cjs'),
           'utf8'
         ),
         "// UXUCode work-product\nrequire('../../../Codex/hooks/mode-policy.js');\n"
@@ -903,9 +1697,7 @@ test('apply gathers internal tests repository-wide and relativizes project-local
       );
       assert.equal(fs.existsSync(path.join(workspace, 'frontend-performance.test.mjs')), false);
       assert.equal(
-        fs.existsSync(
-          path.join(workspace, 'work-products', 'tests', 'existing-contract.test.js')
-        ),
+        fs.existsSync(path.join(workspace, 'work-products', 'tests', 'existing-contract.test.js')),
         true
       );
       assert.equal(runPreview(pkg, workspace).status, 'NO_CHANGES');
@@ -919,6 +1711,14 @@ test('apply moves evidenced artifacts and rewrites only resolvable references', 
   for (const pkg of packages) {
     const workspace = createWorkspace({
       '.gitignore': `${requiredIgnoreRules.join('\n')}\n`,
+      'work-products/clean-migration.json': migrationManifest([
+        {
+          source: 'tests/mode-policy-contract.test.js',
+          target: 'work-products/tests/mode-policy-contract.test.js',
+          tracking: 'tracked',
+          rewritePolicy: 'references'
+        }
+      ]),
       'SPEC.md': '# Specification\n\n[Plan](tasks/plan.md)\n',
       'tasks/plan.md':
         '# Plan\n\n[Spec](../SPEC.md)\n[Source](../src/product.js)\n' +

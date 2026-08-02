@@ -2,6 +2,7 @@
 
 const fs = require('node:fs');
 const childProcess = require('node:child_process');
+const crypto = require('node:crypto');
 const os = require('node:os');
 const path = require('node:path');
 
@@ -10,19 +11,25 @@ const requiredIgnoreRules = [
   '!/work-products/SPEC.md',
   '!/work-products/plan.md',
   '!/work-products/todo.md',
+  '!/work-products/clean-migration.json',
   '!/work-products/tests/',
   '!/work-products/tests/**'
 ];
-const obsoleteIgnoreRules = ['/SPEC.md', '/tasks/'];
+const obsoleteIgnoreRules = ['/SPEC.md'];
 const legacyFiles = [
   ['SPEC.md', 'work-products/SPEC.md', 'legacy-spec-path'],
   ['tasks/plan.md', 'work-products/plan.md', 'legacy-plan-path'],
   ['tasks/todo.md', 'work-products/todo.md', 'legacy-todo-path']
 ];
+const fixedSources = new Set(legacyFiles.map(([source]) => source));
+const fixedTargets = new Set([
+  ...legacyFiles.map(([, target]) => target),
+  'work-products/clean-migration.json'
+]);
 const delimitedTestNamePattern = /(?:^test[._]|[._](?:test|spec)[._])/i;
 const camelCaseTestNamePattern = /(?:Test|Tests)\.[^.]+$/;
 const derivedArtifactSuffixPattern = /\.(?:new|orig|rej|bak|tmp|patch|diff)$/i;
-const ignoredDirectoryNames = new Set(['.git', 'node_modules', '.venv', 'venv', 'vendor', '__pycache__']);
+const ignoredDirectoryNames = new Set(['.git', '.hg', '.svn', 'node_modules', '.venv', 'venv', 'vendor', '__pycache__']);
 const ignoreSemanticProbes = [
   { path: 'work-products/SPEC.md', expected: 'tracked' },
   { path: 'work-products/plan.md', expected: 'tracked' },
@@ -208,7 +215,233 @@ function pathEntry(relativePath, root) {
   }
 }
 
-function addCandidate(report, root, source, target, reason) {
+function repositoryPathKey(root) {
+  let caseInsensitive = false;
+  try {
+    caseInsensitive = fs.realpathSync.native(path.join(root, '.git')) ===
+      fs.realpathSync.native(path.join(root, '.GIT'));
+  } catch (error) {
+    if (error.code !== 'ENOENT') throw error;
+  }
+  return (value) => caseInsensitive ? value.toLowerCase() : value;
+}
+
+function isSameOrDescendantPath(candidate, ancestor) {
+  return candidate === ancestor || candidate.startsWith(`${ancestor}/`);
+}
+
+function addManifestBlocker(report, reason, details = {}) {
+  report.blockers.push({ code: 'MANIFEST_INVALID', reason, ...details });
+}
+
+function isCanonicalRepositoryPath(value) {
+  if (typeof value !== 'string' || !value || value.includes('\\') || value.includes('\0')) {
+    return false;
+  }
+  if (path.posix.isAbsolute(value) || /^[a-z]:/i.test(value) || /[*?\[\]]/.test(value)) {
+    return false;
+  }
+  const segments = value.split('/');
+  return segments.every((segment) => segment && segment !== '.' && segment !== '..') &&
+    path.posix.normalize(value) === value;
+}
+
+function readMigrationManifest(root, report) {
+  const relativePath = 'work-products/clean-migration.json';
+  const manifestEntry = pathEntry(relativePath, root);
+  if (!manifestEntry) return [];
+  if (manifestEntry.stat.isSymbolicLink() || !manifestEntry.stat.isFile()) {
+    addManifestBlocker(report, 'manifest-file');
+    return [];
+  }
+  const readable = readTextFile(manifestEntry.absolutePath);
+  if (readable.error) {
+    addManifestBlocker(report, 'manifest-file', { detail: readable.error });
+    return [];
+  }
+
+  let manifest;
+  try {
+    manifest = JSON.parse(readable.text);
+  } catch (error) {
+    addManifestBlocker(report, 'json', { detail: error.message });
+    return [];
+  }
+  if (!manifest || Array.isArray(manifest) || typeof manifest !== 'object') {
+    addManifestBlocker(report, 'top-level-type');
+    return [];
+  }
+  const topLevelKeys = Object.keys(manifest).sort();
+  if (topLevelKeys.length !== 2 || topLevelKeys[0] !== 'moves' || topLevelKeys[1] !== 'version') {
+    addManifestBlocker(report, 'top-level-fields');
+    return [];
+  }
+  if (manifest.version !== 1) {
+    addManifestBlocker(report, 'version');
+    return [];
+  }
+  if (!Array.isArray(manifest.moves)) {
+    addManifestBlocker(report, 'moves-type');
+    return [];
+  }
+
+  const entries = [];
+  const sources = new Set();
+  const targets = new Set();
+  const keyFor = repositoryPathKey(root);
+  const fixedSourceKeys = [...fixedSources].map(keyFor);
+  const fixedTargetKeys = [...fixedTargets].map(keyFor);
+  for (let index = 0; index < manifest.moves.length; index += 1) {
+    const move = manifest.moves[index];
+    if (!move || Array.isArray(move) || typeof move !== 'object') {
+      addManifestBlocker(report, 'entry-type', { index });
+      continue;
+    }
+    const keys = Object.keys(move).sort();
+    if (keys.join('\0') !== ['rewritePolicy', 'source', 'target', 'tracking'].join('\0')) {
+      addManifestBlocker(report, 'entry-fields', { index });
+      continue;
+    }
+    if (!isCanonicalRepositoryPath(move.source)) {
+      addManifestBlocker(report, 'source-path', { index, source: move.source });
+      continue;
+    }
+    if (!isCanonicalRepositoryPath(move.target) ||
+        !move.target.startsWith('work-products/')) {
+      addManifestBlocker(report, 'target-path', { index, target: move.target });
+      continue;
+    }
+    const sourceSegments = move.source.toLowerCase().split('/');
+    if (sourceSegments[0] === 'work-products' ||
+        sourceSegments.some((segment) => ignoredDirectoryNames.has(segment))) {
+      addManifestBlocker(report, 'source-scope', { index, source: move.source });
+      continue;
+    }
+    if (!['tracked', 'local'].includes(move.tracking)) {
+      addManifestBlocker(report, 'tracking', { index, tracking: move.tracking });
+      continue;
+    }
+    if (!['references', 'preserve-content', 'mutable-patch'].includes(move.rewritePolicy)) {
+      addManifestBlocker(report, 'rewrite-policy', {
+        index,
+        rewritePolicy: move.rewritePolicy
+      });
+      continue;
+    }
+    const patchLike = /\.(?:patch|diff)$/i.test(move.source) ||
+      /\.(?:patch|diff)$/i.test(move.target);
+    if (patchLike && move.rewritePolicy === 'references') {
+      addManifestBlocker(report, 'patch-policy', { index, source: move.source, target: move.target });
+      continue;
+    }
+    if (!patchLike && move.rewritePolicy === 'mutable-patch') {
+      addManifestBlocker(report, 'mutable-patch-policy', {
+        index,
+        source: move.source,
+        target: move.target
+      });
+      continue;
+    }
+    const sourceKey = keyFor(move.source);
+    const targetKey = keyFor(move.target);
+    if (fixedSourceKeys.some((fixed) => isSameOrDescendantPath(sourceKey, fixed)) ||
+        fixedTargetKeys.some((fixed) => isSameOrDescendantPath(targetKey, fixed))) {
+      addManifestBlocker(report, 'fixed-fact', { index, source: move.source, target: move.target });
+      continue;
+    }
+    if (sources.has(sourceKey)) {
+      addManifestBlocker(report, 'duplicate-source', { index, source: move.source });
+      continue;
+    }
+    if (targets.has(targetKey)) {
+      addManifestBlocker(report, 'duplicate-target', { index, target: move.target });
+      continue;
+    }
+    sources.add(sourceKey);
+    targets.add(targetKey);
+    entries.push({ ...move });
+  }
+  return entries;
+}
+
+function addManifestCandidates(root, report, entries) {
+  for (const entry of entries) {
+    const sourceParentBlocker = inspectSourceParent(root, entry.source);
+    if (sourceParentBlocker) {
+      report.blockers.push(sourceParentBlocker);
+      continue;
+    }
+    const targetParentBlocker = inspectTargetParent(root, entry.target);
+    if (targetParentBlocker) {
+      report.blockers.push(targetParentBlocker);
+      continue;
+    }
+    const sourceEntry = pathEntry(entry.source, root);
+    const targetEntry = pathEntry(entry.target, root);
+    if (targetEntry && (targetEntry.stat.isSymbolicLink() || !targetEntry.stat.isFile())) {
+      report.blockers.push({
+        code: 'MANIFEST_TARGET_UNSAFE',
+        target: entry.target,
+        reason: targetEntry.stat.isSymbolicLink() ? 'symbolic-link' : 'not-regular-file'
+      });
+      continue;
+    }
+    if (!sourceEntry) {
+      report.inactiveManifestEntries.push({
+        ...entry,
+        state: targetEntry ? 'satisfied' : 'inactive'
+      });
+      continue;
+    }
+    if (sourceEntry.stat.isSymbolicLink() || !sourceEntry.stat.isFile()) {
+      report.blockers.push({
+        code: 'MANIFEST_SOURCE_UNSAFE',
+        source: entry.source,
+        reason: sourceEntry.stat.isSymbolicLink() ? 'symbolic-link' : 'not-regular-file'
+      });
+      continue;
+    }
+    addCandidate(report, root, entry.source, entry.target, 'manifest-entry', {
+      authorization: 'manifest',
+      tracking: entry.tracking,
+      rewritePolicy: entry.rewritePolicy
+    });
+  }
+}
+
+function manifestIgnoreContract(entries) {
+  const rules = [];
+  const probes = [];
+  for (const entry of entries) {
+    probes.push({
+      path: entry.target,
+      expected: entry.tracking === 'tracked' ? 'tracked' : 'ignored'
+    });
+  }
+  const trackedTargets = entries
+    .filter((entry) => entry.tracking === 'tracked' &&
+      !entry.target.startsWith('work-products/tests/'))
+    .map((entry) => entry.target)
+    .sort();
+  const emittedDirectories = new Set();
+  for (const target of trackedTargets) {
+    const segments = target.split('/');
+    for (let index = 2; index < segments.length; index += 1) {
+      const directory = segments.slice(0, index).join('/');
+      if (emittedDirectories.has(directory)) continue;
+      emittedDirectories.add(directory);
+      rules.push(`!/${directory}/`);
+      rules.push(`/${directory}/*`);
+    }
+    rules.push(`!/${target}`);
+  }
+  return {
+    rules: [...new Set(rules)],
+    probes: probes.sort(comparePaths)
+  };
+}
+
+function addCandidate(report, root, source, target, reason, options = {}) {
   const sourceEntry = pathEntry(source, root);
   if (!sourceEntry) return;
   if (sourceEntry.stat.isSymbolicLink()) {
@@ -229,25 +462,20 @@ function addCandidate(report, root, source, target, reason) {
     return;
   }
 
-  report.moves.push({ source, target, reason });
+  report.moves.push({
+    source,
+    target,
+    reason,
+    authorization: options.authorization || 'fixed-legacy',
+    tracking: options.tracking || 'tracked',
+    rewritePolicy: options.rewritePolicy || 'references'
+  });
   if (pathEntry(target, root)) {
     report.blockers.push({ code: 'TARGET_EXISTS', source, target });
   }
 }
 
-function normalizeTestRelativePath(relativePath) {
-  const segments = relativePath.split('/');
-  if (segments[0] === 'tests') segments.shift();
-  for (let index = 0; index + 1 < segments.length;) {
-    if (segments[index] === 'work-products' && segments[index + 1] === 'tests') {
-      segments.splice(index, 2);
-    } else {
-      index += 1;
-    }
-  }
-  return segments.join('/');
-}
-function visitTests(directory, root, report) {
+function visitTests(directory, root, report, authorizedSources) {
   for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
     const absolutePath = path.join(directory, entry.name);
     const relativePath = toPosix(path.relative(root, absolutePath));
@@ -260,7 +488,7 @@ function visitTests(directory, root, report) {
           relativePath === 'work-products') {
         continue;
       }
-      visitTests(absolutePath, root, report);
+      visitTests(absolutePath, root, report, authorizedSources);
       continue;
     }
     if (!entry.isFile() || !isSupportedTestName(entry.name)) continue;
@@ -274,18 +502,52 @@ function visitTests(directory, root, report) {
       continue;
     }
 
-    const testRelativePath = normalizeTestRelativePath(relativePath);
-    addCandidate(
-      report,
-      root,
-      relativePath,
-      `work-products/tests/${testRelativePath}`,
-      'internal-test-artifact'
-    );
+    if (!authorizedSources.has(relativePath)) {
+      report.preservedProductFiles.push({ path: relativePath, reason: 'test-name-only' });
+    }
   }
 }
 
-function inspectGitignoreSemantics(content) {
+function inspectLegacyTasks(root, report, authorizedSources) {
+  const tasksEntry = pathEntry('tasks', root);
+  if (!tasksEntry) return { removeIgnoreRule: true, removeDirectoryAfterMoves: false };
+  if (tasksEntry.stat.isSymbolicLink() || !tasksEntry.stat.isDirectory()) {
+    report.unclassifiedLegacyFiles.push({ path: 'tasks', reason: 'unsupported-entry' });
+    report.blockers.push({ code: 'LEGACY_DIRECTORY_REMAINS', path: 'tasks' });
+    return { removeIgnoreRule: false, removeDirectoryAfterMoves: false };
+  }
+
+  let entries;
+  try {
+    entries = fs.readdirSync(tasksEntry.absolutePath, { withFileTypes: true });
+  } catch (error) {
+    report.unclassifiedLegacyFiles.push({
+      path: 'tasks',
+      reason: `unreadable-directory:${error.code || 'unknown'}`
+    });
+    report.blockers.push({
+      code: 'LEGACY_DIRECTORY_REMAINS',
+      path: 'tasks',
+      reason: error.code || 'unknown'
+    });
+    return { removeIgnoreRule: false, removeDirectoryAfterMoves: false };
+  }
+
+  for (const entry of entries) {
+    const relativePath = `tasks/${entry.name}`;
+    if (entry.isFile() && authorizedSources.has(relativePath)) continue;
+    const reason = entry.isFile() ? 'manifest-entry-required' : 'unsupported-entry';
+    report.unclassifiedLegacyFiles.push({ path: relativePath, reason });
+    report.blockers.push({ code: 'LEGACY_DIRECTORY_REMAINS', path: relativePath });
+  }
+  const complete = report.unclassifiedLegacyFiles.length === 0;
+  return {
+    removeIgnoreRule: complete,
+    removeDirectoryAfterMoves: complete && entries.length > 0
+  };
+}
+
+function inspectGitignoreSemantics(content, probes = ignoreSemanticProbes) {
   const workspace = fs.mkdtempSync(path.join(os.tmpdir(), 'uxucode-clean-ignore-'));
   const isolatedConfig = path.join(workspace, 'isolated-global-config');
   try {
@@ -314,7 +576,7 @@ function inspectGitignoreSemantics(content) {
         cwd: workspace,
         encoding: 'utf8',
         env: environment,
-        input: `${ignoreSemanticProbes.map((probe) => probe.path).join('\0')}\0`
+        input: `${probes.map((probe) => probe.path).join('\0')}\0`
       }
     );
     if (result.status !== 0 && result.status !== 1) {
@@ -324,7 +586,7 @@ function inspectGitignoreSemantics(content) {
     }
 
     const ignored = new Set(result.stdout.split('\0').filter(Boolean).map(toPosix));
-    return ignoreSemanticProbes
+    return probes
       .filter((probe) => ignored.has(probe.path) !== (probe.expected === 'ignored'))
       .map((probe) => ({
         code: 'GITIGNORE_SEMANTIC_CONFLICT',
@@ -349,7 +611,7 @@ function findNestedCanonicalIgnoreRules(lines) {
   }
   return [...new Set(remove)];
 }
-function planGitignore(root) {
+function planGitignore(root, removeTasksRule = true, dynamicRules = [], dynamicProbes = []) {
   const ignorePath = path.join(root, '.gitignore');
   const existed = fs.existsSync(ignorePath);
   const original = existed ? fs.readFileSync(ignorePath) : Buffer.alloc(0);
@@ -358,9 +620,12 @@ function planGitignore(root) {
     .filter((record) => record.length > 0);
   const lines = records.map((record) => record.replace(/(?:\r\n|\n|\r)$/, '').trim());
   const present = new Set(lines);
+  const dynamicRuleSet = new Set(dynamicRules);
   const remove = [
     ...obsoleteIgnoreRules.filter((rule) => present.has(rule)),
-    ...findNestedCanonicalIgnoreRules(lines)
+    ...removeTasksRule && present.has('/tasks/') ? ['/tasks/'] : [],
+    ...findNestedCanonicalIgnoreRules(lines),
+    ...lines.filter((line) => dynamicRuleSet.has(line))
   ];
   const removable = new Set(remove);
   const kept = records.filter((record) => {
@@ -370,7 +635,8 @@ function planGitignore(root) {
   let nextContent = kept.join('');
   const remaining = new Set(kept.map((record) =>
     record.replace(/(?:\r\n|\n|\r)$/, '').trim()));
-  const add = requiredIgnoreRules.filter((rule) => !remaining.has(rule));
+  const managedRules = [...requiredIgnoreRules, ...dynamicRules];
+  const add = managedRules.filter((rule) => !remaining.has(rule));
   if (add.length > 0) {
     const eol = content.includes('\r\n') ? '\r\n' : content.includes('\r') ? '\r' : '\n';
     const preserveFinalEol = content.length === 0 || /(?:\r\n|\n|\r)$/.test(content);
@@ -379,12 +645,16 @@ function planGitignore(root) {
     if (preserveFinalEol) nextContent += eol;
   }
   const next = Buffer.from(nextContent, 'utf8');
-  const blockers = inspectGitignoreSemantics(nextContent);
+  const changed = !next.equals(original);
+  const probes = [...ignoreSemanticProbes, ...dynamicProbes]
+    .filter((probe, index, all) =>
+      all.findIndex((candidate) => candidate.path === probe.path) === index);
+  const blockers = inspectGitignoreSemantics(nextContent, probes);
 
   return {
-    report: { add, remove },
+    report: changed ? { add, remove: [...new Set(remove)] } : { add: [], remove: [] },
     blockers,
-    change: next.equals(original)
+    change: !changed
       ? null
       : {
           source: '.gitignore',
@@ -516,10 +786,29 @@ function inspectTargetParent(root, target) {
   return null;
 }
 
+function inspectSourceParent(root, source) {
+  const blocker = inspectTargetParent(root, source);
+  if (!blocker) return null;
+  const reasons = {
+    TARGET_PARENT_SYMLINK: 'ancestor-symbolic-link',
+    TARGET_PARENT_NOT_DIRECTORY: 'ancestor-not-directory',
+    TARGET_PARENT_OUTSIDE_REPOSITORY: 'ancestor-outside-repository',
+    TARGET_PARENT_UNREADABLE: 'ancestor-unreadable'
+  };
+  return {
+    code: 'MANIFEST_SOURCE_UNSAFE',
+    source,
+    path: blocker.path,
+    reason: reasons[blocker.code] || 'ancestor-unsafe'
+  };
+}
+
 function addMoveSafetyBlockers(root, report) {
   const targets = new Map();
+  const sources = new Map();
+  const keyFor = repositoryPathKey(root);
   for (const move of report.moves) {
-    const key = process.platform === 'win32' ? move.target.toLowerCase() : move.target;
+    const key = keyFor(move.target);
     const existing = targets.get(key);
     if (existing) {
       existing.sources.push(move.source);
@@ -534,10 +823,30 @@ function addMoveSafetyBlockers(root, report) {
           blocker.target === parentBlocker.target)) {
       report.blockers.push(parentBlocker);
     }
+    let sourceKey = keyFor(move.source);
+    try {
+      sourceKey = keyFor(toPosix(path.relative(
+        root,
+        fs.realpathSync.native(path.join(root, move.source))
+      )));
+    } catch {
+      // Candidate validation reports missing or unreadable sources separately.
+    }
+    const source = sources.get(sourceKey);
+    if (source) {
+      source.paths.push(move.source);
+    } else {
+      sources.set(sourceKey, { source: move.source, paths: [move.source] });
+    }
   }
   for (const { target, sources } of targets.values()) {
     if (sources.length > 1) {
       report.blockers.push({ code: 'TARGET_COLLISION', target, sources });
+    }
+  }
+  for (const { source, paths } of sources.values()) {
+    if (paths.length > 1) {
+      report.blockers.push({ code: 'SOURCE_COLLISION', source, paths });
     }
   }
 }
@@ -555,6 +864,93 @@ function readTextFile(filePath) {
       error: error instanceof TypeError ? 'not-utf8-text' : `read-failed:${error.code || 'unknown'}`
     };
   }
+}
+
+function hashBuffer(algorithm, buffer) {
+  return crypto.createHash(algorithm).update(buffer).digest('hex');
+}
+
+function checksumAlgorithm(fileName) {
+  if (fileName === 'SHA256SUMS' || fileName === 'SHA256SUMS.txt') return 'sha256';
+  if (fileName === 'SHA512SUMS' || fileName === 'SHA512SUMS.txt') return 'sha512';
+  return null;
+}
+
+function inspectIntegrity(root, report) {
+  const checksumBindings = new Map();
+  for (const textFile of collectFilePaths(root, report)) {
+    const algorithm = checksumAlgorithm(path.basename(textFile.file));
+    if (!algorithm) continue;
+    const readable = readTextFile(textFile.absolutePath);
+    if (readable.error) {
+      report.blockers.push({
+        code: 'INTEGRITY_MANIFEST_UNREADABLE',
+        file: textFile.file,
+        reason: readable.error
+      });
+      continue;
+    }
+    const digestLength = algorithm === 'sha256' ? 64 : 128;
+    const pattern = new RegExp(`^([0-9a-f]{${digestLength}})  (.+)$`, 'i');
+    for (const line of readable.text.split(/\r?\n/)) {
+      const match = line.match(pattern);
+      if (!match || !isCanonicalRepositoryPath(match[2])) continue;
+      const binding = {
+        file: textFile.file,
+        algorithm,
+        expectedHash: match[1].toLowerCase(),
+        path: match[2]
+      };
+      const bindings = checksumBindings.get(binding.path) || [];
+      bindings.push(binding);
+      checksumBindings.set(binding.path, bindings);
+    }
+  }
+
+  for (const move of report.moves) {
+    const sourceBuffer = fs.readFileSync(path.join(root, move.source));
+    const checksums = [
+      ...(checksumBindings.get(move.source) || []),
+      ...(checksumBindings.get(move.target) || [])
+    ].sort((left, right) => {
+      const leftKey = `${left.file}\0${left.path}`;
+      const rightKey = `${right.file}\0${right.path}`;
+      return leftKey < rightKey ? -1 : leftKey > rightKey ? 1 : 0;
+    });
+    for (const checksum of checksums) {
+      const actualHash = hashBuffer(checksum.algorithm, sourceBuffer);
+      if (actualHash !== checksum.expectedHash) {
+        report.blockers.push({
+          code: 'INTEGRITY_CHECKSUM_MISMATCH',
+          source: move.source,
+          checksumFile: checksum.file,
+          algorithm: checksum.algorithm,
+          expectedHash: checksum.expectedHash,
+          actualHash
+        });
+      }
+    }
+    if (checksums.length > 0 && move.rewritePolicy !== 'preserve-content') {
+      report.blockers.push({
+        code: 'INTEGRITY_COUPLED_ARTIFACT',
+        source: move.source,
+        target: move.target,
+        rewritePolicy: move.rewritePolicy,
+        checksumFiles: [...new Set(checksums.map((checksum) => checksum.file))]
+      });
+    }
+    if (move.rewritePolicy === 'preserve-content') {
+      report.integrityProtectedFiles.push({
+        source: move.source,
+        target: move.target,
+        rewritePolicy: move.rewritePolicy,
+        algorithm: 'sha256',
+        expectedHash: hashBuffer('sha256', sourceBuffer),
+        checksums
+      });
+    }
+  }
+  report.integrityProtectedFiles.sort(comparePaths);
 }
 
 function collectFilePaths(root, report) {
@@ -667,7 +1063,8 @@ function rewriteRelativeReferences(
   moveMap,
   updates,
   checks,
-  blockers
+  blockers,
+  patchHeadersOnly = false
 ) {
   const markdownPattern =
     /(!?\[[^\]\r\n]*\]\()([ \t]*)(?:<([^>\r\n]+)>|((?:\\.|[^)\s])+))((?:[ \t]+(?:"[^"\r\n]*"|'[^'\r\n]*'|\([^)\r\n]*\)))?[ \t]*)(\))/g;
@@ -678,22 +1075,24 @@ function rewriteRelativeReferences(
     .join('|');
   let next = content;
   if (moveSourcePattern) {
-    const diffArgumentPattern = new RegExp(
-      "((?:fromfile|tofile)\\s*=\\s*)(['\"])([ab]\\/)" +
-      '(' + moveSourcePattern + ')\\2',
-      'g'
-    );
-    next = next.replace(
-      diffArgumentPattern,
-      (match, prefix, quote, side, reference) => {
-        const finalTarget = moveMap.get(reference);
-        const from = side + reference;
-        const to = side + finalTarget;
-        updates.push({ file: target, from, to, count: 1 });
-        checks.push({ file: target, reference: to, target: finalTarget });
-        return prefix + quote + to + quote;
-      }
-    );
+    if (!patchHeadersOnly) {
+      const diffArgumentPattern = new RegExp(
+        "((?:fromfile|tofile)\\s*=\\s*)(['\"])([ab]\\/)" +
+        '(' + moveSourcePattern + ')\\2',
+        'g'
+      );
+      next = next.replace(
+        diffArgumentPattern,
+        (match, prefix, quote, side, reference) => {
+          const finalTarget = moveMap.get(reference);
+          const from = side + reference;
+          const to = side + finalTarget;
+          updates.push({ file: target, from, to, count: 1 });
+          checks.push({ file: target, reference: to, target: finalTarget });
+          return prefix + quote + to + quote;
+        }
+      );
+    }
     const diffFilePattern = new RegExp(
       '^((?:---|\\+\\+\\+) [ab]\\/)(' + moveSourcePattern + ')(?=\\t|\\r?$)',
       'gm'
@@ -718,6 +1117,7 @@ function rewriteRelativeReferences(
       checks.push({ file: target, reference: to, target: finalTarget });
       return to;
     });
+    if (patchHeadersOnly) return next;
     const provenRootReferenceOffsets = collectProvenRootReferenceOffsets(
       source,
       next,
@@ -775,10 +1175,14 @@ function rewriteRelativeReferences(
 function buildPlan(workspace = process.cwd()) {
   const root = findRepositoryRoot(workspace);
   const report = {
-    version: 1,
+    version: 2,
     mode: 'preview',
     status: 'NO_CHANGES',
     moves: [],
+    preservedProductFiles: [],
+    unclassifiedLegacyFiles: [],
+    integrityProtectedFiles: [],
+    inactiveManifestEntries: [],
     referenceUpdates: [],
     gitignoreChanges: { add: [], remove: [] },
     externalIgnoreSources: [],
@@ -792,23 +1196,39 @@ function buildPlan(workspace = process.cwd()) {
     return { root: null, report, changes: [] };
   }
 
+  const manifestEntries = readMigrationManifest(root, report);
+  addManifestCandidates(root, report, manifestEntries);
   for (const candidate of legacyFiles) addCandidate(report, root, ...candidate);
-  visitTests(root, root, report);
-  const gitignorePlan = planGitignore(root);
+  const authorizedSources = new Set(report.moves.map((move) => move.source));
+  const legacyPlan = inspectLegacyTasks(root, report, authorizedSources);
+  visitTests(root, root, report, authorizedSources);
+  const ignoreContract = manifestIgnoreContract(manifestEntries);
+  const gitignorePlan = planGitignore(
+    root,
+    legacyPlan.removeIgnoreRule,
+    ignoreContract.rules,
+    ignoreContract.probes
+  );
   report.gitignoreChanges = gitignorePlan.report;
   report.blockers.push(...gitignorePlan.blockers);
   report.externalIgnoreSources = inspectExternalIgnores(root);
   report.moves.sort(comparePaths);
+  report.preservedProductFiles.sort(comparePaths);
+  report.unclassifiedLegacyFiles.sort(comparePaths);
+  report.inactiveManifestEntries.sort(comparePaths);
   report.skipped.sort(comparePaths);
   addMoveSafetyBlockers(root, report);
+  inspectIntegrity(root, report);
 
   const moveMap = new Map(report.moves.map(({ source, target }) => [source, target]));
+  const moveDetails = new Map(report.moves.map((move) => [move.source, move]));
   const updates = [];
   const referenceChecks = [];
   const changes = [];
   for (const textFile of collectFilePaths(root, report)) {
     const file = textFile.file;
-    if (file === '.gitignore') continue;
+    if (file === '.gitignore' || file === 'work-products/clean-migration.json' ||
+        checksumAlgorithm(path.basename(file))) continue;
     const readable = readTextFile(textFile.absolutePath);
     if (readable.error) {
       if (readable.error.startsWith('read-failed:')) {
@@ -819,16 +1239,24 @@ function buildPlan(workspace = process.cwd()) {
     const original = readable.buffer;
     let content = readable.text;
     const output = moveMap.get(file) || file;
-    content = rewriteRelativeReferences(
-      root,
-      file,
-      output,
-      content,
-      moveMap,
-      updates,
-      referenceChecks,
-      report.blockers
-    );
+    const move = moveDetails.get(file);
+    const patchLike = /\.(?:patch|diff)$/i.test(file) ||
+      /\.(?:patch|diff)$/i.test(output);
+    const mayRewrite = move?.rewritePolicy !== 'preserve-content' &&
+      (!patchLike || move?.rewritePolicy === 'mutable-patch');
+    if (mayRewrite) {
+      content = rewriteRelativeReferences(
+        root,
+        file,
+        output,
+        content,
+        moveMap,
+        updates,
+        referenceChecks,
+        report.blockers,
+        move?.rewritePolicy === 'mutable-patch'
+      );
+    }
     const next = Buffer.from(content, 'utf8');
     if (!next.equals(original)) changes.push({ source: file, output, original, next });
   }
@@ -847,7 +1275,15 @@ function buildPlan(workspace = process.cwd()) {
   report.status = report.blockers.length > 0
     ? 'BLOCKED'
     : hasChanges ? 'READY' : 'NO_CHANGES';
-  return { root, report, changes, referenceChecks };
+  return {
+    root,
+    report,
+    changes,
+    referenceChecks,
+    dynamicIgnoreRules: ignoreContract.rules,
+    dynamicIgnoreProbes: ignoreContract.probes,
+    legacyDirectoriesToRemove: legacyPlan.removeDirectoryAfterMoves ? ['tasks'] : []
+  };
 }
 
 function inspect(workspace = process.cwd()) {
@@ -908,6 +1344,12 @@ function applyWorkspace(workspace = process.cwd(), dependencies = {}) {
       completed({ type: 'move', source: move.source, target: move.target });
     }
 
+    for (const relativeDirectory of plan.legacyDirectoriesToRemove) {
+      const directory = path.join(plan.root, relativeDirectory);
+      fs.rmdirSync(directory);
+      completed({ type: 'remove-empty-legacy-directory', path: relativeDirectory });
+    }
+
     for (const change of plan.changes) {
       const output = path.join(plan.root, change.output);
       written.push(change);
@@ -927,6 +1369,16 @@ function applyWorkspace(workspace = process.cwd(), dependencies = {}) {
         throw new Error(`target content changed during move: ${move.target}`);
       }
     }
+    for (const protectedFile of plan.report.integrityProtectedFiles) {
+      const actualHash = hashBuffer(
+        protectedFile.algorithm,
+        fs.readFileSync(path.join(plan.root, protectedFile.target))
+      );
+      if (actualHash !== protectedFile.expectedHash) {
+        throw new Error(`integrity check failed after move: ${protectedFile.target}`);
+      }
+    }
+
     for (const change of plan.changes) {
       if (!fs.readFileSync(path.join(plan.root, change.output)).equals(change.next)) {
         throw new Error(`written content differs from plan: ${change.output}`);
@@ -937,7 +1389,12 @@ function applyWorkspace(workspace = process.cwd(), dependencies = {}) {
         throw new Error(`rewritten reference target is missing: ${check.file} -> ${check.reference}`);
       }
     }
-    const remainingIgnorePlan = planGitignore(plan.root);
+    const remainingIgnorePlan = planGitignore(
+      plan.root,
+      true,
+      plan.dynamicIgnoreRules,
+      plan.dynamicIgnoreProbes
+    );
     const remainingIgnoreChanges = remainingIgnorePlan.report;
     if (remainingIgnoreChanges.add.length > 0 || remainingIgnoreChanges.remove.length > 0) {
       throw new Error('.gitignore contract was not applied');

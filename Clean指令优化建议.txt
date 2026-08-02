@@ -1,0 +1,281 @@
+Clean 指令优化建议
+
+一、结论
+
+本次 CfGfwAX 清理暴露的不是单一漏移动，而是三个合同层问题：
+
+1. clean 只识别 tasks/plan.md 和 tasks/todo.md，却会无条件删除 .gitignore 中的 /tasks/，可能让未迁移的 tasks/ 内容突然进入 Git 工作区。
+2. clean 仅凭 test/spec 文件名就移动测试，无法区分 UXUCode 内部过程测试和项目原生回归测试，存在误移动风险。
+3. clean 没有安全、通用的“项目显式迁移清单”，因此无法处理 xhttp_stream_benchmark.mjs、调试证据和回滚补丁等项目特殊过程产物。
+
+建议先修复 P0 的安全合同，再扩展项目显式迁移能力。不要通过硬编码 CfGfwAX 文件名解决。
+
+二、本次清理的实际问题
+
+1. tasks/ 迁移不完整
+
+本次除 plan.md、todo.md 外，还有 34 个调试/基准证据文件和 5 个回滚/清单文件需要分别迁入：
+
+- work-products/debug/
+- work-products/rollback/
+
+当前 Claude/scripts/clean-work-products.js 与 Codex/scripts/clean-work-products.js 的 legacyFiles 只包含：
+
+- SPEC.md -> work-products/SPEC.md
+- tasks/plan.md -> work-products/plan.md
+- tasks/todo.md -> work-products/todo.md
+
+但 obsoleteIgnoreRules 同时包含 /tasks/，planGitignore() 会独立删除该规则，并不检查 tasks/ 是否仍有未迁移文件。这会产生“目录内容仍在，但保护它的忽略规则已被删除”的不完整迁移。
+
+2. 项目原生测试被误判为内部过程测试
+
+visitTests() 对所有满足 test/spec 命名的文件调用 addCandidate()。除 Python 弱后缀场景外，没有内部过程测试的归属证据。
+
+现有 work-products/tests/clean-contract.test.js 还把以下行为固化为正确结果：
+
+- tests/product.test.js 被移动到 work-products/tests/product.test.js。
+- frontend-performance.test.mjs 被移动到 work-products/tests/frontend-performance.test.mjs。
+
+这与“只移动 UXUCode 内部测试、保留项目源码和项目原生测试”的产品边界冲突。CfGfwAX 的根目录 *.test.mjs 是项目 Node 回归测试，不应仅因命名而自动判定为 UXUCode 过程测试。
+
+3. 基准程序无法被通用分类器识别
+
+xhttp_stream_benchmark.mjs 是本次性能诊断产生并由测试直接引用的可执行基准程序。它不满足 test/spec 命名，也不在固定 legacyFiles 中，所以 clean 不会移动。
+
+本次项目要求将它迁入：
+
+work-products/benchmarks/xhttp_stream_benchmark.mjs
+
+迁移还必须同步处理：
+
+- 基准程序引用 _worker.js 的相对路径；
+- 多个测试对基准程序的相对引用；
+- work-products/benchmarks/ 的 Git 跟踪语义。
+
+这类文件不能靠扩展文件名猜测，因为其他项目的 benchmark 可能是产品源码或正式交付物。
+
+4. 历史补丁存在完整性风险
+
+rewriteRelativeReferences() 会扫描全仓文本，并主动重写 unified diff 的 diff --git、---、+++ 路径。本次清理中，历史 reverse patch 的部分头部被改写后，其内容与 SHA-256 清单不再一致，最终只能恢复补丁原文。
+
+补丁文件可能是：
+
+- 可随当前源码更新的工作补丁；
+- 不可变的历史证据；
+- 与哈希清单绑定的回滚产物。
+
+不能仅按 .patch/.diff 扩展名统一改写。
+
+5. 报告不能暴露“已发现但未分类”的文件
+
+当前 report.skipped 主要记录链接、派生产物、弱 Python 测试等已进入扫描分支的对象。tasks/ 中未被 legacyFiles 命中的文件和根目录基准程序不会出现在 moves、skipped 或 blockers 中，用户容易把 NO_CHANGES 或 READY 误解为“已完整检查并整理”。
+
+三、P0 修复建议：先保证不会误迁移或半迁移
+
+1. 将 /tasks/ 忽略规则移除与完整迁移绑定
+
+建议增加目录残留预检：
+
+- 先枚举 tasks/ 全部非链接文件。
+- 构建完整 moveMap 后，计算未被计划覆盖的残留文件。
+- 只在 tasks/ 不存在，或全部内容都已进入本次原子迁移计划时，才允许删除 /tasks/。
+- 存在残留时返回 BLOCKED，并报告 LEGACY_DIRECTORY_REMAINS、目录和残留路径。
+- BLOCKED 时不得移动文件、改引用或改 .gitignore。
+
+不建议仅保留 /tasks/ 后继续部分迁移，因为这仍会让用户误以为 clean 已完成。
+
+2. 将测试分类改为三态，而不是“文件名命中即移动”
+
+建议分类为：
+
+- confirmed-internal：有明确 UXUCode 过程测试证据，可以移动。
+- confirmed-product：有项目原生测试证据，保持原位。
+- ambiguous：只有 test/spec 命名，没有归属证据，返回 BLOCKED 或列入 needsDecision。
+
+可接受的内部证据应至少包括一种强证据：
+
+- 文件包含明确、稳定的 UXUCode work-product 标记；
+- 文件由 UXUCode 工作流清单明确声明；
+- 文件位于已声明的 UXUCode 过程目录；
+- 项目显式迁移清单逐项授权。
+
+仅有文件名、位于 tests/、使用 node:test/pytest/unittest，均只能证明“它是测试”，不能证明“它是 UXUCode 内部过程测试”。
+
+应删除或改写 clean-contract.test.js 中“product.test.js 必须移动”的错误合同，并新增“项目原生测试保持原位”的回归。
+
+3. 发现遗留目录时必须全量报告
+
+报告建议新增：
+
+- discoveredLegacyFiles
+- classifiedMoves
+- unclassifiedFiles
+- preservedProductFiles
+- integrityProtectedFiles
+
+若已发现 legacy tasks/，但存在 unclassifiedFiles，则状态不得为 NO_CHANGES。为保持现有状态机简单，可直接使用 BLOCKED，并给出结构化 blocker：
+
+{
+  "code": "UNCLASSIFIED_LEGACY_ARTIFACT",
+  "path": "tasks/benchmark-evidence.md"
+}
+
+四、P1 修复建议：增加通用的项目显式迁移清单
+
+1. 使用显式逐文件映射，不增加项目专属分支
+
+建议 clean 支持一个位于 work-products/ 下的受控迁移清单，例如：
+
+work-products/clean-migration.json
+
+清单必须：
+
+- 使用仓库相对路径；
+- 每条记录显式给出 source、target、tracking 和 rewritePolicy；
+- 禁止绝对路径、.. 逃逸、通配符和重复目标；
+- 预览时完成目标冲突、链接祖先、引用和 Git 语义校验；
+- apply 后若仍需要长期保留，可作为正式事实进入 Git；若是一次性清单，应在报告中明确后续处理方式。
+
+示例结构：
+
+{
+  "version": 1,
+  "moves": [
+    {
+      "source": "xhttp_stream_benchmark.mjs",
+      "target": "work-products/benchmarks/xhttp_stream_benchmark.mjs",
+      "tracking": "tracked",
+      "rewritePolicy": "references"
+    },
+    {
+      "source": "tasks/xhttp-bottleneck-analysis.md",
+      "target": "work-products/debug/xhttp-bottleneck-analysis.md",
+      "tracking": "local",
+      "rewritePolicy": "references"
+    },
+    {
+      "source": "tasks/xhttp-final.reverse.patch",
+      "target": "work-products/rollback/xhttp-final.reverse.patch",
+      "tracking": "local",
+      "rewritePolicy": "preserve-content"
+    }
+  ]
+}
+
+该能力是通用授权机制，不应识别 CfGfwAX、xhttp 或具体文件名。
+
+2. .gitignore 规则应由目标跟踪属性动态生成和验证
+
+当前 requiredIgnoreRules 只允许 SPEC.md、plan.md、todo.md 和 tests/ 被跟踪。建议根据迁移清单生成精确例外：
+
+- tracking=tracked：为目标文件或目标目录添加最窄的 ! 规则。
+- tracking=local：确认目标继续被 /work-products/* 忽略。
+- 动态扩展 ignoreSemanticProbes，验证每个计划目标的实际 Git 语义。
+- 不要为整个 work-products/ 取消忽略。
+
+对本次场景，应允许 work-products/benchmarks/ 跟踪，同时让 debug/、rollback/ 保持本地忽略。
+
+3. 完整 moveMap 建立后再做引用改写
+
+显式迁移清单加入 moveMap 后，复用现有相对引用改写能力，但增加以下验收：
+
+- 移动文件内部相对引用从目标位置重新计算。
+- 外部调用方对移动文件的引用同步更新。
+- 测试文件最终只包含从 work-products/tests/ 出发的仓库相对路径。
+- 可执行基准程序移动后仍能直接运行。
+- 所有引用检查必须在任何写入前完成。
+
+4. 对完整性绑定产物采取默认保护
+
+建议在改写 .patch/.diff 或其他回滚产物前扫描完整性关系：
+
+- 若文件被 SHA-256/SHA-512 清单引用，返回 INTEGRITY_COUPLED_ARTIFACT。
+- rewritePolicy=preserve-content 时只允许 rename，文件字节和哈希必须保持不变。
+- 只有显式 rewritePolicy=mutable-patch 时才允许改写 diff 头。
+- 如果改写会要求同步更新哈希，必须作为同一预验证事务中的显式计划，不能隐式发生。
+
+默认策略应保护历史证据，不应把所有补丁都视为可变工作文件。
+
+五、P2 可用性与事务建议
+
+1. 预览摘要明确区分：
+
+- 自动确认移动；
+- 用户显式授权移动；
+- 保持原位的产品文件；
+- 未分类阻塞项；
+- 完整性保护项；
+- .gitignore 将添加/删除的规则及其原因。
+
+2. apply 成功后：
+
+- 仅删除本次迁移产生的空旧目录；
+- 非空目录绝不删除；
+- 再次运行 preview 必须为 NO_CHANGES；
+- 对 tracking=tracked 的目标运行 git check-ignore 验证为可跟踪；
+- 对 tracking=local 的目标验证仍被忽略。
+
+3. 报告版本建议从 1 升级，以便调用方识别新增字段，不要静默改变 version: 1 的 JSON 合同。
+
+六、必须新增或修正的回归测试
+
+1. tasks/plan.md 与 tasks/evidence.md 同时存在：
+   - preview 返回 BLOCKED；
+   - /tasks/ 不得计划删除；
+   - 工作区字节不变。
+
+2. product.test.mjs 只有项目测试证据：
+   - 保持原位；
+   - 不得进入 work-products/tests/。
+
+3. 带 UXUCode work-product 标记的内部测试：
+   - 迁入 work-products/tests/；
+   - 引用从最终位置正确重算。
+
+4. 显式映射 xhttp_stream_benchmark.mjs：
+   - 迁入 work-products/benchmarks/；
+   - 基准程序对 _worker.js 的引用正确；
+   - 测试对基准程序的引用正确；
+   - 目标可被 Git 跟踪。
+
+5. 显式映射 debug 与 rollback 文件：
+   - 目标保持忽略；
+   - 分类和数量出现在报告中。
+
+6. reverse patch 与 SHA-256 清单绑定：
+   - preserve-content 迁移前后哈希一致；
+   - 未显式声明可变时禁止改写 diff 头。
+
+7. 任一未分类项、目标冲突、路径逃逸或完整性冲突：
+   - apply 返回非零/BLOCKED；
+   - 所有文件和 .gitignore 保持字节一致。
+
+8. apply 成功后再次 preview：
+   - 返回 NO_CHANGES；
+   - Claude/Codex 报告一致；
+   - 两套 clean-work-products.js 保持字节一致。
+
+七、建议实施顺序
+
+1. 先修正规格、Clean Skill 和三语言 README 中“内部测试”的判定合同，明确文件名不是归属证据。
+2. 修改 clean-contract.test.js，先加入上述失败回归。
+3. 实现 tasks/ 残留阻塞和 .gitignore 延迟移除。
+4. 实现通用显式迁移清单、动态 Git 语义和完整性保护。
+5. 同步 Claude/Codex 引擎，保持字节一致。
+6. 按 UXUCode 自身发布规则同步版本：
+   - Claude 和 Codex host manifest；
+   - Claude marketplace；
+   - 两套 validator/version assertion。
+7. 运行：
+   - node --test work-products/tests/clean-contract.test.js
+   - node scripts/validate-all.js
+   - git diff --check
+
+八、不建议采用的方案
+
+- 不要把 tasks/ 下所有文件无条件搬到同一目录。
+- 不要把所有 *benchmark* 文件自动判定为过程产物。
+- 不要继续用 test/spec 文件名代替“内部测试”归属证据。
+- 不要在存在 tasks/ 残留时删除 /tasks/ 忽略规则。
+- 不要自动改写带哈希清单的历史补丁。
+- 不要在 clean 引擎中硬编码 CfGfwAX、xhttp 或任何单一项目路径。

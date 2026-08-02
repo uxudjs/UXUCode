@@ -14,6 +14,7 @@ const definitions = [
     systemTerminal: '在系统终端',
     claudeSession: '进入 Claude Code 会话后',
     newOpenClawSession: '启动新的 OpenClaw 会话',
+    cleanDiscoveryContract: '只用于发现候选，不证明归属',
     workspacePlaceholder: '<请替换为OpenClaw工作区绝对路径>'
   },
   {
@@ -25,6 +26,7 @@ const definitions = [
     systemTerminal: '在系統終端',
     claudeSession: '進入 Claude Code 工作階段後',
     newOpenClawSession: '啟動新的 OpenClaw 工作階段',
+    cleanDiscoveryContract: '只用於發現候選，不證明歸屬',
     workspacePlaceholder: '<請替換為OpenClaw工作區絕對路徑>'
   },
   {
@@ -36,6 +38,7 @@ const definitions = [
     systemTerminal: 'In a system terminal',
     claudeSession: 'After entering the Claude Code session',
     newOpenClawSession: 'Start a new OpenClaw session',
+    cleanDiscoveryContract: 'only discovers candidates; it does not prove ownership',
     workspacePlaceholder: '<replace-with-absolute-openclaw-workspace-path>'
   }
 ];
@@ -179,6 +182,20 @@ function validateReadme(readme) {
       if (!pattern.test(section)) {
         failures.push(definition.marker + ': clean safety contract is missing ' + label);
       }
+    }
+    for (const required of [
+      '`work-products/clean-migration.json`',
+      '`preserve-content`',
+      '`mutable-patch`',
+      '`report v2`',
+      '`preservedProductFiles`'
+    ]) {
+      if (!section.includes(required)) {
+        failures.push(definition.marker + ': Clean v2 contract is missing ' + required);
+      }
+    }
+    if (!section.includes(definition.cleanDiscoveryContract)) {
+      failures.push(definition.marker + ': Clean v2 contract is missing the discovery-versus-ownership boundary');
     }
     if (section.includes('/uxu-code:organize') ||
         /(^|[^A-Za-z0-9_-])@organize(?:$|[^A-Za-z0-9_-])/.test(section)) {

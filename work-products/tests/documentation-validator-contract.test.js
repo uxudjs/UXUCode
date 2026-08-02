@@ -28,7 +28,60 @@ function moveToken(section, token, before) {
 
 test('documentation validators accept the canonical README and guides', () => {
   assert.deepEqual(validateReadme(readme), []);
-  assert.deepEqual(validateGuides(guides), []);
+  assert.deepEqual(validateGuides(guides, readme), []);
+});
+
+test('guide validator requires bidirectional README links and aligned planning semantics', () => {
+  const missingBacklink = guides[2].replace('[Back to README](../README.md)', 'Standalone guide');
+  const conflictingReadme = readme.replace(
+    'when the request is already clear, you can go directly to `plan`.',
+    'even when the request is clear, you must run `spec` before `plan`.'
+  );
+
+  assert.ok(
+    validateGuides([guides[0], guides[1], missingBacklink], readme)
+      .some((failure) => failure.includes('README backlink')),
+    'expected the guide validator to require a backlink from every guide'
+  );
+  assert.ok(
+    validateGuides(guides, conflictingReadme)
+      .some((failure) => failure.includes('planning semantics')),
+    'expected the guide validator to reject README and guide planning drift'
+  );
+});
+
+test('guide validator requires the current clean permission and nested-directory contracts', () => {
+  const nestedContract = [
+    '其他层级的 `<prefix>/work-products/tests/<rest>` 会归一到根级 `work-products/tests/<prefix>/<rest>`',
+    '其他層級的 `<prefix>/work-products/tests/<rest>` 會正規化到根層級 `work-products/tests/<prefix>/<rest>`',
+    'Nested `<prefix>/work-products/tests/<rest>` paths are normalized to root-level `work-products/tests/<prefix>/<rest>`'
+  ];
+  const permissionContract = [
+    '仅在结构化权限错误且宿主提供审批机制时',
+    '僅在結構化權限錯誤且宿主提供核准機制時',
+    'only for a structured permission error when the host offers approval'
+  ];
+
+  guides.forEach((guide, index) => {
+    assert.ok(guide.includes(nestedContract[index]), `${guideFiles[index]}: missing nested clean contract`);
+    assert.ok(guide.includes(permissionContract[index]), `${guideFiles[index]}: missing permission retry contract`);
+
+    const missingNested = [...guides];
+    missingNested[index] = guide.replace(nestedContract[index], 'Nested paths are handled safely');
+    assert.ok(
+      validateGuides(missingNested, readme)
+        .some((failure) => failure.includes('nested work-products normalization')),
+      `${guideFiles[index]}: expected the validator to require nested normalization`
+    );
+
+    const missingPermission = [...guides];
+    missingPermission[index] = guide.replace(permissionContract[index], 'when a retry appears useful');
+    assert.ok(
+      validateGuides(missingPermission, readme)
+        .some((failure) => failure.includes('permission retry boundary')),
+      `${guideFiles[index]}: expected the validator to require the permission retry boundary`
+    );
+  });
 });
 
 test('unified validation runs the documentation validator contract tests', () => {
@@ -79,7 +132,7 @@ test('guide validator rejects OpenClaw update guidance placed under Codex', () =
   );
 
   assert.ok(
-    validateGuides([guides[0], guides[1], misplacedEnglish])
+    validateGuides([guides[0], guides[1], misplacedEnglish], readme)
       .some((failure) => failure.includes('OpenClaw update')),
     'expected the guide validator to reject OpenClaw update guidance outside the OpenClaw subsection'
   );
@@ -104,7 +157,7 @@ test('guide validator allows unrelated version numbers and percentages', () => {
     (section) => `${section}\nExample version: v3.0.52. Ordinary progress: 95%.\n`
   );
 
-  assert.deepEqual(validateGuides([guides[0], guides[1], harmlessEnglish]), []);
+  assert.deepEqual(validateGuides([guides[0], guides[1], harmlessEnglish], readme), []);
 });
 
 test('README validator rejects contextual OpenClaw evaluation details', () => {
@@ -130,7 +183,7 @@ test('guide validator rejects contextual OpenClaw evaluation details', () => {
   );
 
   assert.ok(
-    validateGuides([guides[0], guides[1], leakedEnglish])
+    validateGuides([guides[0], guides[1], leakedEnglish], readme)
       .some((failure) => failure.includes('evaluation detail')),
     'expected the guide validator to reject contextual OpenClaw evaluation details'
   );
@@ -144,21 +197,51 @@ test('guide validator rejects missing clean apply and safety boundaries', () => 
   );
 
   assert.ok(
-    validateGuides([guides[0], guides[1], missingApply])
+    validateGuides([guides[0], guides[1], missingApply], readme)
       .some((failure) => failure.includes('clean contract')),
     'expected the guide validator to require the exact clean apply form'
   );
   assert.ok(
-    validateGuides([guides[0], guides[1], missingSafety])
+    validateGuides([guides[0], guides[1], missingSafety], readme)
       .some((failure) => failure.includes('clean contract')),
     'expected the guide validator to require the non-deletion safety boundary'
   );
 });
 
+test('documentation validators require the Clean v2 ownership and integrity contract', () => {
+  const missingGuideManifest = guides[2].replace(
+    '`work-products/clean-migration.json`',
+    '`work-products/clean-mapping.json`'
+  );
+  const missingGuideClassification = guides[2].replace(
+    '`preservedProductFiles`',
+    '`preservedFiles`'
+  );
+  const missingReadmePolicy = readme.replace('`preserve-content`', '`preserve`');
+
+  assert.ok(
+    validateGuides([guides[0], guides[1], missingGuideManifest], readme)
+      .some((failure) => failure.includes('Clean v2 contract')),
+    'expected the guide validator to require the exact migration manifest path'
+  );
+  assert.ok(
+    validateGuides([guides[0], guides[1], missingGuideClassification], readme)
+      .some((failure) => failure.includes('Clean v2 contract')),
+    'expected the guide validator to require report v2 ownership classifications'
+  );
+  assert.ok(
+    validateReadme(missingReadmePolicy)
+      .some((failure) => failure.includes('Clean v2 contract')),
+    'expected the README validator to require the immutable-content policy'
+  );
+});
+
 test('guide validator requires canonical test placement and relative repository paths', () => {
-  const missingDestination = guides[2].replace(
-    'into `work-products/tests/`',
-    'within the project'
+  const missingDestination = transformSection(
+    guides[2],
+    '## 6.',
+    '## 7.',
+    (section) => section.replaceAll('work-products/tests/', 'project-tests/')
   );
   const missingRelativePolicy = guides[2].replace(
     'Tests must reference repository files with relative paths from their final location, never machine-specific absolute paths.',
@@ -166,12 +249,12 @@ test('guide validator requires canonical test placement and relative repository 
   );
 
   assert.ok(
-    validateGuides([guides[0], guides[1], missingDestination])
+    validateGuides([guides[0], guides[1], missingDestination], readme)
       .some((failure) => failure.includes('canonical internal-test destination')),
     'expected the guide validator to require the clean destination'
   );
   assert.ok(
-    validateGuides([guides[0], guides[1], missingRelativePolicy])
+    validateGuides([guides[0], guides[1], missingRelativePolicy], readme)
       .some((failure) => failure.includes('relative test-path policy')),
     'expected the guide validator to require relative repository paths'
   );
@@ -188,7 +271,7 @@ test('documentation validators require the complete clean safety boundary', () =
   );
 
   assert.ok(
-    validateGuides([guides[0], guides[1], missingGuideBoundary])
+    validateGuides([guides[0], guides[1], missingGuideBoundary], readme)
       .some((failure) => failure.includes('clean safety contract')),
     'expected the guide validator to require ambiguous bare-string blocking'
   );
@@ -217,9 +300,9 @@ test('documentation validators reject organize commands but allow ordinary prose
   const harmlessGuide = `${guides[2]}\nTeams may organize project files manually.\n`;
   const aliasGuide = `${guides[2]}\nUse @organize.\n`;
 
-  assert.deepEqual(validateGuides([guides[0], guides[1], harmlessGuide]), []);
+  assert.deepEqual(validateGuides([guides[0], guides[1], harmlessGuide], readme), []);
   assert.ok(
-    validateGuides([guides[0], guides[1], aliasGuide])
+    validateGuides([guides[0], guides[1], aliasGuide], readme)
       .some((failure) => failure.includes('organize alias')),
     'expected the guide validator to reject a public organize alias'
   );
