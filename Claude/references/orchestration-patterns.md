@@ -8,7 +8,7 @@ Use one agent for a bounded task. Use independent subagents only when evidence c
 
 For a non-trivial feature, use `spec` only when requirements or material risks remain unresolved; otherwise start at `plan`:
 
-    /uxu-code:spec? → /uxu-code:plan → /uxu-code:build → /uxu-code:test → /uxu-code:review → /uxu-code:ship
+    [run /uxu-code:spec when needed] → /uxu-code:plan → /uxu-code:build → /uxu-code:test → /uxu-code:review → /uxu-code:ship
 
 Planning may use an approved specification, thorough debug evidence, or clear user requirements. Each phase must consume a verified planning basis or verified output from the previous phase. Do not invoke later phases merely to appear complete.
 

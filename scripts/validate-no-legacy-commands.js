@@ -40,7 +40,7 @@ walk(root);
 
 for (const pkg of ['Claude', 'Codex']) {
   const hooks = fs.readdirSync(path.join(root, pkg, 'hooks')).sort();
-  const expected = ['hooks.json', 'mode-policy.js', 'uxu-prompt-router.js', 'uxu-session-start.js', 'uxu-statusline.js', 'uxu-subagent-start.js'];
+  const expected = ['hook-state.js', 'hooks.json', 'mode-policy.js', 'uxu-prompt-router.js', 'uxu-session-start.js', 'uxu-statusline.js', 'uxu-subagent-start.js'];
   if (JSON.stringify(hooks) !== JSON.stringify(expected)) failures.push(pkg + ': unexpected hook files: ' + hooks.join(', '));
 }
 

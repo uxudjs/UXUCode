@@ -19,8 +19,9 @@ for (const pkg of packages) {
   for (const command of publicCommands) {
     if (!router.includes("'" + command + "'")) failures.push(pkg + ': router missing command ' + command);
   }
-  for (const mode of modes) {
-    if (!router.includes("'" + mode + "'")) failures.push(pkg + ': router missing mode ' + mode);
+  const policy = require(path.join(root, pkg, 'hooks', 'mode-policy.js'));
+  if (JSON.stringify(policy.supportedModes) !== JSON.stringify(modes)) {
+    failures.push(pkg + ': mode policy differs from the public mode contract');
   }
 }
 

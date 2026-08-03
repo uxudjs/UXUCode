@@ -49,6 +49,7 @@ function runLegacyValidatorFixture(relativePath, content) {
   const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'uxucode-legacy-validator-'));
   const scriptDirectory = path.join(tempRoot, 'scripts');
   const expectedHooks = [
+    'hook-state.js',
     'hooks.json',
     'mode-policy.js',
     'uxu-prompt-router.js',
@@ -431,7 +432,15 @@ test('public guides and README describe optional spec, canonical paths, and trac
       path.join(root, pkg, 'references', 'orchestration-patterns.md'),
       'utf8'
     );
-    assert.match(content, /spec\?.*plan.*build.*test.*review.*ship/);
+    const help = readSkill(pkg, 'help');
+    const commandPrefix = pkg === 'Claude' ? '/uxu-code:' : '@';
+    assert.doesNotMatch(help, /`spec\?/);
+    assert.match(help, /run `spec` when/i);
+    assert.doesNotMatch(content, /(?:@|\/uxu-code:)spec\?/);
+    assert.ok(content.includes(
+      `[run ${commandPrefix}spec when needed] → ${commandPrefix}plan`
+    ));
+    assert.match(content, /plan.*build.*test.*review.*ship/);
     assert.match(content, /thorough debug evidence, or clear user requirements/);
   }
 });
@@ -510,8 +519,8 @@ test('audit and performance guidance stays ecosystem-neutral and evidence-gated'
   assert.match(notices, /Excluded from adoption:/);
 });
 
-test('release metadata and maintenance workflows enforce the 5.0.1 version contract', () => {
-  const expectedVersion = '5.0.1';
+test('release metadata and maintenance workflows enforce the 5.0.4 version contract', () => {
+  const expectedVersion = '5.0.4';
   const maintenanceContract =
     /every completed bug fix or optimization must update the release version consistently/;
   const claudeManifest = JSON.parse(
@@ -533,7 +542,7 @@ test('release metadata and maintenance workflows enforce the 5.0.1 version contr
       path.join(root, pkg, 'scripts', 'validate-plugin.js'),
       'utf8'
     );
-    assert.match(validator, /expected version 5\.0\.1/);
+    assert.match(validator, /expected version 5\.0\.4/);
     for (const skill of ['build', 'debug', 'simplify']) {
       assert.match(readSkill(pkg, skill), maintenanceContract);
     }

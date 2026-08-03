@@ -8,7 +8,7 @@ Use one agent for a bounded task. Use independent subagents only when evidence c
 
 For a non-trivial feature, use `spec` only when requirements or material risks remain unresolved; otherwise start at `plan`:
 
-    @spec? → @plan → @build → @test → @review → @ship
+    [run @spec when needed] → @plan → @build → @test → @review → @ship
 
 Planning may use an approved specification, thorough debug evidence, or clear user requirements. Each phase must consume a verified planning basis or verified output from the previous phase. Do not invoke later phases merely to appear complete.
 

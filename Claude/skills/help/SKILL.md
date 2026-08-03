@@ -9,7 +9,7 @@ Use the host-native command form: Claude Code uses `/uxu-code:<command>`; Codex 
 
 List exactly these public commands: `help`, `spec`, `plan`, `build`, `debug`, `test`, `review`, `simplify`, `ship`, `mode`, `audit`, `debt`, `commit`, `compress`, `stats`, `status`, and `clean`.
 
-Recommend `spec? → plan → build → review → simplify → ship`: use `spec` when requirements or material risks are unresolved, but allow `plan` to start from thorough debug evidence or clear user requirements. Explain that `build auto` requires an approved stable plan and reliable tests.
+Recommend this workflow: run `spec` when requirements or material risks are unresolved, then use `plan → build → review → simplify → ship`. Allow `plan` to start from thorough debug evidence or clear user requirements. Explain that `build auto` requires an approved stable plan and reliable tests.
 
 Explain that every newly created UXUCode process, plan, task, review, ship, and test file belongs under `work-products/`, with tests specifically under `work-products/tests/`. Test artifacts must reference repository files with relative paths from their final location, never machine-specific absolute paths; product source and deliverables keep their project-native locations.
 
@@ -19,4 +19,3 @@ Return the guide matching the user's language:
 - 简体中文: `docs/USAGE.zh-CN.md`
 - 繁體中文: `docs/USAGE.zh-TW.md`
 - English: `docs/USAGE.en.md`
-

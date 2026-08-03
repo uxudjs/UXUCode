@@ -1216,7 +1216,6 @@ function buildPlan(workspace = process.cwd()) {
   report.preservedProductFiles.sort(comparePaths);
   report.unclassifiedLegacyFiles.sort(comparePaths);
   report.inactiveManifestEntries.sort(comparePaths);
-  report.skipped.sort(comparePaths);
   addMoveSafetyBlockers(root, report);
   inspectIntegrity(root, report);
 

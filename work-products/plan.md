@@ -1239,6 +1239,25 @@
 
 **授权边界：** 本计划不授权暂存、提交、推送、发布、部署、插件重装、缓存修改或任何真实项目 `clean apply`。
 
+## 任务 33：移除共享文档验证并关闭 5.0.4 理论跨平台门禁
+
+**状态：** 已完成（2026-08-03，用户明确要求“理论验证正确即可，共享验证不要”）。该要求提供了目标、范围、约束和可验证验收，无需新增规格。
+
+**范围：** 删除本轮新增的 `scripts/documentation-validation.js`，让 README 与完整指南校验器继续各自保留所需解析逻辑；修正 mode-policy 合同测试的临时环境，使 Windows 配置写入隔离到 `APPDATA`，macOS/Linux 配置写入隔离到临时 `HOME`。本轮不要求真实 macOS/Linux 主机验证，但必须用平台分支合同和本地回归证明理论路径正确。完成后将五个发布事实源及版本合同同步到 5.0.4。
+
+**验收标准：**
+
+- 两个文档校验器不依赖共享验证模块，原有通过与拒绝合同保持不变。
+- 测试辅助逻辑分别计算 Windows 与 POSIX 临时配置路径，子进程环境同时隔离 `APPDATA`、`HOME` 和 `USERPROFILE`，不得读取或写入真实用户配置。
+- Claude/Codex manifest、Claude marketplace、两个 validator 与 workflow 版本合同一致为 5.0.4。
+- mode-policy、documentation、workflow 合同及统一 12 步门禁通过；双宿主 Clean 预览为 `NO_CHANGES` 且零写入；`git diff --check` 返回 0。
+
+**验证边界：** 代码分支检查与本地合同测试足以完成本任务，不要求真实 macOS/Linux、插件重装、缓存一致性或新会话加载证明；结论必须明确这些未执行。
+
+**依赖与回滚：** 依赖本轮 `@ship` 的两个 NO-GO 发现和用户当前决策。回滚时将测试辅助逻辑、两个校验器独立实现和 5.0.4 版本事实源作为一个切片恢复；不改动此前用户修改。
+
+**完成证据：** 平台隔离合同先以 `createHookTestEnvironment is not defined` RED，最小实现后聚焦 mode-policy、documentation 与 workflow 合同 44/44；统一 12 步门禁为 workflow 89/89、OpenClaw 27/27。共享验证文件与引用均为零，五个发布事实源一致为 5.0.4；双宿主 Clean 均为 `NO_CHANGES`、预览前后工作区一致，`git diff --check` 返回 0。未执行真实 macOS/Linux、插件重装、缓存验证或新会话加载。
+
 ## 风险与缓解
 
 | 风险 | 影响 | 缓解 |

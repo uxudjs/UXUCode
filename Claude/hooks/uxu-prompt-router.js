@@ -1,26 +1,10 @@
 #!/usr/bin/env node
 
-const fs = require('fs');
-const path = require('path');
-const os = require('os');
-const { policyFor, resolveMode, workflowPolicy } = require('./mode-policy');
+const { readConfig, readState, writeConfig, writeState } = require('./hook-state');
+const { policyFor, resolveMode, supportedModes, workflowPolicy } = require('./mode-policy');
 
 const commands = new Set(['help', 'spec', 'plan', 'build', 'debug', 'test', 'review', 'simplify', 'ship', 'mode', 'audit', 'debt', 'commit', 'compress', 'stats', 'status', 'clean']);
-const modes = new Set(['standard', 'lite', 'full', 'ultra', 'off']);
-const configDir = process.platform === 'win32' && process.env.APPDATA
-  ? path.join(process.env.APPDATA, 'uxucode')
-  : path.join(os.homedir(), '.config', 'uxucode');
-const configPath = path.join(configDir, 'config.json');
-const statePath = path.join(process.cwd(), '.uxucode-state.json');
-
-function readJson(file, fallback) {
-  try { return JSON.parse(fs.readFileSync(file, 'utf8').replace(/^\uFEFF/, '')); }
-  catch { return fallback; }
-}
-function writeJson(file, value) {
-  fs.mkdirSync(path.dirname(file), { recursive: true });
-  fs.writeFileSync(file, JSON.stringify(value, null, 2) + '\n');
-}
+const modes = new Set(supportedModes);
 function emit(text) {
   if (text) process.stdout.write(text);
 }
@@ -58,16 +42,16 @@ process.stdin.on('end', () => {
       compactReview: true,
       contextCompression: false,
       mcpDescriptionCompression: false,
-      ...readJson(configPath, {}),
+      ...readConfig(),
       mode: args
     };
-    const state = { ...readJson(statePath, {}), mode: args, updatedAt: new Date().toISOString() };
-    writeJson(configPath, config);
-    writeJson(statePath, state);
+    const state = { ...readState(), mode: args, updatedAt: new Date().toISOString() };
+    writeConfig(config);
+    writeState(state);
     emit(`UXUCode mode changed to ${args}.`);
     return;
   }
 
-  const mode = resolveMode(readJson(configPath, {}).mode);
+  const mode = resolveMode(readConfig().mode);
   emit(`Route this request to the "${command}" skill with arguments "${args}". ${policyFor(mode)} ${workflowPolicy}`);
 });

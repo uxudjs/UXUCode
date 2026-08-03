@@ -26,7 +26,7 @@ const hooks = readJson('hooks/hooks.json');
 
 if (manifest) {
   if (manifest.name !== 'uxu-code') fail('manifest: unexpected plugin name');
-  if (manifest.version !== '5.0.1') fail('manifest: expected version 5.0.1');
+  if (manifest.version !== '5.0.4') fail('manifest: expected version 5.0.4');
   if (manifest.skills !== './skills/') fail('manifest: skills must be ./skills/');
   if (manifest.hooks !== './hooks/hooks.json') fail('manifest: hooks must be ./hooks/hooks.json');
 }
@@ -37,7 +37,7 @@ if (!serializedHooks.includes('PLUGIN_ROOT') || serializedHooks.includes('CLAUDE
   fail('hooks: Codex hooks must use PLUGIN_ROOT only');
 }
 
-for (const file of ['AGENTS.md', 'hooks/hooks.json', 'hooks/uxu-session-start.js', 'hooks/uxu-prompt-router.js', 'hooks/uxu-subagent-start.js', 'hooks/uxu-statusline.js']) requirePath(file);
+for (const file of ['AGENTS.md', 'hooks/hooks.json', 'hooks/hook-state.js', 'hooks/uxu-session-start.js', 'hooks/uxu-prompt-router.js', 'hooks/uxu-subagent-start.js', 'hooks/uxu-statusline.js']) requirePath(file);
 for (const file of ['investigator.md', 'builder.md', 'reviewer.md', 'security-reviewer.md', 'test-reviewer.md']) requirePath(path.join('agents', file), 'agent');
 for (const file of ['accessibility-checklist.md', 'definition-of-done.md', 'observability-checklist.md', 'orchestration-patterns.md', 'performance-checklist.md', 'security-checklist.md', 'testing-patterns.md']) {
   requirePath(path.join('references', file), 'reference');
