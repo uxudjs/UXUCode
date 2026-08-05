@@ -78,7 +78,7 @@ work-products/
 
 ```powershell
 node scripts/validate-all.js
-git -c safe.directory=C:/Users/brand/SynologyDrive/Code/UXUCode diff --check
+git -c safe.directory=C:/Code/UXUCode diff --check
 ```
 
 - 静态校验、本地测试、真实宿主加载和生产行为是不同证据层级，不得互相替代。

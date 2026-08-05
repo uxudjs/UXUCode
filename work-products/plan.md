@@ -46,8 +46,8 @@
 
 **验证：**
 
-- [ ] `git -c safe.directory=C:/Users/brand/SynologyDrive/Code/UXUCode status --short`
-- [ ] `git -c safe.directory=C:/Users/brand/SynologyDrive/Code/UXUCode check-ignore -v work-products/SPEC.md work-products/plan.md work-products/todo.md work-products/tests/mode-policy-contract.test.js`
+- [ ] `git -c safe.directory=C:/Code/UXUCode status --short`
+- [ ] `git -c safe.directory=C:/Code/UXUCode check-ignore -v work-products/SPEC.md work-products/plan.md work-products/todo.md work-products/tests/mode-policy-contract.test.js`
 - [ ] `node --test work-products/tests/mode-policy-contract.test.js`
 
 **依赖：** 无。
@@ -310,7 +310,7 @@
 - [ ] GREEN：完成 README 后，`node scripts/validate-readme-scope.js` 返回 0。
 - [ ] `node scripts/validate-no-legacy-commands.js`
 - [ ] `node scripts/validate-third-party-notices.js`
-- [ ] `git -c safe.directory=C:/Users/brand/SynologyDrive/Code/UXUCode diff --check -- README.md scripts/validate-readme-scope.js`
+- [ ] `git -c safe.directory=C:/Code/UXUCode diff --check -- README.md scripts/validate-readme-scope.js`
 
 **依赖：** 原任务 1-8 及其门禁已完成；依赖已批准规格第 12 节。
 
@@ -340,7 +340,7 @@
 - [ ] `node scripts/validate-no-legacy-commands.js`
 - [ ] `node scripts/validate-readme-scope.js`
 - [ ] `node scripts/validate-command-parity.js`
-- [ ] `git -c safe.directory=C:/Users/brand/SynologyDrive/Code/UXUCode diff --check -- docs/USAGE.zh-CN.md docs/USAGE.zh-TW.md docs/USAGE.en.md scripts/validate-guide-parity.js`
+- [ ] `git -c safe.directory=C:/Code/UXUCode diff --check -- docs/USAGE.zh-CN.md docs/USAGE.zh-TW.md docs/USAGE.en.md scripts/validate-guide-parity.js`
 
 **依赖：** 任务 9。README 先确定用户术语和宿主操作顺序，完整指南沿用同一合同。
 
@@ -434,7 +434,7 @@
 - [ ] `node scripts/validate-guide-parity.js`
 - [ ] `node scripts/validate-no-legacy-commands.js`
 - [ ] `node scripts/validate-all.js`
-- [ ] `git -c safe.directory=C:/Users/brand/SynologyDrive/Code/UXUCode diff --check`
+- [ ] `git -c safe.directory=C:/Code/UXUCode diff --check`
 - [ ] 人工逐段对照三语言中的安装、验证、更新、回滚和证据边界。
 
 **依赖：** 任务 12。
@@ -464,7 +464,7 @@
 - [x] RED：扩展行为测试后，修复前仅旧版根目录三个路径不满足预期。
 - [x] GREEN：`node --test work-products/tests/workflow-contract.test.js`
 - [x] `node scripts/validate-all.js`
-- [x] `git -c safe.directory=C:/Users/brand/SynologyDrive/Code/UXUCode diff --check`
+- [x] `git -c safe.directory=C:/Code/UXUCode diff --check`
 
 **依赖：** 任务 13 后的 `@review` 发现；不改变任务 1-13 的功能与文档结论。
 
@@ -520,7 +520,7 @@
 
 - [x] RED：新增测试因引擎不存在或预览合同未实现而失败。
 - [x] GREEN：`node --test --test-name-pattern="preview|classification" work-products/tests/clean-contract.test.js`
-- [x] `git -c safe.directory=C:/Users/brand/SynologyDrive/Code/UXUCode diff --check`
+- [x] `git -c safe.directory=C:/Code/UXUCode diff --check`
 
 **依赖：** 已批准规格第 13.1-13.4 节；无实现任务依赖。
 
@@ -548,7 +548,7 @@
 
 - [x] RED：引用、冲突和中途失败 fixture 在实现前失败。
 - [x] GREEN：`node --test --test-name-pattern="apply|reference|rollback|conflict" work-products/tests/clean-contract.test.js`
-- [x] `git -c safe.directory=C:/Users/brand/SynologyDrive/Code/UXUCode diff --check`
+- [x] `git -c safe.directory=C:/Code/UXUCode diff --check`
 
 **依赖：** 任务 15。
 
@@ -577,7 +577,7 @@
 - [x] RED：ignore 语义、外部 exclude 和幂等 fixture 在实现前失败。
 - [x] GREEN：`node --test work-products/tests/clean-contract.test.js`
 - [x] `node scripts/validate-all.js`
-- [x] `git -c safe.directory=C:/Users/brand/SynologyDrive/Code/UXUCode diff --check`
+- [x] `git -c safe.directory=C:/Code/UXUCode diff --check`
 
 **依赖：** 任务 16。
 
@@ -782,7 +782,7 @@
 
 - [x] `node --test work-products/tests/clean-contract.test.js`
 - [x] `node scripts/validate-all.js`
-- [x] `git -c safe.directory=C:/Users/brand/SynologyDrive/Code/UXUCode diff --check`
+- [x] `git -c safe.directory=C:/Code/UXUCode diff --check`
 - [x] 检查相关 diff，确认每一行可追溯到规格第 13 节或根目录 `AGENTS.md`。
 - [x] 运行 clean 预览验证当前仓库；若返回 `BLOCKED`，只报告统一合同识别的冲突，不增加兼容或项目特例。
 - [x] 未暂存、提交、推送、发布、重装插件或修改安装缓存。
@@ -804,7 +804,7 @@
 - [x] RED：新增四类回归夹具并确认旧实现出现 4 个失败。
 - [x] GREEN：`node --test work-products/tests/clean-contract.test.js`
 - [x] `node scripts/validate-all.js`
-- [x] `git -c safe.directory=C:/Users/brand/SynologyDrive/Code/UXUCode diff --check`
+- [x] `git -c safe.directory=C:/Code/UXUCode diff --check`
 - [x] 重新执行 `@review`，且没有未解决的 Critical 或 Important 发现。
 
 ## 任务 25：限制 Clean 只改写迁移相关引用
@@ -819,7 +819,7 @@
 - [x] Claude/Codex Clean 引擎保持字节一致。
 - [x] `node --test work-products/tests/clean-contract.test.js`
 - [x] `node scripts/validate-all.js`
-- [x] `git -c safe.directory=C:/Users/brand/SynologyDrive/Code/UXUCode diff --check`
+- [x] `git -c safe.directory=C:/Code/UXUCode diff --check`
 - [x] 重新执行 `@review`，且没有未解决的 Critical 或 Important 发现。
 
 ## 任务 26：修复 Clean 测试发现范围与项目内绝对路径
@@ -836,7 +836,7 @@
 - [x] `node --test work-products/tests/clean-contract.test.js`
 - [x] `node --test work-products/tests/workflow-contract.test.js`
 - [x] `node scripts/validate-all.js`
-- [x] `git -c safe.directory=C:/Users/brand/SynologyDrive/Code/UXUCode diff --check`
+- [x] `git -c safe.directory=C:/Code/UXUCode diff --check`
 
 ## 任务 27：修复 Clean Review 的安全与完整性缺口
 
@@ -858,7 +858,7 @@
 - [x] 规格、Clean Skill 和三语文档同步支持范围与 fail-closed 行为。
 - [x] `node --test work-products/tests/clean-contract.test.js`
 - [x] `node scripts/validate-all.js`
-- [x] `git -c safe.directory=C:/Users/brand/SynologyDrive/Code/UXUCode diff --check`
+- [x] `git -c safe.directory=C:/Code/UXUCode diff --check`
 - 回滚：恢复本任务对 Clean 引擎、合同测试、规格和文档的修改；不执行真实迁移。
 
 ## 检查点
@@ -883,7 +883,7 @@
 ### 原实施门禁：任务 7-8 后
 
 - [ ] `node scripts/validate-all.js` 返回 0。
-- [ ] `git -c safe.directory=C:/Users/brand/SynologyDrive/Code/UXUCode diff --check` 返回 0。
+- [ ] `git -c safe.directory=C:/Code/UXUCode diff --check` 返回 0。
 - [ ] diff 中每一行都能追溯到批准规格或选择性上游同步。
 - [ ] 未新增依赖、CI、别名、部署或发布动作。
 - [ ] 静态验证结论没有被表述成真实 Host/Marketplace/OpenClaw Gateway 运行时证明。
@@ -903,7 +903,7 @@
 - [ ] `node scripts/validate-command-parity.js` 返回 0。
 - [ ] `node scripts/validate-third-party-notices.js` 返回 0。
 - [ ] `node scripts/validate-all.js` 返回 0。
-- [ ] `git -c safe.directory=C:/Users/brand/SynologyDrive/Code/UXUCode diff --check` 返回 0。
+- [ ] `git -c safe.directory=C:/Code/UXUCode diff --check` 返回 0。
 - [ ] 人工对照三语言安装、更新、首次验证、OpenClaw 和 `work-products/` 段落，确认命令与语义一致且译文自然。
 - [ ] 验证结论明确限定为仓库静态校验与本地测试，不声称已完成真实 Marketplace、Hook 或 OpenClaw Gateway 烟测。
 - [ ] 进入 `@review` 前由用户确认任务 9-10 均完成。
@@ -933,7 +933,7 @@
 
 **验证：**
 
-- [x] `git -c safe.directory=C:/Users/brand/SynologyDrive/Code/UXUCode status --short`
+- [x] `git -c safe.directory=C:/Code/UXUCode status --short`
 - [x] `rg -n "(^|[^A-Za-z0-9_-])(SPEC\\.md|tasks/plan\\.md|tasks/todo\\.md)" . --glob "!.git/**" --glob "!work-products/**"` 只允许 Clean 引擎的迁移合同与根规则说明命中。
 
 **回滚：** 从 Git 历史恢复三个旧文件，并同时恢复本任务状态；不得让恢复文件重新成为受支持事实源。
@@ -964,7 +964,7 @@
 
 - [x] Claude/Codex Clean 预览均为 `NO_CHANGES` 且输出一致。
 - [x] `node scripts/validate-all.js` 12 步通过。
-- [x] `git -c safe.directory=C:/Users/brand/SynologyDrive/Code/UXUCode diff --check` 返回 0。
+- [x] `git -c safe.directory=C:/Code/UXUCode diff --check` 返回 0。
 - [x] `git ls-files --deleted` 精确包含三个旧事实源和两个旧测试源，新测试路径未被忽略且可跟踪。
 - [x] 当前 diff 无未解释的 Critical 或 Important 问题。
 - [x] 明确保留真实 Marketplace、Hook、Gateway 与生产行为为未验证。
@@ -984,7 +984,7 @@
 - [x] AShareQuantFusion 零写入复测为 `READY`、0 blocker，且所报补丁脚本／派生文件均安全跳过。
 - [x] Claude/Codex 引擎与 Skill 保持字节一致，三语言 README／指南和规格同步。
 
-**验证：** `node --test work-products/tests/clean-contract.test.js`、`node scripts/validate-all.js`、`git -c safe.directory=C:/Users/brand/SynologyDrive/Code/UXUCode diff --check`。
+**验证：** `node --test work-products/tests/clean-contract.test.js`、`node scripts/validate-all.js`、`git -c safe.directory=C:/Code/UXUCode diff --check`。
 
 **回滚：** 成对回退引擎、合同测试、规格、双宿主 Skill 与三语言说明；不对验证用项目执行 `apply`。
 
@@ -1028,7 +1028,7 @@
 
 **验收标准：** CfGfwAX 沙箱外预览只保留两个 plan/todo `TARGET_EXISTS` 且不自动合并；GMSSL 只识别真实测试、`tests/__init__.py` 不误报且目标已规范化；两个项目现有工作保持不变；本地证据不冒充安装缓存或新会话证明。
 
-**验证：** 两个合同测试；`node scripts/validate-all.js`；`git -c safe.directory=C:/Users/brand/SynologyDrive/Code/UXUCode diff --check`；双宿主引擎与 Skill SHA-256；记录两个项目预览但不运行 `apply`。
+**验证：** 两个合同测试；`node scripts/validate-all.js`；`git -c safe.directory=C:/Code/UXUCode diff --check`；双宿主引擎与 Skill SHA-256；记录两个项目预览但不运行 `apply`。
 
 **依赖：** 任务 30.2、30.3。**可能涉及：** 无新增实现文件。**规模：** 小。**回滚：** 验证零写入，失败时保持任务未完成。
 
@@ -1211,7 +1211,7 @@
 - UXUCode preview 为 `NO_CHANGES`；CfGfwAX 当前样本已无 legacy 项且项目测试均在规范目录，preview 为 `READY`，仅建议加入 `!/work-products/clean-migration.json`；合同夹具另行证明项目测试保留及未映射 legacy 项结构化 `BLOCKED`，两仓库 Git 状态前后相同。
 - 双宿主引擎与 Clean Skill SHA-256 分别一致；结论不冒充安装缓存、新会话、Marketplace 或生产证明。
 
-**验证：** `node --test work-products/tests/clean-contract.test.js work-products/tests/workflow-contract.test.js work-products/tests/documentation-validator-contract.test.js`；`node scripts/validate-all.js`；`git -c safe.directory=C:/Users/brand/SynologyDrive/Code/UXUCode diff --check`；双宿主哈希；两仓库 preview 前后 `git status --short` 比较。
+**验证：** `node --test work-products/tests/clean-contract.test.js work-products/tests/workflow-contract.test.js work-products/tests/documentation-validator-contract.test.js`；`node scripts/validate-all.js`；`git -c safe.directory=C:/Code/UXUCode diff --check`；双宿主哈希；两仓库 preview 前后 `git status --short` 比较。
 
 **依赖：** 任务 31.10。**可能涉及：** `work-products/tests/workflow-contract.test.js` 及计划/todo 状态记录。**规模：** 小。**回滚：** 验证本身零写入；失败时保持任务未完成，不回退用户既有改动。
 

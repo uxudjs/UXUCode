@@ -618,7 +618,7 @@ OpenClaw 不新增伪插件或命令入口；其工作区模板只在现有产�
 - 三个旧事实源和两个旧测试源在文件系统中不存在，`git status --short` 将其记录为删除；新测试路径未被忽略并可正常跟踪。
 - `node --test work-products/tests/OpenClaw/tests/validate-profile.test.js work-products/tests/OpenClaw/tests/evaluation.test.js` 全部通过。
 - `node scripts/validate-all.js` 的 12 个步骤全部通过。
-- `git -c safe.directory=C:/Users/brand/SynologyDrive/Code/UXUCode diff --check` 返回 0。
+- `git -c safe.directory=C:/Code/UXUCode diff --check` 返回 0。
 - 当前 diff 不含未解释的 Critical 或 Important 问题，最终 Clean 门禁更新为完成。
 
 ### 14.5 风险与回滚
@@ -792,7 +792,7 @@ JSON 报告升级为 `version: 2`，仓库内调用方和合同测试一次性�
 - 上述 RED 在旧实现上按预期失败，修复后全部通过；不得用删除或放宽既有安全断言变绿。
 - `node --test work-products/tests/clean-contract.test.js` 通过。
 - `node scripts/validate-all.js` 全部通过。
-- `git -c safe.directory=C:/Users/brand/SynologyDrive/Code/UXUCode diff --check` 返回 0。
+- `git -c safe.directory=C:/Code/UXUCode diff --check` 返回 0。
 - `git check-ignore` 证明 SPEC、manifest、tracked 目标和测试可跟踪，local 目标保持忽略。
 - 双宿主引擎与 Clean Skill 的 SHA-256 分别一致。
 - 双宿主 manifest、Claude marketplace、两个 validator 和版本合同同步到同一个新版本。
