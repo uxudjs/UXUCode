@@ -54,6 +54,11 @@ const definitions = [
 ];
 const commands = ['help', 'spec', 'plan', 'build', 'debug', 'test', 'review', 'simplify', 'ship', 'mode', 'audit', 'debt', 'commit', 'compress', 'stats', 'status', 'clean'];
 const modes = ['standard', 'lite', 'full', 'ultra', 'off'];
+const environmentContracts = [
+  [/项目环境/, /`\.venv\/`/, /构建、修复、测试或配置请求可授权所需的项目内环境修改/, /只读请求不得创建环境或安装依赖/, /仓库外环境变更/, /再取得明确授权/, /不是系统级沙箱/],
+  [/專案環境/, /`\.venv\/`/, /建置、修復、測試或設定請求可授權所需的專案內環境修改/, /唯讀請求不得建立環境或安裝依賴/, /儲存庫外環境變更/, /再取得明確授權/, /不是系統級沙箱/],
+  [/project environment/i, /`\.venv\/`/, /build, fix, test, or setup request may authorize a required repository-local environment change/i, /read-only request must not create an environment or install dependencies/i, /environment change outside the repository/i, /before explicit authorization/i, /not an operating-system sandbox/i]
+];
 const evaluationDetailPatterns = [
   { pattern: /\b52\b[^\r\n]{0,80}\b(?:evaluation\s+)?cases?\b/i, label: '52 evaluation cases' },
   { pattern: /(?:评测|評測|测试|測試)[^\r\n]{0,80}52\s*(?:个|個)?\s*(?:用例|案例)/i, label: '52 evaluation cases' },
@@ -137,6 +142,11 @@ guides.forEach((guide, index) => {
   }
   if (headingLevels(guide) !== baselineLevels) {
     failures.push(file + ': heading levels differ from the Simplified Chinese guide');
+  }
+  for (const pattern of environmentContracts[index]) {
+    if (!pattern.test(guide)) {
+      failures.push(file + ': environment isolation contract is missing ' + pattern);
+    }
   }
 
   for (const command of commands) {

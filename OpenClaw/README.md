@@ -4,6 +4,8 @@ UXUCode for OpenClaw is a compact workspace policy for a personal assistant and 
 
 The MVP installs one managed policy block into an agent workspace `AGENTS.md` and creates missing native `SOUL.md` and `IDENTITY.md` files from the packaged templates. OpenClaw loads these files when a session starts. The profile adds no OpenClaw plugin, hook, skill, telemetry, conversation access, credential access, or shared global UXUCode configuration.
 
+The installed profile also applies environment isolation to development and automation commands: it reads the project contract and prefers the project environment, while Python with no other declared toolchain defaults to the repository-root `.venv/` and its exact interpreter. A build, fix, test, or setup request may authorize a required repository-local environment change; a read-only request does not create environments or install dependencies. Any environment change outside the repository requires complete impact and rollback context plus explicit authorization. This is a behavioral policy, not an operating-system sandbox or command interceptor; unsafe creation or repair, conflicting ownership, or an unclear boundary remains a stop condition.
+
 ## Prerequisites
 
 - A local checkout of this repository on the OpenClaw Gateway host.

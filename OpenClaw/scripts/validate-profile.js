@@ -51,11 +51,39 @@ function validateProfile(content) {
   for (const heading of [
     '## Scope control',
     '## Execution control',
+    '## Environment isolation',
     '## Output control',
     '## Unconditional detail restoration',
     '## OpenClaw context control'
   ]) {
     if (!content.includes(heading)) failures.push(`profile is missing section: ${heading}`);
+  }
+
+  const environmentHeading = '## Environment isolation';
+  const environmentStart = content.indexOf(environmentHeading);
+  const environmentEnd = content.indexOf('## Output control', environmentStart + environmentHeading.length);
+  const environmentSection = environmentStart >= 0 && environmentEnd > environmentStart
+    ? content.slice(environmentStart, environmentEnd)
+    : '';
+
+  for (const [pattern, label] of [
+    [/project instructions/i, 'project instructions'],
+    [/reuse its wrapper or declared uv, Poetry, Pipenv, Conda, or Dev Container/i, 'project-local environment priority'],
+    [/uv, Poetry, Pipenv, Conda, or Dev Container/i, 'existing Python toolchains'],
+    [/repository-root `\.venv\/`/i, 'default Python .venv'],
+    [/exact interpreter/i, 'exact interpreter'],
+    [/never bare `pip` or a global fallback/i, 'no global fallback'],
+    [/Build, fix, test, or setup requests may create a repository-local environment/i, 'authorized local environment creation'],
+    [/read-only requests may neither create environments nor install dependencies/i, 'read-only boundary'],
+    [/Stop only when creation or repair is unsafe, ownership conflicts, or the boundary is unclear/i, 'fail-closed boundary'],
+    [/environment change outside the repository/i, 'repository boundary'],
+    [/explicit authorization/i, 'explicit authorization'],
+    [/exact command, exact target/i, 'exact command and target'],
+    [/why a project-local option is unavailable/i, 'local-option rationale'],
+    [/impact, verification, and rollback/i, 'impact, verification, and rollback'],
+    [/general request to install dependencies is not authorization for a global change/i, 'narrow authorization']
+  ]) {
+    if (!pattern.test(environmentSection)) failures.push(`profile environment isolation is missing: ${label}`);
   }
 
   const policy = content

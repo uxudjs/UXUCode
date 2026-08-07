@@ -51,6 +51,11 @@ const evaluationDetailPatterns = [
   { pattern: /95%[^\r\n]{0,80}(?:correctness|正确|正確|低风险|低風險|threshold|阈值|閾值|門檻)/i, label: '95% evaluation threshold' },
   { pattern: /(?:correctness|正确|正確|低风险|低風險|threshold|阈值|閾值|門檻)[^\r\n]{0,80}95%/i, label: '95% evaluation threshold' }
 ];
+const environmentContracts = [
+  [/项目环境/, /`\.venv\/`/, /只读请求不会创建环境或安装依赖/, /仓库外环境变更/, /明确授权/, /不是系统级沙箱/],
+  [/專案環境/, /`\.venv\/`/, /唯讀請求不會建立環境或安裝依賴/, /儲存庫外環境變更/, /明確授權/, /不是系統級沙箱/],
+  [/project environment/i, /`\.venv\/`/, /read-only request does not create an environment or install dependencies/i, /environment change outside the repository/i, /explicit authorization/i, /not an operating-system sandbox/i]
+];
 
 function count(value, search) {
   return value.split(search).length - 1;
@@ -89,6 +94,11 @@ function validateReadme(readme) {
   definitions.forEach((definition, index) => {
     const section = sections[index];
     requireOrdered(section, definition.headings, definition.marker + ': user journey', failures);
+    for (const pattern of environmentContracts[index]) {
+      if (!pattern.test(section)) {
+        failures.push(definition.marker + ': environment isolation contract is missing ' + pattern);
+      }
+    }
 
     const install = sectionBetween(section, definition.headings[2], definition.headings[3]);
     const verify = sectionBetween(section, definition.headings[3], definition.headings[4]);

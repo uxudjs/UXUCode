@@ -28,6 +28,8 @@ UXUCode 会把生成的规格、计划和过程记录集中保存在 `work-produ
 
 `work-products/` 中的正式规格、实施计划、任务清单和测试是可进入版本控制的正式项目事实；调试记录、评审报告、发布门禁报告和其他未声明过程文件默认只保留在本地。任何操作创建的新测试都放入 `work-products/tests/`，测试引用仓库文件时使用从最终位置出发的相对路径，不写入机器绑定的绝对路径。仓库静态校验通过不代表已安装的插件缓存已经重新加载这些变更。
 
+执行开发、测试或依赖命令时，UXUCode 先遵循项目合同并优先使用项目环境；Python 没有其他明确工具链时，默认使用仓库根目录 `.venv/` 及其中的精确解释器。只读请求不会创建环境或安装依赖，任何仓库外环境变更都必须先说明目标与影响并取得明确授权。该策略是可验证的行为合同，不是系统级沙箱或命令拦截器。
+
 如果历史 UXUCode 过程文件错放在目录外，先用 `/uxu-code:clean` 或 `@clean` 零写入预览；确认后仅以精确的 `apply` 参数执行整理。`clean` 不是删除命令；跨语言 `test`／`spec` 命名只用于发现候选，不证明归属，只有固定历史映射或 `work-products/clean-migration.json` 的精确条目才授权移动。清单以 `tracking` 区分跟踪状态，以 `rewritePolicy` 的 `preserve-content`／`mutable-patch` 保护不可变内容和显式可变补丁；校验和耦合、依赖与版本控制目录保持 fail-closed。`report v2` 通过 `preservedProductFiles` 明示保留的产品文件；重复目标、目标祖先链接／逃逸或缺少路径结构证据的裸字符串会返回 `BLOCKED`。
 
 在代码仓库中，建议配合 [colbymchenry/codegraph](https://github.com/colbymchenry/codegraph) 使用，以便更快定位相关代码和调用路径。
@@ -171,6 +173,8 @@ UXUCode 會把產生的規格、計畫和過程記錄集中保存在 `work-produ
 
 `work-products/` 中的正式規格、實施計畫、任務清單和測試是可納入版本控制的正式專案事實；除錯記錄、評審報告、發佈門禁報告和其他未聲明的過程檔案預設只保留在本機。任何操作建立的新測試都放入 `work-products/tests/`，測試引用儲存庫檔案時使用從最終位置出發的相對路徑，不寫入綁定特定機器的絕對路徑。儲存庫靜態驗證通過不代表已安裝的外掛快取已重新載入這些變更。
 
+執行開發、測試或依賴命令時，UXUCode 先遵循專案合約並優先使用專案環境；Python 沒有其他明確工具鏈時，預設使用儲存庫根目錄 `.venv/` 及其中的精確直譯器。唯讀請求不會建立環境或安裝依賴，任何儲存庫外環境變更都必須先說明目標與影響並取得明確授權。該策略是可驗證的行為合約，不是系統級沙箱或命令攔截器。
+
 如果歷史 UXUCode 過程檔案錯放在目錄外，先用 `/uxu-code:clean` 或 `@clean` 零寫入預覽；確認後僅以精確的 `apply` 參數執行整理。`clean` 不是刪除命令；跨語言 `test`／`spec` 命名只用於發現候選，不證明歸屬，只有固定歷史對應或 `work-products/clean-migration.json` 的精確項目才授權移動。清單以 `tracking` 區分追蹤狀態，以 `rewritePolicy` 的 `preserve-content`／`mutable-patch` 保護不可變內容和明確可變補丁；校驗和耦合、依賴與版本控制目錄保持 fail-closed。`report v2` 透過 `preservedProductFiles` 明示保留的產品檔案；重複目標、目標祖先連結／逃逸或缺少路徑結構證據的裸字串會回傳 `BLOCKED`。
 
 在程式碼儲存庫中，建議搭配 [colbymchenry/codegraph](https://github.com/colbymchenry/codegraph) 使用，以便更快定位相關程式碼和呼叫路徑。
@@ -313,6 +317,8 @@ Start with `spec` when the scope still needs definition; when the request is alr
 UXUCode keeps generated specifications, plans, and process records together under `work-products/` so the project's existing layout stays organized. Product source code and final deliverables continue to follow the project's own structure.
 
 Under `work-products/`, formal specifications, implementation plans, task lists, and tests are formal project facts that can be tracked in version control; debug records, review reports, release-gate reports, and other undeclared process files remain local by default. Every operation places newly created tests under `work-products/tests/`; tests reference repository files with relative paths from their final location, never machine-specific absolute paths. Passing repository static validation does not mean the installed plugin cache has reloaded these changes.
+
+For development, testing, or dependency commands, UXUCode follows the project contract and prefers the project environment. When Python has no other declared toolchain, it defaults to the repository-root `.venv/` and its exact interpreter. A read-only request does not create an environment or install dependencies, and any environment change outside the repository requires the target and impact to be disclosed before explicit authorization. This policy is a verifiable behavioral contract, not an operating-system sandbox or command interceptor.
 
 If historical UXUCode process files are misplaced outside that directory, run `/uxu-code:clean` or `@clean` first for a zero-write preview, then use only the exact `apply` argument after review. `clean` is not a delete command. Cross-language `test`/`spec` naming only discovers candidates; it does not prove ownership, and only a fixed legacy mapping or an exact `work-products/clean-migration.json` entry authorizes a move. The manifest uses `tracking` for tracking state and the `preserve-content` or `mutable-patch` `rewritePolicy` to protect immutable content and explicitly mutable patches; checksum coupling plus dependency and version-control directories remain fail-closed. `report v2` exposes preserved product files through `preservedProductFiles`; duplicate targets, linked or escaping target ancestors, and bare strings without path-structure evidence return `BLOCKED`.
 

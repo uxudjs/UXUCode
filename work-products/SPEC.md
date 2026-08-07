@@ -1,811 +1,278 @@
-# UXUCode 工作流目录、Clean 整理命令与验证入口规范
+# UXUCode 跨宿主开发环境隔离规范
 
-状态：已批准（2026-07-30，修订 `clean` 候选证据、引用改写与大仓库扫描合同）
+状态：已批准（2026-08-07）
+
+本规范取代上一份已完成的 Clean 工作流规格，成为当前活动规格。旧规格继续保留在 Git 历史中。
 
 ## 1. 目标
 
-在不牺牲正确性、测试可发现性和 Claude/Codex 独立打包的前提下：
+让 Claude Code、Codex 和 OpenClaw 在执行开发、测试、依赖安装或工具配置前，主动识别项目的环境边界，优先使用仓库已有的隔离环境，避免静默污染系统级、用户级或全局开发环境。
 
-1. 将 UXUCode 新建的过程性内容集中到 `work-products/`，减少仓库根目录视觉混乱。
-2. 允许 `plan` 从已批准规格、完整调试/审查证据或足够明确的用户要求开始，不把 `spec` 设为无条件门禁。
-3. 删除会被误认为真实命令的 `@spec?`、`/uxu-code:spec?` 表达，并收紧命令解析边界。
-4. 提供一个可复现、失败即停止的统一验证入口。
-5. 有选择地同步四个规范项目的有效上游更新，不照搬上游仓库自身的维护文件。
-6. 新增只整理错放 UXUCode 过程产物的 `clean` Skill，并让 `.gitignore` 与唯一目录规范保持同步。
+成功不是“所有项目都强制创建 `.venv/`”，而是三个宿主遵守同一套可验证决策：
 
-## 2. 已确认设计决策
+1. 先识别项目已经声明的运行时、包管理器、锁文件、包装脚本和隔离环境；
+2. 优先复用项目自己的环境，不用全局环境代替缺失或损坏的项目环境；
+3. Python 项目没有其他明确合同时，默认使用项目根目录 `.venv/`；
+4. 任何仓库外环境变更都先说明精确目标、影响和回滚方式，并取得用户明确授权；
+5. 无法安全确定环境边界时失败即停止，不静默回退。
 
-### 2.1 `work-products/` 是 UXUCode 过程产物的默认根目录
+## 2. 用户与使用场景
 
-新建内容按以下位置保存：
+### 2.1 目标用户
+
+- 使用 Claude Code 或 Codex 开发、调试、测试项目的工程人员；
+- 使用 OpenClaw 执行开发辅助、自动化或命令操作的用户；
+- 同一台机器上维护多个语言版本、多个项目或多个代理工作区的用户。
+
+### 2.2 典型场景
+
+- Python 项目需要安装 `requirements.txt` 或 `pyproject.toml` 中的依赖；
+- 测试命令依赖已存在的 `.venv/`、uv、Poetry、Pipenv、Conda 或 Dev Container；
+- 项目缺少可用虚拟环境，代理需要决定是创建项目环境、请求授权，还是停止；
+- Node.js、Ruby、Java、Rust 或其他生态需要避免全局包安装和持久化机器配置；
+- 代理发现当前命令会写入系统 Python、用户 site-packages、Conda base、全局包目录、系统包管理器、持久化 `PATH` 或 shell 配置。
+
+## 3. 术语与边界
+
+### 3.1 项目环境
+
+满足以下任一条件的环境视为项目环境：
+
+- 位于目标仓库内部，例如 `.venv/`、项目本地依赖目录或项目本地工具目录；
+- 由仓库内明确合同指定，例如项目说明、`AGENTS.md`、包装脚本、运行时版本文件、包管理器配置、锁文件、Dev Container 或 CI 命令；
+- 由用户针对当前项目和当前操作明确指定。
+
+项目环境不因目录名恰好是 `.venv` 就自动可信；若发生创建、修复、替换或删除，仍需检查精确路径、仓库归属、链接／重解析点、现有内容和回滚条件。
+
+### 3.2 仓库外环境
+
+以下目标默认视为仓库外环境：
+
+- 系统 Python、用户 Python、用户 site-packages、Conda base 或共享 Conda 环境；
+- 全局 npm、pnpm、Yarn、RubyGems、Cargo、Java、.NET 或其他语言工具安装位置；
+- `pipx`、系统包管理器、系统服务、注册表、持久化用户／系统环境变量；
+- 用户 shell profile、全局 Git 配置、IDE 全局配置和宿主全局插件缓存；
+- 任何不属于当前仓库且未被项目合同或用户明确指定的运行时或工具目录。
+
+读取版本、定位可执行文件或用系统解释器创建项目内虚拟环境，不等于授权修改该系统解释器。不得把“可以执行”推断成“可以向其中安装依赖”。
+
+### 3.3 环境修改
+
+环境修改包括安装、升级、降级、卸载包，创建、修复、替换或删除环境，修改持久化配置、解释器选择、`PATH`、profile、注册表或全局工具状态。
+
+仅运行只读版本检查、查询路径或读取项目配置不属于环境修改。
+
+## 4. 统一决策顺序
+
+Claude Code、Codex 和 OpenClaw 在可能依赖或改变开发环境的操作前必须按以下顺序判断：
+
+1. **读取项目合同**：先检查适用的项目指令、运行说明、清单、锁文件、版本文件、包装脚本、CI 和已有测试命令。
+2. **确认安装边界**：确定当前命令属于哪个仓库、子项目、工作区和包管理器；出现竞争锁文件或相互冲突的指令时停止并说明冲突。
+3. **定位实际运行时**：使用只读检查确认将执行的解释器、包管理器或包装脚本来自何处，不依赖激活状态或命令名称猜测。
+4. **复用项目机制**：优先使用仓库声明的包装脚本、项目本地环境和精确可执行文件。
+5. **创建项目环境**：仅当用户请求的实施、修复、测试或环境设置确实需要，且项目没有更高优先级合同，才创建项目内环境。
+6. **仓库外变更门禁**：任何仓库外环境修改都必须先取得针对当前精确动作的明确授权。
+7. **失败即停止**：环境缺失、损坏、归属不明或无法安全修复时，报告阻塞和最小恢复选项；不得静默使用全局环境继续。
+
+不要求跨命令保持 shell 激活状态。能直接调用项目环境中的精确可执行文件时，应优先直接调用，以避免不同 shell、子进程或代理工具之间的激活状态漂移。
+
+## 5. Python 默认合同
+
+### 5.1 选择优先级
+
+Python 项目按以下优先级选择环境：
+
+1. 项目指令或包装脚本明确指定的环境和命令；
+2. 与 `pyproject.toml`、锁文件、CI 和项目说明一致的 uv、Poetry、Pipenv、Conda、Dev Container 或其他项目机制；
+3. 已存在且可验证属于当前项目的 `.venv/`；
+4. 没有其他明确合同时，在项目根目录创建 `.venv/`；
+5. 若以上均不可安全使用，停止并请求用户决定，不得回退到系统或用户 Python 安装依赖。
+
+### 5.2 命令合同
+
+- Windows 默认直接使用 `.venv\Scripts\python.exe`；
+- POSIX 默认直接使用 `.venv/bin/python`；
+- 使用 pip 时，通过所选解释器执行 `python -m pip`，不得使用无法证明归属的裸 `pip`；
+- 使用 uv、Poetry、Pipenv 或 Conda 时，遵循项目现有锁文件、配置和包装命令，不额外创建第二套环境；
+- 创建 `.venv/` 时可以使用已验证的系统 Python 作为引导解释器，但依赖必须安装到新建的项目环境；
+- 激活虚拟环境不是成功证据；必须通过精确可执行路径、解释器报告或等价只读证据确认实际环境；
+- `.venv/` 缺失或损坏时，不得通过字符串替换、复制其他机器环境或向系统 Python 补装依赖来伪装修复。
+
+### 5.3 项目内变更授权
+
+当用户已明确要求构建、修复、测试或配置项目，而完成任务需要项目内 `.venv/` 时，创建或更新该项目环境属于请求范围内的正常实施步骤；仍须遵守依赖来源、锁文件、网络权限、脚本执行和回滚安全要求。
+
+对于状态、审查、解释、诊断或其他只读请求，不得因为发现环境缺失而自动创建环境或安装依赖。
+
+## 6. 其他生态的统一合同
+
+本规范不把 Python `.venv/` 强加给其他生态。其他生态必须遵守等价原则：
+
+- 优先仓库锁文件、项目包管理器、项目本地依赖和已签入包装脚本；
+- 不用全局安装掩盖项目依赖缺失；
+- 不在未授权情况下执行全局安装、系统包管理器安装或持久化机器配置；
+- 仓库已有明确环境合同的，不引入并行工具链或第二套锁文件；
+- 项目命令只能依赖全局工具时，先确认该工具已存在；需要安装、升级或重新配置时进入仓库外变更门禁。
+
+## 7. 仓库外变更门禁
+
+请求用户授权前必须给出：
+
+1. 将执行的精确命令或操作；
+2. 将修改的精确环境、路径、配置或工具；
+3. 为什么项目内方案不可用；
+4. 对其他项目和当前机器的可能影响；
+5. 验证方法和可行回滚步骤。
+
+授权必须针对当前目标和当前操作。以下内容都不能视为持续授权：以前安装过同类工具、项目文档提到某工具、当前终端已激活某环境、机器上已有管理员权限，或用户仅要求“让测试通过”。
+
+若工具层另有网络、权限或破坏性操作审批要求，仍必须同时满足；UXUCode 规则不得绕过宿主审批。
+
+## 8. 三宿主产品合同
+
+### 8.1 Claude Code 与 Codex
+
+- 两个独立插件包必须包含语义一致的环境隔离策略；
+- 策略属于安全和环境边界，不受 `standard`、`lite`、`full`、`ultra` 或 `off` 模式关闭；
+- 会话、提示路由和子代理上下文必须获得同一份紧凑、模式无关的环境策略；
+- `implementation-policy` 必须包含完整决策规则，宿主指令必须包含足够的前置提醒；
+- 不新增公开命令、别名或兼容入口；仍只使用现有 `@<command>` 与 Claude Code 的原生公开入口；
+- Claude 与 Codex 的策略、Hook 注入和验证必须保持文件或语义对等，不允许只修一个宿主。
+
+### 8.2 OpenClaw
+
+- `OpenClaw/AGENTS.fragment.md` 必须增加独立、紧凑的环境隔离段落；
+- OpenClaw 仍是个人助理和协调运行时，不复制 Claude Code／Codex 的工程命令集；
+- 当 OpenClaw 代用户执行开发或自动化命令时，必须遵守相同的项目环境优先级和仓库外变更门禁；
+- profile validator 必须验证环境隔离段落存在且包含失败即停止和明确授权语义；
+- OpenClaw 评估用例必须覆盖“缺少虚拟环境时不得直接向系统环境安装”以及“用户明确授权仓库外变更前需报告目标和影响”。
+
+### 8.3 当前 UXUCode 仓库自身
+
+- 根 `AGENTS.md` 和 `Codex/AGENTS.md` 必须包含与产品策略一致的环境隔离边界；
+- 本仓库当前为 Node.js 项目，不得为了验证本规范创建 Python `.venv/` 或安装 Python 依赖；
+- 实施和测试不得修改当前机器的系统、用户或全局开发环境。
+
+## 9. 文档与版本合同
+
+- 简体中文、繁体中文和英文 README／使用指南必须作为同一验收边界，说明项目环境优先和仓库外变更需明确授权；
+- `OpenClaw/README.md` 必须说明安装后的 profile 包含环境隔离策略及其限制；
+- 文档不得承诺模型策略等同于操作系统级沙箱或强制拦截；它提供行为合同、静态验证和评估证据；
+- 文档示例不得使用机器绑定绝对路径，不得示范向系统 Python 或用户 site-packages 安装项目依赖；
+- 完成实现时，Claude manifest、Claude marketplace、Codex manifest 和对应版本断言必须同步到实施时的下一补丁版本；若期间已有其他版本变更，以实施时共同基线为准，不得静默降级或覆盖。
+
+## 10. 接口与兼容性
+
+### 10.1 不新增配置项
+
+本功能不新增用户级配置、环境变量、命令参数或模式。环境隔离是默认安全合同，不提供关闭开关。
+
+### 10.2 不自动接管环境
+
+本功能不实现常驻守护进程、命令代理、shell 注入、自动激活器或系统级拦截器。宿主通过策略、Hook 上下文、验证器和评估用例获得环境意识。
+
+### 10.3 项目合同优先但不得扩大权限
+
+项目明确使用外部共享环境时，可以按项目合同执行只读检查和已授权任务；项目合同本身不能替代用户对仓库外环境修改的明确授权。发现冲突时必须报告，不得静默选择更宽松的一方。
+
+## 11. 非目标
+
+- 不扫描、清理、迁移或修复用户机器上已有的 Python、Conda、Node.js 或其他全局环境；
+- 不为所有仓库创建 `.venv/`；
+- 不自动安装 Python、uv、Poetry、Conda、Node.js 或系统包管理器；
+- 不规定所有生态统一使用某一个包管理器；
+- 不替代项目自己的 Dev Container、CI、Nix、容器或锁文件合同；
+- 不修改已安装的 Claude、Codex 或 OpenClaw 缓存；
+- 不提交、推送、发布、部署或重装插件；
+- 不以策略文字宣称已经证明真实宿主或操作系统级强制行为。
+
+## 12. 风险与缓解
+
+### 12.1 过度强制 `.venv/`
+
+风险：破坏 uv、Poetry、Conda、容器或仓库既有流程。
+
+缓解：项目明确合同优先；`.venv/` 只作为 Python 无其他合同时的默认值。
+
+### 12.2 静默回退仍然污染本机
+
+风险：项目环境损坏后，命令解析到系统 Python 或用户包目录。
+
+缓解：直接调用精确可执行文件，运行前只读确认实际路径；无法确认时停止。
+
+### 12.3 规则只存在文档中
+
+风险：Claude、Codex 或 OpenClaw 某一宿主没有实际加载策略。
+
+缓解：Claude／Codex Hook 注入合同、插件策略对等测试、OpenClaw profile validator 和评估用例共同覆盖；真实新会话加载仍作为独立证据。
+
+### 12.4 提示上下文膨胀
+
+风险：把完整环境说明重复注入每次提示。
+
+缓解：Hook 只注入紧凑的不可关闭原则；完整决策树保留在内部策略和文档中。
+
+### 12.5 把授权理解得过宽
+
+风险：“安装依赖”被推断为允许修改任意全局环境。
+
+缓解：区分项目内正常实施步骤与仓库外门禁；仓库外授权必须绑定精确目标和命令。
+
+## 13. 测试策略
+
+### 13.1 RED 优先
+
+实施前在 `work-products/tests/environment-isolation-contract.test.js` 增加失败合同，至少覆盖：
+
+1. Claude 与 Codex 导出的紧凑环境策略完全一致；
+2. 会话、提示路由和子代理 Hook 在所有模式（包括 `off`）都注入该策略；
+3. 两个 `implementation-policy` 包含项目合同优先、Python `.venv/` 默认、禁止静默全局回退和仓库外明确授权；
+4. 根 `AGENTS.md`、`Codex/AGENTS.md` 与 OpenClaw fragment 保留同一核心语义；
+5. OpenClaw validator 拒绝缺少环境隔离段落或关键语义的 profile；
+6. 三语言文档和 README 的环境边界语义对齐；
+7. 新测试仅使用临时目录和隔离环境变量，不读取或修改真实系统／用户包目录。
+
+OpenClaw 评估数据同时增加至少两个消毒场景：一个项目缺少虚拟环境的动作陷阱，一个明确要求全局安装的高风险边界。评估只描述期望行为，不真实执行安装。
+
+### 13.2 目标验证
 
 ```text
-work-products/
-├── SPEC.md
-├── plan.md
-├── todo.md
-├── debug/
-├── reviews/
-├── ship/
-└── tests/
-```
-
-适用内容：
-
-- UXUCode 生成的规格、计划、任务清单、调试记录、审查报告和发布门禁报告；
-- 一次性验证脚本、临时 fixture、快照、测试报告和 agent 辅助测试；
-- 本项目自身用于验证 UXUCode 工作流、Hook 和文档合同的测试。
-
-产品源代码和最终交付物仍使用项目原生位置。
-
-### 2.2 测试位置必须同时满足整洁与可执行
-
-任何 UXUCode 操作新建的测试、fixture、snapshot、测试报告或其他测试产物都必须放入 `work-products/tests/`。测试产物引用仓库文件时，必须使用从该测试产物最终位置出发的相对路径，不得持久化机器绑定的绝对路径。每个测试还必须满足至少一项：
-
-- 被仓库统一验证入口显式执行；
-- 已加入项目现有测试框架的发现配置；
-- 在计划和最终验证证据中记录完整可运行命令。
-
-所有不需要产品使用者关注、且可按受支持命名约定明确识别的内部测试统一放入 `work-products/tests/`。如果框架、CI、共置测试约定或发布打包仍指向旧位置，迁移必须同步更新发现配置和可执行命令；无法安全更新时返回 `BLOCKED`，不得把旧目录保留为例外。
-
-### 2.3 `spec` 是条件门禁
-
-`plan` 可从以下任一充分依据开始：
-
-- 已批准的规格；
-- 已确认根因、范围和验收条件的 debug 结果；
-- 已形成明确缺陷和修复边界的 review/ship 结果；
-- 用户直接给出的目标、范围、约束和可验证验收标准。
-
-出现以下任一情况时，必须先运行 `spec`：
-
-- 目标、范围、非目标或验收标准不清楚；
-- 存在尚未解决的接口、数据、安全、架构、兼容性或回滚决策；
-- 多种解释会产生实质不同的实现；
-- 用户明确要求规格阶段。
-
-任务仅仅“非简单”或“跨多个文件”不自动触发 `spec`。`plan` 必须记录规划依据及其充分性；依据不足时停止并转入 `spec`。
-
-## 3. 修复范围
-
-### 3.1 修复伪命令 `spec?`
-
-三语言指南、help skill 和 orchestration reference 不得把问号放进命令 token。
-
-允许的流程表达：
-
-```text
-[需要时先运行 spec] → plan → build → review → simplify → ship
-```
-
-真实命令示例只能使用：
-
-```text
-@spec
-/uxu-code:spec
-```
-
-Codex 和 Claude 路由器必须要求命令名后只能是行尾或空白参数分隔符。`@spec?`、`@spec!`、`/uxu-code:spec?` 等形式不得路由到 `spec`，也不得成为兼容别名。
-
-### 3.2 增加统一验证入口
-
-新增无第三方依赖的：
-
-```text
+node --test work-products/tests/environment-isolation-contract.test.js
+node --test work-products/tests/workflow-contract.test.js work-products/tests/mode-policy-contract.test.js
+node --test work-products/tests/OpenClaw/tests/validate-profile.test.js work-products/tests/OpenClaw/tests/evaluation.test.js
+node scripts/validate-skill-parity.js
+node scripts/validate-guide-parity.js
+node scripts/validate-readme-scope.js
 node scripts/validate-all.js
+git -c safe.directory=C:/Code/UXUCode diff --check
 ```
 
-它按顺序、失败即停止地运行：
-
-1. Claude/Codex 插件验证；
-2. command、skill、guide、README、legacy、notice 一致性验证；
-3. `work-products/tests/` 下的 UXUCode workflow 和 mode contract 测试；
-4. OpenClaw profile 验证和现有 OpenClaw 测试；
-5. `git diff --check`。
-
-脚本必须透传子命令输出和失败退出码。不得把静态验证描述为真实 Marketplace 安装、Hook 信任/加载、OpenClaw Gateway 行为或真实 token 节省证明。
-
-README 的简体中文、繁体中文、英文验证章节以及三份 `docs/USAGE.*.md` 必须统一推荐该命令；详细子命令可保留在维护者说明中，但不得形成互相不一致的“标准入口”。
-
-本次不新增 CI 平台配置；统一脚本应可直接被未来 CI 调用。
-
-### 3.3 取消旧路径兼容并迁移旧过程文件
-
-根目录 `SPEC.md`、`tasks/plan.md`、`tasks/todo.md` 及其他可确认由 UXUCode 错放的过程产物只作为一次性迁移输入，不再是受支持的运行时路径。实现完成后：
-
-- 所有公开 Skill 只读取和写入 `work-products/`；
-- 不保留旧路径回退、别名、双写或读取兼容；
-- 已确认内容迁入规范位置后移除旧源文件；
-- 目标存在或内容冲突时停止并报告，不覆盖、不猜测合并结果。
-
-`.gitignore` 必须区分共享事实与本地过程产物：
-
-- `work-products/SPEC.md`、`work-products/plan.md`、`work-products/todo.md` 和 `work-products/tests/**` 是可跟踪的共享事实；
-- `work-products/debug/**`、`work-products/reviews/**`、`work-products/ship/**` 及其他未声明的过程产物默认忽略；
-- 不得为根目录 `/SPEC.md`、`/tasks/` 或任何其他旧路径保留兼容忽略规则。
-
-不得依赖 `git add -f` 绕过上述边界。忽略合同测试必须隔离用户级 `core.excludesFile` 与仓库 `.git/info/exclude`，只验证仓库自身 `.gitignore` 的行为。
-
-## 4. 上游同步评估
-
-项目固定基线与当前上游 HEAD：
-
-| 上游 | 固定提交 | 当前状态 | 本次结论 |
-|---|---|---|---|
-| DietrichGebert/ponytail | `16f29800fd2681bdf24f3eb4ccffe38be3baec6b` | 未前进 | 无需同步 |
-| JuliusBrussee/caveman | `0d95a81d35a9f2d123a5e9430d1cfc43d55f1bb0` | 未前进 | 无需同步 |
-| multica-ai/andrej-karpathy-skills | `2c606141936f1eeef17fa3043a72095b4765b9c2` | 未前进 | 无需同步 |
-| addyosmani/agent-skills | `2fbfa004a0192529bc997d103fc12f19a3804aab` | 已到 `7829ffd90d973b6325f5f12f1b1226dcace74443` | 选择性同步 |
-
-需要同步到 Claude/Codex 两套内部 reference 的更新：
-
-1. `test-driven-development`：先识别仓库语言、构建系统、测试框架、原生目录和真实验证命令；禁止默认假定 `npm test`。
-2. `incremental-implementation`、`debugging-and-error-recovery`、`planning-and-task-breakdown`：把固定 npm 示例改成项目自身命令，并引用测试栈发现结果。
-3. `shipping-and-launch`、`security-checklist`：依赖审计改为生态无关表达，例如 `npm audit`、`pip-audit`、`cargo audit`。
-4. `testing-patterns`：明确现有示例是 JavaScript/TypeScript 参考，原则适用于其他生态。
-5. `performance-optimization`：加入同条件复测、超过噪声才保留、无收益或变差即回退、记录失败尝试的门禁。
-
-不应同步：
-
-- 上游 `.github` issue 模板和评测 fixture；
-- 上游仓库自己的 Hook 设置说明；
-- 上游 CLAUDE/CONTRIBUTING 维护措辞；
-- 与 UXUCode 当前独立打包模型无关的 skill-authoring 目录约定。
-
-同步后更新 `THIRD_PARTY_NOTICES.md` 中 agent-skills 的审查提交，并保持 Claude/Codex reference 内容一致。
-
-## 5. 预计涉及文件
-
-- `Claude/hooks/uxu-prompt-router.js`
-- `Codex/hooks/uxu-prompt-router.js`
-- 两端 `skills/help`、`skills/plan`、`skills/test`、`skills/using-uxucode`
-- 两端 `references/orchestration-patterns.md`
-- 两端第 4 节列出的 workflow/reference
-- `docs/USAGE.en.md`
-- `docs/USAGE.zh-CN.md`
-- `docs/USAGE.zh-TW.md`
-- `README.md`
-- `.gitignore`
-- `scripts/validate-all.js`
-- `scripts/validate-guide-parity.js`
-- `scripts/validate-command-parity.js` 或等价命令边界验证
-- `work-products/tests/`
-- `THIRD_PARTY_NOTICES.md`
-
-所有 Claude/Codex 对应改动必须成对完成；不得为了去重破坏两个插件的独立安装能力。
-
-## 6. 测试策略
-
-### 命令边界
-
-- `@spec` 和 `/uxu-code:spec` 正常路由；
-- 带参数的合法命令正常路由；
-- `@spec?`、`@spec!`、`@specx`、`/uxu-code:spec?` 不路由；
-- 其他宿主或普通文本中的 `@` 不被 UXUCode 误拦截。
-
-### 规划依据
-
-- 已批准规格可进入 plan；
-- 完整 debug/review/ship 证据可进入 plan；
-- 明确用户要求可进入 plan；
-- 缺少验收标准或存在重大未决风险时要求 spec；
-- help、router、skills、三语言指南语义一致。
-
-### 目录合同
-
-- 新过程文档只落入 `work-products/`；
-- 所有新测试产物落入 `work-products/tests/`；
-- 测试内仓库文件引用使用从测试最终位置出发的相对路径；
-- 现有错放内部测试由 `clean` 统一迁移，并同步明确的发现与执行路径；
-- 统一入口确实执行所有合同测试。
-
-### 上游同步
-
-- Claude/Codex 对应 reference 通过内容一致性验证；
-- 新增生态无关措辞，不引入项目不存在的依赖；
-- performance workflow 明确 keep/revert 门禁；
-- notice 提交与实际审查版本一致。
-
-## 7. 验收标准
-
-- 文档、help、orchestration 中不存在可被执行的 `@spec?` 或 `/uxu-code:spec?`。
-- 路由器不再把带标点或后缀的 token 当成合法公开命令。
-- `plan` 明确接受四类充分规划依据，并在证据不足时要求 `spec`。
-- 所有新 UXUCode 过程产物默认位于 `work-products/`。
-- `work-products/tests/` 中的每个持久测试都由统一验证入口执行。
-- `node scripts/validate-all.js` 在干净实现上返回 0；任一子验证失败时返回非 0。
-- 三语言 README/USAGE、Claude/Codex skills/references 通过一致性校验。
-- 第 4 节列出的 agent-skills 更新完成选择性同步，其他三项上游无无意义改动。
-- 静态与本地测试结果不被描述成真实宿主或生产证明。
-- `git diff --check` 通过，且不覆盖工作区已有的无关改动。
-
-## 8. 非目标
-
-- 不把 `spec` 恢复成所有 plan 的强制前置门禁。
-- 不猜测无法按受支持命名约定确认的测试、fixture、snapshot 或未知测试框架配置。
-- 不合并 Claude 与 Codex 发布目录。
-- 不新增第三方依赖、CI 平台、部署或发布动作。
-- 不声称通过本地测试即可证明真实 Claude/Codex Hook 加载或 OpenClaw Gateway 行为。
-
-## 9. 风险与缓解
-
-- **测试被隐藏但未执行：** 统一验证入口必须显式枚举合同测试，并增加缺失测试的回归检查。
-- **过度拦截其他 `@` 命令：** 路由器只识别完整 UXUCode 公开 token，不接管不匹配输入。
-- **可选 spec 退化成无依据编码：** plan 必须记录目标、范围、约束和验收标准来自何处。
-- **上游同步覆盖本地策略：** 仅移植行为原则，保留 `work-products/`、双宿主独立和本项目输出合同。
-- **测试迁移破坏发现或打包：** 迁移前检查并同步明确引用；无法无歧义更新时返回 `BLOCKED`。
-
-## 10. 回滚
-
-实现应按四个可独立回滚的切片提交：
-
-1. 命令边界与文档修复；
-2. 统一验证入口和测试迁移；
-3. 过程目录与可选规格门禁对齐；
-4. agent-skills 选择性同步。
-
-任何切片失败时，只回退该切片；不得回退用户已有工作区改动。
-
-## 11. 待确认问题
-
-无。`clean` 的名称、范围、预览/执行接口和旧路径不兼容策略已由用户确认。
-
-## 12. 三语言用户文档重构补充规格
-
-### 12.1 目标用户与写作目标
-
-README 和 `docs/USAGE.*.md` 首先服务于准备安装、更新和使用 UXUCode 的 Claude Code、Codex 与 OpenClaw 使用者。文档应优先回答：
-
-1. UXUCode 能解决什么问题；
-2. 应选择哪个宿主入口；
-3. 命令应在哪里执行；
-4. 安装或更新后如何确认可用；
-5. 运行命令后会得到什么结果。
-
-实现边界、包结构、一致性校验、评测阈值和静态证据限制仅在使用者需要作出操作决策时出现；其余内容后移到完整指南的维护者附录、`OpenClaw/README.md` 或 `OpenClaw/evaluation/README.md`。
-
-### 12.2 README 信息架构
-
-简体中文、繁体中文和英文部分使用相同章节顺序与操作语义：
-
-1. 产品用途；
-2. 宿主选择；
-3. 快速安装；
-4. 第一次使用与安装验证；
-5. 更新；
-6. 完整指南；
-7. 致谢。
-
-README 首屏不得展开以下维护者信息：
-
-- Claude/Codex 的内部目录、Hook 生命周期和 reference 同步方式；
-- 公开命令数量与一致性校验合同；
-- 完整 `work-products/` 路径清单；
-- OpenClaw 评测用例数、百分比阈值和评分命令；
-- 静态验证、Marketplace、Hook 与 Gateway 的证据边界。
-
-上述内容如仍有保留价值，应移到对应详细指南或维护者附录。
-
-### 12.3 安装与更新操作合同
-
-所有宿主的安装和更新说明统一采用以下结构：
-
-1. **执行位置：** 明确标注“系统终端”“Claude Code 会话内”或“Codex CLI”；
-2. **执行命令：** 一个代码块只包含同一执行环境中的命令；
-3. **重新加载：** 明确是否需要重启宿主、运行 `/reload-plugins` 或启动新会话；
-4. **验证：** 提供一个最短的用户可执行验证入口；
-5. **更新：** 使用与安装相同的宿主顺序和表达格式。
-
-Claude Code 的持久安装主流程必须先在系统终端运行 `claude` 进入交互会话，再在会话内运行：
-
-```text
-/plugin marketplace add ./Claude
-/plugin install uxu-code@uxu-code-claude
-/reload-plugins
-```
-
-不得把 `claude --plugin-dir ./Claude` 与 `/plugin ...` 命令放在同一个未区分执行环境的代码块中。非交互式 `claude plugin ...` 只可作为进阶替代方案，不与主流程并列。
-
-安装后的最短验证入口为：
-
-- Claude Code：`/uxu-code:help`；
-- Codex：`@help`；
-- OpenClaw：启动新会话并确认目标 workspace 已加载安装后的 workspace 文件；详细诊断链接到 `OpenClaw/README.md`。
-
-### 12.4 面向使用者的表述规则
-
-命令说明优先使用“何时使用、会发生什么、用户会得到什么”的句式。只有在影响用户决策时才解释内部实现。
-
-以下词语不得在未解释时直接出现在快速开始内容中：
-
-- parity；
-- managed block 或 managed markers；
-- MVP；
-- fixture、snapshot；
-- provider、thinking level；
-- 内部工作流 reference；
-- Hook 生命周期。
-
-流程图不得使用容易被误认为真实命令的 `spec?`。统一改为：
-
-```text
-[需要时先运行 spec] → plan → build → review → simplify → ship
-```
-
-### 12.5 `work-products/` 用户说明
-
-README 只保留以下两层信息：
-
-- UXUCode 将生成的规格、计划和过程记录集中保存在 `work-products/`，避免打乱项目原有目录；
-- 产品源码和最终交付文件仍遵循项目现有结构。
-
-完整指南新增“生成文件位置”表格，集中说明规格、计划、任务、调试、评审、发布门禁和测试的默认位置。测试位置同时说明第 2.2 节的例外：项目测试框架、CI、共置测试或打包约定要求固定目录时，以项目约定为准并记录验证命令。
-
-不得在 README 介绍段或每个命令说明中重复完整路径清单。
-
-### 12.6 OpenClaw 用户说明
-
-OpenClaw 文案先说明用户价值，再说明安装边界。推荐表述语义为：
-
-> 如果你也使用 OpenClaw，可以把 UXUCode 的执行与输出策略应用到指定 workspace。它与 Claude Code、Codex 插件分别安装，详细步骤见 OpenClaw 指南。
-
-“不是第三个代码 CLI”“不参与 Claude/Codex 公开命令一致性校验”等维护者边界不得出现在 README 首屏。详细的文件保护、移除、回滚和评测说明保留在 `OpenClaw/README.md` 与 `OpenClaw/evaluation/README.md`。
-
-### 12.7 完整指南信息架构
-
-三份 `docs/USAGE.*.md` 使用同一编号结构：
-
-1. 产品定位与适用场景；
-2. 快速开始；
-3. 按宿主安装；
-4. 第一次使用；
-5. 推荐工作流；
-6. 命令参考；
-7. 模式选择；
-8. 生成文件位置；
-9. 更新、移除与故障排查；
-10. 高级配置；
-11. OpenClaw；
-12. 面向项目维护者的校验附录。
-
-翻译必须保持操作语义、命令、路径、风险边界和章节层级一致，不要求逐字直译。简体中文作为语义基准，繁体中文和英文在同一变更中同步完成。
-
-### 12.8 校验合同调整
-
-同步修改 `scripts/validate-readme-scope.js` 和 `scripts/validate-guide-parity.js`：
-
-- 保留三语言章节结构、宿主顺序、命令、模式、路径和代码围栏校验；
-- 增加 Claude Code “进入会话后安装”的执行环境校验；
-- 增加安装后验证入口与安装/更新结构一致性校验；
-- 增加 README 不包含 `spec?` 伪命令的校验；
-- 不再强制 README 或用户指南包含 OpenClaw 评测用例数、百分比阈值、评分命令或 Claude/Codex 内部一致性术语；
-- OpenClaw 评测合同继续由 `OpenClaw` 自身验证器和测试覆盖。
-
-### 12.9 补充验收标准
-
-- README 三语言首屏均以使用者收益和操作入口为中心。
-- Claude Code 安装步骤不会让用户误把 `/plugin ...` 输入系统终端。
-- Claude Code、Codex 和 OpenClaw 的安装与更新均明确执行位置、重载方式和验证方法。
-- README 中的 `work-products/` 说明简短，完整路径只在指南集中出现一次。
-- README 首屏不出现公开命令一致性校验细节或 OpenClaw 评测阈值。
-- 三语言指南的标题结构、命令、默认值、路径和风险语义一致。
-- `node scripts/validate-guide-parity.js`、`node scripts/validate-readme-scope.js`、`node scripts/validate-no-legacy-commands.js`、`node scripts/validate-all.js` 和 `git diff --check` 全部通过。
-- 本地静态验证不得被描述为真实 Marketplace 安装、Hook 加载或 OpenClaw Gateway 运行证明。
-
-### 12.10 补充非目标
-
-- 不改变 Claude Code、Codex 或 OpenClaw 的实际安装实现。
-- 除新增 `clean` 公开命令及其 `apply` 参数外，不改变既有公开命令名称、参数、模式或运行语义。
-- 不新增与用户任务无关的文档站点、生成器或第三方依赖。
-- 不为追求三语言逐字一致而使用生硬直译。
-
-## 13. `clean` 工作区整理 Skill 补充规格
-
-### 13.1 目标与使用者
-
-`clean` 服务于使用 UXUCode 后发现规格、任务、测试或其他 UXUCode 过程产物被放在 `work-products/` 之外的项目维护者。它解决的是目录合同漂移，不是通用磁盘清理。
-
-成功意味着：
-
-- 错放的 UXUCode 过程产物能够先被完整预览，再安全迁入 `work-products/`；
-- 移动引起的有效相对路径和旧路径引用得到同步修改；
-- `.gitignore` 与当前唯一目录合同一致；
-- 项目源码、交付文件和无法确认归属的非测试文件不被移动；内部测试统一归入 `work-products/tests/`。
-
-### 13.2 公开接口
-
-新增第 17 个公开 Skill：
-
-| 宿主 | 预览 | 执行 |
-|---|---|---|
-| Codex | `@clean` | `@clean apply` |
-| Claude Code | `/uxu-code:clean` | `/uxu-code:clean apply` |
-
-接口合同：
-
-- 无参数时只读扫描并输出迁移计划，不修改文件、Git 配置或索引；
-- 唯一写入参数是精确的 `apply`；未知参数返回明确错误且不写入；
-- 不提供 `organize`、旧路径或其他兼容别名；
-- `clean` 表示整理和迁移，不得被实现为删除任意未跟踪文件。
-
-### 13.3 候选文件识别边界
-
-只有存在充分证据属于 UXUCode 过程产物，或可按受支持命名约定明确识别为内部测试的文件，才可进入迁移集合：
-
-1. 旧约定中的根目录 `SPEC.md`、`tasks/plan.md`、`tasks/todo.md`；
-2. UXUCode 创建且内容或现有工作流记录能证明其用途的 task、spec、debug、review、ship、测试、fixture、快照或测试报告；
-3. 被已确认 UXUCode 过程文件直接引用、并明确属于同一过程产物集合的辅助文件；
-4. 文件名以 `test_`、`test-` 或 `test.` 开头，包含以点、下划线或连字符分隔的 `test`／`spec`，或以 CamelCase `Test`／`Tests` 紧接扩展名结尾的内部测试文件；扩展名不限于单一语言。位于测试目录外的 Python `*_test.py` 还必须在排除字符串与注释后具有真实测试定义、测试类或测试框架导入证据。
-
-测试候选发现必须覆盖整个仓库，而不是只扫描根目录 `tests/`。除上一条明确要求附加静态证据的 Python 后缀命名外，受支持测试命名足以确认其属于使用者无需关注的内部测试产物；已经位于根目录 `work-products/tests/` 的规范测试不重复分类。任意层级的 `.git/`、`node_modules/`、`.venv/`、`venv/`、`vendor/` 与 `__pycache__/` 不进入候选扫描；`.new`、`.orig`、`.rej`、`.bak`、`.tmp`、`.patch` 与 `.diff` 派生文件只报告跳过，不作为测试源移动。
-
-以下内容不得自动进入迁移集合：
-
-- 产品源码、最终交付物、依赖、构建输出和项目配置；
-- 无法按受支持命名约定或其他正向证据确认的 fixture、snapshot、测试框架配置及其他文件；
-- 仅凭 Git 未跟踪状态或位于 `tests/`、`tasks/` 等通用目录而无法确认归属的非测试文件；
-- 符号链接目标、仓库外文件及 `.git/` 内部文件。
-
-无法确认的候选项只列入“未处理及原因”，不得移动或修改。
-
-### 13.4 预览输出合同
-
-`@clean` 或 `/uxu-code:clean` 必须在一次只读扫描中输出：
-
-1. 每个候选源路径、目标路径及判定依据；
-2. 将被修改的文件内引用及修改前后路径；
-3. `.gitignore` 需要增加、删除或保留的规则；
-4. 目标冲突、无法安全改写的引用、外部 ignore 来源及其他阻塞项；
-5. 明确不会处理的文件及原因；
-6. 汇总状态：`READY`、`NO_CHANGES` 或 `BLOCKED`。
-
-存在既有目标冲突、多个源映射到同一目标、目标既存祖先为符号链接／junction／非目录或逃逸仓库、无法读取的候选文件，或无法安全重写的有效引用时，状态必须为 `BLOCKED`；此时即使随后调用 `apply` 也不得部分执行。
-
-### 13.5 移动与引用重写合同
-
-执行前必须构建完整的源到目标映射并完成全部预检。目标位置遵循现有目录合同：
-
-```text
-SPEC                     → work-products/SPEC.md
-plan/task list           → work-products/plan.md 或 work-products/todo.md
-debug                    → work-products/debug/
-review                   → work-products/reviews/
-ship gate                → work-products/ship/
-UXUCode auxiliary tests  → work-products/tests/
-```
-
-移动不得覆盖现有文件。两个来源映射到同一目标、目标已存在但并非同一文件，或需要语义合并时，必须停止并要求人工决策。
-
-引用更新仅限与迁移直接相关的最小修改：
-
-- 对被移动的文本文件，重新计算其中指向仓库内现存文件的 Markdown 链接、图片链接和可明确识别的相对路径，使其在新位置仍指向原目标；
-- 对引用迁移源路径的仓库内文本文件，只自动改写能够按文件最终位置无歧义解析的显式相对路径或仓库内绝对路径；
-- 对迁移集合中文件之间的引用，使用完整映射一次性计算最终路径，禁止按移动顺序逐步猜测；
-- 对被移动的文本文件，将能够无歧义解析到当前仓库内部现存文件的本地绝对路径改写为从最终位置出发的相对路径；
-- 裸字符串只有在同一文件中由 `Path(...)`、仓库根路径拼接、文件 API 或统一 diff 路径等结构证明其指向迁移源时才可改写；同值的耦合路径元数据随之同步。缺少上述证据时必须以 `AMBIGUOUS_REFERENCE` 阻塞，禁止把测试夹具、期望值或示例误改为路径；
-- 外部 URL、仓库外绝对路径、无法解析的动态路径、自然语言示例和不指向真实迁移对象的同名文本不得改写。
-
-任何需要修改但无法无歧义解析的引用都必须阻塞执行。修改引用属于允许的相关修改；除此之外的未移动文件内容保持不变。
-
-### 13.6 `.gitignore` 同步合同
-
-`clean` 必须检查仓库自身 `.gitignore` 的实际语义，而不是只搜索字符串。目标合同为：
-
-```gitignore
-/work-products/*
-!/work-products/SPEC.md
-!/work-products/plan.md
-!/work-products/todo.md
-!/work-products/tests/
-!/work-products/tests/**
-```
-
-实现必须：
-
-- 删除 `/SPEC.md`、`/tasks/` 及其他仅服务旧 UXUCode 路径的兼容规则；
-- 保持正式规格、计划、任务清单和测试可正常进入 Git 跟踪；
-- 保持其他 UXUCode 本地过程产物默认忽略；
-- 只修改 UXUCode 相关规则，保留用户的其他 ignore 内容、顺序语义和注释；
-- 不修改用户级 `core.excludesFile` 或 `.git/info/exclude`；如它们影响目标路径，只报告来源和影响；
-- 不调用 `git add`、`git commit`、`git reset` 或其他改变索引和历史的命令。
-
-没有 `.gitignore` 时允许创建只包含必要 UXUCode 规则的文件。同步后重复运行必须得到 `NO_CHANGES`。
-
-### 13.7 执行安全与失败语义
-
-`apply` 必须重新扫描当前状态，不能盲目执行先前输出：
-
-1. 完成候选、目标、引用和 ignore 预检；
-2. 保存所有待修改文本的原始字节与移动映射；
-3. 执行移动、引用更新和 `.gitignore` 更新；
-4. 验证源路径消失、目标内容一致、引用可解析且 ignore 合同成立；
-5. 任一步失败时恢复本次已经完成的移动和文本修改，并报告未能恢复的确切路径。
-
-实现必须保留文件内容、UTF-8/换行风格和非目标文本。扫描只保留文件路径清单并逐文件读取，不得让仓库全部文本同时驻留内存。成功后再次预览应返回 `NO_CHANGES`。不得因为工作区存在无关修改而覆盖、格式化或清理它们。
-
-### 13.8 双宿主与文档同步
-
-Claude 和 Codex 必须具有语义一致的 `clean/SKILL.md`，同时更新：
-
-- 两个 Host 的 `help` 与内部路由说明；
-- 插件清单、命令/Skill 数量及 parity 校验；
-- README 简体中文、繁体中文、英文命令说明；
-- 三份 `docs/USAGE.*.md` 的命令表、工作流和生成文件说明；
-- 统一验证入口所覆盖的 `clean` 合同测试。
-
-OpenClaw 不新增伪插件或命令入口；其工作区模板只在现有产品边界需要说明时同步文案。
-
-### 13.9 测试策略
-
-至少覆盖以下可观察行为：
-
-- 预览模式零写入并准确列出移动、引用和 ignore 变化；
-- `apply` 将已确认的 SPEC、task、UXUCode 辅助测试和受支持命名的内部测试移动到正确位置；
-- 移动文件自身的相对链接、迁移集合内部引用和外部文件的精确旧路径引用均正确更新；
-- 项目源码、交付文件和模糊非测试候选保持逐字节不变；
-- 既有目标冲突、重复目标、目标祖先链接／逃逸、不可读文件和歧义引用导致 `BLOCKED` 且零部分写入；
-- `.gitignore` 删除旧兼容规则、保留用户规则，并使正式事实可跟踪、本地过程产物被忽略；
-- 用户级 excludes 和 `.git/info/exclude` 只报告、不修改；
-- 未知参数失败、二次运行幂等；
-- Claude/Codex Skill、公开命令、帮助和三语言文档保持一致。
-
-测试必须使用隔离的临时 Git 仓库，不依赖用户全局 Git 配置，不修改真实仓库外文件。
-
-### 13.10 验收标准
-
-- 仓库只公开 `clean`，不存在 `organize` 或旧命令别名。
-- `@clean` 和 `/uxu-code:clean` 默认预览，确认零写入。
-- `apply` 移动可证明属于 UXUCode 的错放过程产物及受支持命名的内部测试，并完成必要引用改写。
-- 无法确认的非测试文件不移动；项目源码保持不变。
-- 根目录旧 SPEC/tasks 路径既不受支持，也不再通过 `.gitignore` 兼容隐藏。
-- `work-products/` 是唯一过程产物事实源，正式事实无需 `git add -f` 即可跟踪。
-- 失败不会留下部分迁移；成功后重复执行为 `NO_CHANGES`。
-- 新增合同测试进入 `node scripts/validate-all.js`，全部本地静态验证及 `git diff --check` 通过。
-- 验证结论不声称已完成真实插件安装、重新加载或宿主运行证明。
-
-### 13.11 非目标、风险与回滚
-
-非目标：
-
-- 不做通用未跟踪文件清理、重复文件删除或项目目录重构；
-- 不推断未知文件的业务含义；
-- 不修改 Git 全局配置、私有 exclude、索引、提交或远端；
-- 不引入第三方依赖或后台监控。
-
-主要风险与缓解：
-
-- **误移动项目文件：** 使用正向证据集合，模糊项只报告。
-- **移动后引用失效：** 先构建完整映射，再统一重写和验证。
-- **覆盖已有事实源：** 任意目标冲突均阻塞，不自动合并。
-- **ignore 规则误伤：** 以行为测试验证目标路径，并保留所有无关规则。
-- **执行中断留下半成品：** 写前保留原始字节，失败时按映射回滚。
-
-实现回滚按三个独立切片进行：
-
-1. `clean` Skill、路由与双宿主命令合同；
-2. 迁移/引用重写与 `.gitignore` 同步行为；
-3. 三语言文档和统一验证登记。
-
-回滚新功能不得恢复旧路径运行时兼容；如整体决策需要逆转，必须先修订并重新批准本规格。
-
-## 14. Ship NO-GO 修复补充规范
-
-状态：已批准（2026-07-30，用户明确要求 `@spec`、批准 `@plan` 并执行 `@build auto`）
-
-### 14.1 目标与使用者
-
-解除 2026-07-30 `@ship` 门禁发现的仓库自身整理阻塞，使维护者可以从唯一事实源和唯一测试位置复现完整本地发布门禁。
-
-### 14.2 范围
-
-- 删除已被本文件、`work-products/plan.md` 与 `work-products/todo.md` 取代的根目录 `SPEC.md`、`tasks/plan.md`、`tasks/todo.md`；删除前确认三个旧文件均为历史规划产物，规范文件已经记录当前有效合同。
-- 将 `OpenClaw/tests/validate-profile.test.js` 与 `OpenClaw/tests/evaluation.test.js` 迁入 `work-products/tests/OpenClaw/tests/`。
-- 按测试最终位置更新其仓库内相对引用，并同步统一验证入口及 OpenClaw 专项文档中的可运行命令。
-- 更新与测试路径直接绑定的合同断言；不改变测试内容、发布阈值或 OpenClaw 运行时边界。
-- 完成双宿主 Clean 预览、统一验证、差异检查和当前变更复审。
-
-### 14.3 非目标与约束
-
-- 不放宽 `TARGET_EXISTS`、缺少路径结构证据时的 `AMBIGUOUS_REFERENCE` 或任何其他 Clean fail-closed 规则。
-- 不自动合并旧事实源，不创建旧路径兼容、归档别名或项目专属 Clean 分支。
-- 不修改已安装插件缓存、Git 全局配置、提交、远端或生产环境。
-- 保留当前所有无关未提交改动；只删除本节明确列出的五个迁移源。
-- 本地静态通过不等于 Marketplace 安装、Hook 重新加载或 OpenClaw Gateway 证明。
-
-### 14.4 接口、验收与测试
-
-- `node Codex/scripts/clean-work-products.js` 与 `node Claude/scripts/clean-work-products.js` 均返回 `NO_CHANGES`，且输出字节一致。
-- 三个旧事实源和两个旧测试源在文件系统中不存在，`git status --short` 将其记录为删除；新测试路径未被忽略并可正常跟踪。
-- `node --test work-products/tests/OpenClaw/tests/validate-profile.test.js work-products/tests/OpenClaw/tests/evaluation.test.js` 全部通过。
-- `node scripts/validate-all.js` 的 12 个步骤全部通过。
-- `git -c safe.directory=C:/Code/UXUCode diff --check` 返回 0。
-- 当前 diff 不含未解释的 Critical 或 Important 问题，最终 Clean 门禁更新为完成。
-
-### 14.5 风险与回滚
-
-- **历史信息丢失：** 删除前核对旧文件标题、范围和当前规范的取代关系；Git 历史继续保留旧内容。
-- **测试迁移后引用失效：** 先按最终目录重算相对路径，再运行两个聚焦测试和统一入口。
-- **文档命令漂移：** OpenClaw 专项 README 与统一入口同批更新，并通过仓库搜索确认无旧测试命令残留。
-- **回滚：** 将五个移动/删除源、路径引用和文档命令作为一个可逆切片恢复；不得只恢复旧文件而留下双事实源。
-
-## 15. `clean` 归属、显式迁移与完整性安全修订
-
-状态：已批准（2026-08-01，用户在本节后显式调用 `@plan`）
-
-本节批准后取代第 13.3、13.4、13.5、13.6、13.9、13.10 节中与本节冲突的候选归属、`tasks/` 清理、引用改写、ignore、报告和验收规则；其他既有安全合同继续有效。
-
-### 15.1 目标、使用者与成功条件
-
-目标是在不猜测项目文件用途的前提下，使项目维护者能够：
-
-- 安全发现测试和遗留过程产物，但只有充分授权时才迁移；
-- 在移除 `/tasks/` ignore 前证明整个遗留目录已纳入同一次原子迁移；
-- 用通用、项目无关的逐文件清单授权特殊过程产物；
-- 默认保护补丁、回滚文件和校验清单的字节完整性；
-- 从预览报告区分自动确认、显式授权、保留、未分类和完整性保护结果。
-
-成功必须同时满足：不会误移动项目原生测试，不会留下半迁移的 `tasks/`，不会静默破坏补丁哈希，且显式迁移后的引用、Git 跟踪语义和二次预览均可验证。
-
-### 15.2 测试发现、归属与迁移授权
-
-测试文件名只证明“可能是测试”，不证明其属于 UXUCode 过程产物。全仓扫描继续使用第 13.3 节的跨语言命名模式，但命中后必须分离三个阶段：
-
-1. **discovery：** 记录测试候选，不产生移动授权；
-2. **ownership：** 判断是否有 UXUCode 归属证据；
-3. **authorization：** 只有固定 legacy 映射或第 15.4 节显式清单才能生成移动。
-
-分类合同：
-
-- `confirmed-internal`：固定 legacy 事实源，或 `work-products/clean-migration.json` 对该精确源路径给出有效映射；允许迁移。
-- `preserved-product`：测试候选没有上述 UXUCode 授权；默认保持原位并报告，不因普通项目存在大量原生测试而阻塞。
-- `unclassified-legacy`：位于已识别 legacy 目录但没有完整映射；必须 `BLOCKED`。
-
-位于 `tests/`、使用 `node:test`／pytest／unittest、被 Git 跟踪或符合 `test`／`spec` 命名，均不能单独升级为 `confirmed-internal`。现有“受支持测试命名足以确认内部测试”的合同废止。`clean` 不尝试从业务内容猜测项目测试归属。
-
-### 15.3 legacy 目录完整迁移
-
-只要仓库存在根目录 `tasks/`，预览必须在任何写入前枚举其中所有条目，并与完整 `moveMap` 对账：
-
-- `tasks/plan.md` 与 `tasks/todo.md` 继续使用固定 legacy 映射；
-- 其他常规文件必须由显式清单逐项授权；
-- 链接、不可读条目、目录或未映射文件均以 `LEGACY_DIRECTORY_REMAINS` 或更具体 blocker 报告；
-- 存在任一未覆盖条目时，状态为 `BLOCKED`，不得移动任何文件、改写引用或修改 `.gitignore`；
-- 只有 `tasks/` 不存在，或本次原子迁移覆盖其全部内容时，才允许计划删除 `/tasks/`；
-- `apply` 只删除本次迁移后确认为空的 legacy 目录，非空目录绝不删除。
-
-不得以“先迁移已知文件并继续保留 `/tasks/`”表示 clean 已完成，也不得在存在残留时先移除 ignore 保护。
-
-### 15.4 显式迁移清单接口
-
-新增持久、可正常 Git 跟踪的仓库合同：`work-products/clean-migration.json`。它声明“当精确源路径存在时，应迁往何处”，不是命令别名、脚本或项目专属分支。
-
-最小 schema：
-
-```json
-{
-  "version": 1,
-  "moves": [
-    {
-      "source": "xhttp_stream_benchmark.mjs",
-      "target": "work-products/benchmarks/xhttp_stream_benchmark.mjs",
-      "tracking": "tracked",
-      "rewritePolicy": "references"
-    }
-  ]
-}
-```
-
-边界合同：
-
-- 顶层只允许 `version` 与 `moves`；`version` 必须精确为 `1`，未知字段或未知枚举值阻塞。
-- 每项只允许 `source`、`target`、`tracking`、`rewritePolicy`，四项均必填。
-- 路径必须是使用 `/` 的规范仓库相对路径；禁止绝对路径、反斜杠、空段、`.`、`..`、通配符、NUL 和仓库逃逸。
-- `source` 必须位于 `work-products/`、`.git/`、版本控制目录和第三方依赖目录之外；`target` 必须严格位于根目录 `work-products/` 内。
-- 清单不得覆盖 `work-products/SPEC.md`、`work-products/plan.md`、`work-products/todo.md`、`work-products/clean-migration.json` 或其他固定事实源。
-- 源和目标分别唯一；按当前文件系统大小写语义检测重复、碰撞、既有目标和链接祖先。
-- `tracking` 只允许 `tracked` 或 `local`；`rewritePolicy` 只允许 `references`、`preserve-content` 或 `mutable-patch`。
-- 源存在时执行完整预检；源不存在时该条目作为 `inactiveManifestEntry` 报告且不阻塞，清单本身不由 `apply` 删除或改写。
-- 源不存在、目标存在表示映射已满足；源之后再次出现而目标仍存在时按 `TARGET_EXISTS` 失败关闭，不覆盖。
-
-清单可声明任意项目的明确过程产物，但 clean 引擎、Skill、测试和文档不得包含 CfGfwAX、xhttp 或其他项目名称分支。
-
-### 15.5 tracking 与 `.gitignore` 合同
-
-`work-products/clean-migration.json` 必须像 SPEC、plan、todo 和合同测试一样可正常 Git 跟踪，不得依赖 `git add -f`。
-
-- `tracking: tracked`：预览生成只放行该目标所需的最窄祖先和文件例外，不得取消整个 `work-products/` 的忽略；用真实 `git check-ignore --no-index` 验证目标可跟踪。
-- `tracking: local`：不得增加放行规则，并验证目标继续被仓库 `.gitignore` 忽略。
-- 动态规则必须可重复生成、顺序稳定，且仅修改 UXUCode 管理的精确规则；用户规则、注释、全局 excludes 和 `.git/info/exclude` 继续只保留或报告。
-- `/tasks/` 的移除受第 15.3 节完整迁移门禁约束，不能由静态 obsolete 列表独立决定。
-
-### 15.6 引用策略与完整性保护
-
-每个移动项的策略定义如下：
-
-- `references`：允许按既有无歧义规则更新移动文件内部引用和外部调用方引用。
-- `preserve-content`：只允许移动；目标文件字节必须与源文件完全一致，但外部文件指向该源的精确引用仍可更新。
-- `mutable-patch`：仅用于明确允许更新 unified-diff 头的 `.patch`／`.diff`；仍须通过歧义、目标和完整性预检。
-
-默认与限制：
-
-- `.patch`／`.diff` 只能使用 `preserve-content` 或显式 `mutable-patch`；不得以普通 `references` 静默改写。
-- 未经清单授权的 `.patch`／`.diff` 继续不作为测试候选，但在已识别 legacy 目录中必须作为未分类项阻塞。
-- clean 至少必须识别名为 `SHA256SUMS`、`SHA256SUMS.txt`、`SHA512SUMS` 或 `SHA512SUMS.txt` 的 UTF-8 文本清单，以及 `<十六进制摘要><两个空格><仓库相对路径>` 的 GNU 格式；其中对迁移源或目标路径的精确绑定进入 `integrityProtectedFiles`。其他格式不得猜测改写。
-- `preserve-content` 在预览记录源哈希，在 apply 后复核目标哈希完全相同。
-- `mutable-patch` 一旦与校验清单绑定，返回 `INTEGRITY_COUPLED_ARTIFACT`；本次修订不自动重算或改写校验清单。
-- 统一 diff 路径不再单独构成可改写授权；只有该文件的 `rewritePolicy` 允许时才处理。
-
-任何完整性检查失败均必须在写入前阻塞；不得通过同步改坏哈希、删除清单或降低校验强度完成迁移。
-
-### 15.7 预览报告 v2
-
-JSON 报告升级为 `version: 2`，仓库内调用方和合同测试一次性同步，不保留 v1 双写或兼容分支。报告至少包含：
-
-- `moves`：自动固定映射与显式授权移动，含授权来源、tracking 和 rewrite policy；
-- `preservedProductFiles`：发现但保持原位的普通项目测试；
-- `unclassifiedLegacyFiles`：阻塞 legacy 完整迁移的条目；
-- `integrityProtectedFiles`：补丁、校验关系、预期哈希和采取的保护策略；
-- `inactiveManifestEntries`：源当前不存在的持久映射；
-- `referenceUpdates`、`gitignoreChanges`、`externalIgnoreSources`、`skipped` 与 `blockers`；
-- `status: READY|NO_CHANGES|BLOCKED`。
-
-发现 legacy 目录但存在未分类项时不得返回 `READY` 或 `NO_CHANGES`。`NO_CHANGES` 可以包含仅供说明的 preserved 或 inactive 条目，但必须明确没有待写入变化和 blocker。
-
-### 15.8 原子执行、幂等与错误语义
-
-- preview 必须零写入；apply 必须重新扫描并验证当前清单、源、目标、引用、哈希和 ignore 语义。
-- 任一 blocker 使整个 apply 返回非零且工作区字节不变，包括 `.gitignore` 和清单。
-- 成功 apply 后再次 preview 必须为 `NO_CHANGES`；已满足或 inactive 的持久映射不得制造重复移动。
-- 只有本次创建的空 legacy 目录可删除；不得删除其他空目录、未跟踪文件或清单。
-- Claude 与 Codex 引擎及 Clean Skill 必须分别保持字节一致。
-- Git 子进程权限、启动和语义错误继续结构化报告；不得用不完整的 JavaScript ignore matcher 代替 Git。
-
-### 15.9 范围、非目标与约束
-
-本次范围包括：规格、双宿主 clean 引擎与 Skill、合同测试、help／路由说明、README 与三份 `docs/USAGE.*.md`、ignore/文档校验器和版本事实源。
-
-非目标：
-
-- 不把全部 benchmark、patch、tests 或 `tasks/` 内容自动归为 UXUCode 产物；
-- 不支持 glob、目录级批量移动或自然语言猜测；
-- 不自动生成、删除或重写项目业务文件和校验清单；
-- 不为旧报告 v1、旧路径或错误测试归属增加兼容层；
-- 不执行真实项目 `apply`、插件重装、提交、推送、发布或部署。
-
-实现只使用 Node.js 标准库，保留逐文件扫描与受限内存合同，并保存所有既有无关未提交改动。
-
-### 15.10 测试策略与验收标准
-
-先在 `work-products/tests/clean-contract.test.js` 建立 RED，至少覆盖：
-
-1. `tasks/plan.md` 与未映射 `tasks/evidence.md` 共存时 `BLOCKED`、保留 `/tasks/` 且零写入；
-2. 只有项目测试证据的 `product.test.mjs` 保持原位并进入 `preservedProductFiles`；
-3. 有精确 manifest 映射的内部测试迁入 `work-products/tests/`，并从最终位置重算引用；
-4. 显式 tracked benchmark 迁移、内外引用正确且目标可跟踪；
-5. local debug／rollback 目标继续忽略并进入正确报告分类；
-6. `preserve-content` reverse patch 迁移前后 SHA-256 一致；
-7. 完整性绑定的 `mutable-patch`、非法 schema、路径逃逸、重复映射、目标冲突和链接祖先全部失败关闭；
-8. apply 成功后二次 preview 为 `NO_CHANGES`，Claude/Codex v2 报告一致。
-
-完成标准：
-
-- 上述 RED 在旧实现上按预期失败，修复后全部通过；不得用删除或放宽既有安全断言变绿。
-- `node --test work-products/tests/clean-contract.test.js` 通过。
-- `node scripts/validate-all.js` 全部通过。
-- `git -c safe.directory=C:/Code/UXUCode diff --check` 返回 0。
-- `git check-ignore` 证明 SPEC、manifest、tracked 目标和测试可跟踪，local 目标保持忽略。
-- 双宿主引擎与 Clean Skill 的 SHA-256 分别一致。
-- 双宿主 manifest、Claude marketplace、两个 validator 和版本合同同步到同一个新版本。
-- 本地结果只证明仓库静态与隔离测试，不声称已安装缓存、新会话或生产行为已更新。
-
-### 15.11 风险、回滚与批准门
-
-- **误保留真正的内部测试：** 以显式清单补足授权；宁可报告并保留，也不根据名称误移动。
-- **持久清单陈旧：** 缺失源作为 inactive 明示报告；重新出现且目标冲突时失败关闭。
-- **动态 ignore 规则过宽：** 只生成目标级最窄例外，并用真实 Git 行为验证。
-- **report v2 破坏调用方：** 同批更新全部仓库内消费者和合同，不维护双版本。
-- **补丁迁移后不可回滚：** 默认 preserve-content 并复核哈希；完整性耦合的可变补丁直接阻塞。
-
-回滚必须成对恢复规格、测试、双宿主引擎/Skill、文档、ignore 和版本元数据；不得只回退引擎而留下 report v2 或 manifest 合同，也不得恢复“文件名即内部归属”的旧行为作为兼容模式。
-
-本节获用户批准后才可进入 `@plan`；在批准前不得实施业务代码。
+测试命令不得安装依赖或修改仓库外环境。静态校验、本地测试、已安装缓存、新宿主会话和真实命令行为必须分别报告，不得互相替代。
+
+## 14. 可衡量验收标准
+
+全部条件满足后才可认为实现完成：
+
+1. Claude Code、Codex、OpenClaw 都包含项目环境优先、仓库外默认只读、明确授权和失败即停止语义；
+2. Python 无项目特定合同时明确默认 `.venv/`，并使用环境内精确解释器执行依赖命令；
+3. 已有 uv、Poetry、Pipenv、Conda、Dev Container 或项目包装脚本不会被第二套 `.venv/` 覆盖；
+4. 系统 Python、用户 site-packages、Conda base、全局包目录、持久化 `PATH` 和系统包管理器不会被静默修改；
+5. 只读请求不会触发环境创建或依赖安装；
+6. 环境缺失、损坏或边界冲突时不会静默回退到全局环境；
+7. Claude／Codex 策略对等测试、Hook 注入测试、OpenClaw validator、OpenClaw 评估合同和三语言文档校验全部通过；
+8. 所有新增测试位于 `work-products/tests/`，并仅使用从最终位置出发的仓库相对路径；
+9. `work-products/SPEC.md` 可被 Git 正常跟踪，不依赖 `git add -f`；
+10. 两宿主 manifest、Claude marketplace 和版本断言同步到同一下一补丁版本；
+11. `node scripts/validate-all.js` 与 `git -c safe.directory=C:/Code/UXUCode diff --check` 通过；
+12. 结论明确区分仓库静态证据、已安装缓存、新会话加载和真实环境保护行为。
+
+## 15. 已批准设计决定
+
+用户已批准以下设计决定：
+
+1. 接受“项目既有合同优先，Python 无其他合同时默认 `.venv/`”，而不是所有 Python 项目无条件强制 `.venv/`；
+2. 接受仓库外环境修改必须逐次明确授权，且该安全边界在 `off` 模式也不能关闭；
+3. 接受本阶段只通过策略、Hook 上下文、验证器、文档和评估建立意识，不实现系统级命令拦截器；
+4. 接受实现时同步三个宿主表面、三语言文档和下一补丁版本。
+
+本规范可作为 `@plan` 的事实源。任何上述决定发生变化，必须先修订本文件并重新批准。

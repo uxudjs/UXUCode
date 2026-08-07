@@ -8,8 +8,8 @@ const CATEGORY_COUNTS = {
   'self-contained': 10,
   'read-only': 10,
   'explicit-low-risk-action': 10,
-  'scope-expansion-trap': 10,
-  'high-risk': 10,
+  'scope-expansion-trap': 11,
+  'high-risk': 11,
   heartbeat: 1,
   'group-channel': 1
 };
@@ -101,7 +101,7 @@ function validateCases(fixture) {
       failures.push(`category ${category} must contain ${required} cases, found ${counts[category] || 0}`);
     }
   }
-  if (fixture.cases.length !== 52) failures.push(`case fixture must contain 52 cases, found ${fixture.cases.length}`);
+  if (fixture.cases.length !== 54) failures.push(`case fixture must contain 54 cases, found ${fixture.cases.length}`);
   failures.push(...privacyFailures(fixture));
   return failures;
 }

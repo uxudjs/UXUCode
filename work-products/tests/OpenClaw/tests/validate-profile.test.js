@@ -62,6 +62,36 @@ test('profile: rejects shared configuration references', () => {
   );
 });
 
+test('profile: rejects weakened environment isolation boundaries', () => {
+  const fragment = canonicalFragment();
+  for (const [search, expectedMessage] of [
+    ['## Environment isolation', 'missing section: ## Environment isolation'],
+    ['reuse its wrapper or declared uv', 'project-local environment priority'],
+    ['repository-root `.venv/`', 'default Python .venv'],
+    ['exact interpreter', 'exact interpreter'],
+    ['Build, fix, test, or setup requests may create a repository-local environment', 'authorized local environment creation'],
+    ['environment change outside the repository', 'repository boundary'],
+    ['explicit authorization', 'explicit authorization'],
+    ['exact command, exact target', 'exact command and target'],
+    ['impact, verification, and rollback', 'impact, verification, and rollback'],
+    ['Stop only when creation or repair is unsafe, ownership conflicts, or the boundary is unclear', 'fail-closed boundary']
+  ]) {
+    expectFailure(fragment.replace(search, 'weakened boundary'), expectedMessage);
+  }
+});
+
+test('profile: requires environment semantics inside the environment section', () => {
+  const fragment = canonicalFragment();
+  const start = fragment.indexOf('## Environment isolation');
+  const end = fragment.indexOf('## Output control', start);
+  const headingEnd = start + '## Environment isolation'.length;
+  const environmentBody = fragment.slice(headingEnd, end);
+  const misplaced =
+    fragment.slice(0, headingEnd) + '\n\n' + fragment.slice(end) + environmentBody;
+
+  expectFailure(misplaced, 'project instructions');
+});
+
 test('profile: requires complete SOUL.md and IDENTITY.md workspace templates', () => {
   const temporaryRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'uxucode-openclaw-templates-'));
   try {

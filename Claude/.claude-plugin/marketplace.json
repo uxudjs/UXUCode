@@ -9,7 +9,7 @@
       "name": "uxu-code",
       "source": "./",
       "description": "Unified engineering workflow skills with minimal correct implementation.",
-      "version": "5.0.4",
+      "version": "5.0.6",
       "category": "development",
       "tags": ["coding", "workflow", "review", "release"]
     }

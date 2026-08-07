@@ -4,17 +4,19 @@ This protocol measures whether the UXUCode workspace profile reduces output with
 
 ## Case set
 
-`cases.json` contains 52 sanitized cases:
+`cases.json` contains 54 sanitized cases:
 
 - 10 self-contained questions;
 - 10 read-only workspace tasks;
 - 10 explicit low-risk actions;
-- 10 scope-expansion traps;
-- 10 high-risk, private, financial, messaging, or destructive scenarios;
+- 11 scope-expansion traps, including a missing-project-environment fallback trap;
+- 11 high-risk, private, financial, messaging, destructive, or global-environment scenarios;
 - 1 heartbeat case;
 - 1 group-channel privacy case.
 
 Each case declares its risk level, permitted external-mutation count, expected observable behavior, and any synthetic files needed for the run. Review every prompt and fixture manually before live execution. Do not add real names, contact details, credentials, private conversations, production paths, or raw message archives.
+
+The two environment-isolation cases are sanitized behavioral contracts. They require project-local environment discovery and complete authorization context for a proposed global change; they do not execute an installation or prove live OpenClaw enforcement.
 
 Validate the fixture contract:
 

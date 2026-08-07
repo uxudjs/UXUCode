@@ -365,6 +365,17 @@ test('unified validation covers every repository gate and propagates the first f
     ]
   );
   assert.deepEqual(
+    steps.find((step) => step.name === 'workflow contracts').args,
+    [
+      '--test',
+      'work-products/tests/clean-contract.test.js',
+      'work-products/tests/environment-isolation-contract.test.js',
+      'work-products/tests/workflow-contract.test.js',
+      'work-products/tests/mode-policy-contract.test.js',
+      'work-products/tests/documentation-validator-contract.test.js'
+    ]
+  );
+  assert.deepEqual(
     steps.find((step) => step.name === 'OpenClaw tests').args,
     [
       '--test',
@@ -519,8 +530,8 @@ test('audit and performance guidance stays ecosystem-neutral and evidence-gated'
   assert.match(notices, /Excluded from adoption:/);
 });
 
-test('release metadata and maintenance workflows enforce the 5.0.4 version contract', () => {
-  const expectedVersion = '5.0.4';
+test('release metadata and maintenance workflows enforce the 5.0.6 version contract', () => {
+  const expectedVersion = '5.0.6';
   const maintenanceContract =
     /every completed bug fix or optimization must update the release version consistently/;
   const claudeManifest = JSON.parse(
@@ -542,7 +553,7 @@ test('release metadata and maintenance workflows enforce the 5.0.4 version contr
       path.join(root, pkg, 'scripts', 'validate-plugin.js'),
       'utf8'
     );
-    assert.match(validator, /expected version 5\.0\.4/);
+    assert.match(validator, /expected version 5\.0\.6/);
     for (const skill of ['build', 'debug', 'simplify']) {
       assert.match(readSkill(pkg, skill), maintenanceContract);
     }

@@ -31,6 +31,61 @@ test('documentation validators accept the canonical README and guides', () => {
   assert.deepEqual(validateGuides(guides, readme), []);
 });
 
+test('documentation validators require every language environment boundary', () => {
+  const guideTokens = [
+    ['项目环境', '构建、修复、测试或配置请求可授权所需的项目内环境修改', '只读请求不得创建环境或安装依赖', '仓库外环境变更', '再取得明确授权', '不是系统级沙箱'],
+    ['專案環境', '建置、修復、測試或設定請求可授權所需的專案內環境修改', '唯讀請求不得建立環境或安裝依賴', '儲存庫外環境變更', '再取得明確授權', '不是系統級沙箱'],
+    ['project environment', 'A build, fix, test, or setup request may authorize a required repository-local environment change', 'a read-only request must not create an environment or install dependencies', 'environment change outside the repository', 'before explicit authorization', 'not an operating-system sandbox']
+  ];
+  const readmeTokens = [
+    ['项目环境', '只读请求不会创建环境或安装依赖', '仓库外环境变更', '明确授权', '不是系统级沙箱'],
+    ['專案環境', '唯讀請求不會建立環境或安裝依賴', '儲存庫外環境變更', '明確授權', '不是系統級沙箱'],
+    ['project environment', 'A read-only request does not create an environment or install dependencies', 'environment change outside the repository', 'explicit authorization', 'not an operating-system sandbox']
+  ];
+
+  guides.forEach((guide, index) => {
+    for (const token of guideTokens[index]) {
+      const mutated = [...guides];
+      mutated[index] = guide.replace(token, 'weakened environment wording');
+      assert.ok(
+        validateGuides(mutated, readme).some((failure) => failure.includes('environment isolation contract')),
+        `${guideFiles[index]}: expected environment contract failure for ${token}`
+      );
+    }
+  });
+
+  const readmeSections = [
+    ['# 🇨🇳 简体中文', '# 🇹🇼 繁體中文'],
+    ['# 🇹🇼 繁體中文', '# 🇺🇸 English'],
+    ['# 🇺🇸 English', '## Star History']
+  ];
+  readmeSections.forEach(([start, end], index) => {
+    for (const token of readmeTokens[index]) {
+      const mutated = transformSection(readme, start, end, (section) =>
+        section.replace(token, 'weakened environment wording')
+      );
+      assert.ok(
+        validateReadme(mutated).some((failure) => failure.includes('environment isolation contract')),
+        `${start}: expected environment contract failure for ${token}`
+      );
+    }
+  });
+});
+
+test('README validator rejects an environment boundary moved outside its language section', () => {
+  const misplaced = transformSection(
+    readme,
+    '# 🇺🇸 English',
+    '## Star History',
+    (section) => section.replace('explicit authorization', 'bounded approval')
+  ) + '\nExplicit authorization applies.\n';
+
+  assert.ok(
+    validateReadme(misplaced).some((failure) => failure.includes('environment isolation contract')),
+    'expected section-scoped environment validation'
+  );
+});
+
 test('guide validator requires bidirectional README links and aligned planning semantics', () => {
   const missingBacklink = guides[2].replace('[Back to README](../README.md)', 'Standalone guide');
   const conflictingReadme = readme.replace(

@@ -16,6 +16,12 @@ The mode declared above is active for this workspace. `standard` is the shipped 
 - Do not delegate by default. Use another agent only when requested or when independent parallel work has a clear net benefit.
 - Do not plan a one-step task. For longer work, provide only material progress updates.
 
+## Environment isolation
+
+- Before development, testing, dependency installation, or configuration, read project instructions and reuse its wrapper or declared uv, Poetry, Pipenv, Conda, or Dev Container.
+- Without another Python project contract, use repository-root `.venv/` through its exact interpreter, never bare `pip` or a global fallback. Build, fix, test, or setup requests may create a repository-local environment; read-only requests may neither create environments nor install dependencies. Stop only when creation or repair is unsafe, ownership conflicts, or the boundary is unclear.
+- Before any environment change outside the repository, obtain explicit authorization after stating the exact command, exact target, why a project-local option is unavailable, impact, verification, and rollback. A general request to install dependencies is not authorization for a global change.
+
 ## Output control
 
 - Lead with the result. Omit greetings, filler, repeated conclusions, obvious tool narration, and unsolicited next steps.

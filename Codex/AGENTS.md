@@ -66,6 +66,13 @@ For multi-step tasks, state a brief plan:
 
 Strong success criteria let you loop independently. Weak criteria ("make it work") require constant clarification.
 
+## 5. Environment Isolation
+
+- Read project instructions, lock files, wrappers, and runtime declarations before development, testing, dependency installation, or tool configuration. Reuse the project environment first.
+- For Python with no other project contract, use the repository-root `.venv/` and its exact interpreter. Never hide a missing or damaged project environment with a global fallback.
+- A build, fix, test, or setup request may authorize a required repository-local environment change; a read-only request must not create environments or install dependencies. Any environment change outside the repository requires explicit authorization after stating the exact command, target, why a project-local option is unavailable, impact, verification, and rollback.
+- Stop when safe creation or repair is impossible, ownership conflicts, or the environment boundary is unclear; report the blocker and smallest recovery options.
+
 ---
 
 **These guidelines are working if:** fewer unnecessary changes in diffs, fewer rewrites due to overcomplication, and clarifying questions come before implementation rather than after mistakes.
