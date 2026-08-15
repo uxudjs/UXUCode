@@ -14,7 +14,7 @@ Planning may use an approved specification, thorough debug evidence, or clear us
 
 ## Parallel Review
 
-The `@ship` gate may run `reviewer`, `security-reviewer`, and `test-reviewer` independently. Launch parallel agent calls together when the host supports it. Merge results in the parent, deduplicate them, and classify them as Blocker, Recommended, or Acknowledged.
+The `@ship` gate may start generic native subagents with the `reviewer`, `security-reviewer`, or `test-reviewer` prompt duties. Select roles from actual risk instead of launching every role mechanically. Launch independent reviews together when the host supports it. Merge results in the parent, deduplicate them, and classify them as Blocker, Recommended, or Acknowledged.
 
 Authentication, payment, permissions, data migration, production configuration, security fixes, and public API compatibility always receive full review. Parallelism never authorizes writes or deployment.
 
@@ -22,9 +22,11 @@ Authentication, payment, permissions, data migration, production configuration, 
 
 Use an agent team only when competing hypotheses must be debated, such as a complex production incident. A normal `@debug` investigation should remain single-owner unless independent evidence gathering will materially reduce time.
 
-## Internal Agents
+## Internal Role Prompts
 
-Plugin agents live in `agents/`: `investigator`, `builder`, `reviewer`, `security-reviewer`, and `test-reviewer`. Users do not invoke them directly; public skills coordinate them.
+The plugin-root files `agents/reviewer.md`, `agents/security-reviewer.md`, and `agents/test-reviewer.md` are read-only role prompt assets, not registered custom agents. Public skills may read the matching asset and pass its duties explicitly to a generic native subagent launched with `spawn_agent` and `fork_turns: "none"`.
+
+Do not create or write user or project `.codex/agents/*.toml` registrations. Host registration is outside plugin orchestration and is not required for these prompt assets.
 
 ## Anti-Patterns
 

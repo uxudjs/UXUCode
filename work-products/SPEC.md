@@ -1,278 +1,326 @@
-# UXUCode 跨宿主开发环境隔离规范
+# UXUCode 子 Agent 交叉验证规范
 
-状态：已批准（2026-08-07）
+状态：已重新批准并补充批准 5.0.10 维护范围（2026-08-15）
 
-本规范取代上一份已完成的 Clean 工作流规格，成为当前活动规格。旧规格继续保留在 Git 历史中。
+本规格取代上一份已完成的“跨宿主开发环境隔离规范”，成为本项工作的事实源。上一份已批准规格及其实施证据继续保留在 Git 历史中。用户曾于 2026-08-15 批准初稿；`@plan` 的 fresh-context 子 Agent 审查随后发现 Codex 角色加载机制与初稿假设冲突，用户已于同日重新批准本修订稿。初始实现完成后的 Debug／Review 又发现可选文件误报、平凡 review 无条件委派、权限交还、Codex 角色提示传递、严重度残留和 fail-closed 合同不足；用户已明确批准把这些后续维护修复纳入本规格，并将最终候选事实源同步为 `5.0.10`。该补充批准只授权规格与计划事实源同步，不授权提交、推送、安装、发布或部署。
 
 ## 1. 目标
 
-让 Claude Code、Codex 和 OpenClaw 在执行开发、测试、依赖安装或工具配置前，主动识别项目的环境边界，优先使用仓库已有的隔离环境，避免静默污染系统级、用户级或全局开发环境。
+将 UXUCode Skill 中依赖外部多模型 CLI 的交叉验证改为宿主原生子 Agent 交叉验证：
 
-成功不是“所有项目都强制创建 `.venv/`”，而是三个宿主遵守同一套可验证决策：
+1. 不再提示或执行 Gemini CLI、Codex CLI 或其他外部模型 CLI 来取得第二意见；
+2. 在既有交叉验证触发条件成立时，由主 Agent 发起独立上下文的子 Agent 审查；
+3. 交叉验证依赖上下文隔离、对抗性提示和主 Agent 复核，不声称子 Agent 一定使用不同模型；
+4. 保留原有适用条件、审查边界、三轮上限和主 Agent 最终裁决责任；
+5. Claude Code 与 Codex 两套插件保持语义一致，不新增公开命令、配置项或兼容入口。
+6. 可选的 `.uxucode-state.json` 与 `work-products/clean-migration.json` 缺失时保持静默、非阻塞，不诱导用户创建或修复它们；
+7. 把实施后 Review 发现的平凡委派、权限交还、角色提示、严重度和静态合同缺口纳入同一维护候选并以 fail-closed 测试锁定。
 
-1. 先识别项目已经声明的运行时、包管理器、锁文件、包装脚本和隔离环境；
-2. 优先复用项目自己的环境，不用全局环境代替缺失或损坏的项目环境；
-3. Python 项目没有其他明确合同时，默认使用项目根目录 `.venv/`；
-4. 任何仓库外环境变更都先说明精确目标、影响和回滚方式，并取得用户明确授权；
-5. 无法安全确定环境边界时失败即停止，不静默回退。
+成功标准不是“把 CLI 名称替换成 Agent 名称”，而是删除外部 CLI 的发现、认证、授权、Shell 转义和失败回退分支，形成一个更短、可验证且不会扩大权限的子 Agent 审查合同。
 
-## 2. 用户与使用场景
+## 2. 当前证据与问题
 
-### 2.1 目标用户
+当前仓库证据表明：
 
-- 使用 Claude Code 或 Codex 开发、调试、测试项目的工程人员；
-- 使用 OpenClaw 执行开发辅助、自动化或命令操作的用户；
-- 同一台机器上维护多个语言版本、多个项目或多个代理工作区的用户。
+- `Claude/skills/plan/SKILL.md` 与 `Codex/skills/plan/SKILL.md` 会在深度规划时加载 `doubt-driven-development`；
+- `Claude/skills/review/SKILL.md` 与 `Codex/skills/review/SKILL.md` 会按需加载 `doubt-driven-development` 和 `code-review-and-quality`；
+- 两宿主的 `doubt-driven-development` 已先要求 fresh-context reviewer，随后又在每个交互式 doubt cycle 强制询问是否调用 Gemini CLI、Codex CLI 或人工外部审查；
+- 该外部 CLI 分支要求 PATH 检查、版本探测、逐次授权、认证与环境变量确认、临时提示文件和只读参数，并包含 CLI 不可用时的额外交互；
+- `code-review-and-quality` 仍以“Multi-Model Review Pattern”和 Model A／Model B 表达独立审查；
+- Claude Code 已提供可由宿主原生加载的 `reviewer`、`security-reviewer` 和 `test-reviewer` Agent；Codex 包中虽有同名 `agents/*.md`，但当前插件 manifest 只声明 skills 与 hooks，OpenAI Docs 将可选择的自定义 Codex Agent 定义为用户级或项目级 `.codex/agents/*.toml`，不能把这些 Markdown 文件当作已注册原生角色；
+- 两宿主均已有 SubagentStart 策略注入和编排规则，Codex 可发起通用原生子 Agent，并在委派任务中显式传入角色提示。
 
-### 2.2 典型场景
+现状造成的主要问题是：同一审查周期存在“先子 Agent、再外部 CLI”的重复验证路径；外部 CLI 带来工具安装、认证、费用、网络、Shell 安全和宿主差异，却不保证结果更可靠。
 
-- Python 项目需要安装 `requirements.txt` 或 `pyproject.toml` 中的依赖；
-- 测试命令依赖已存在的 `.venv/`、uv、Poetry、Pipenv、Conda 或 Dev Container；
-- 项目缺少可用虚拟环境，代理需要决定是创建项目环境、请求授权，还是停止；
-- Node.js、Ruby、Java、Rust 或其他生态需要避免全局包安装和持久化机器配置；
-- 代理发现当前命令会写入系统 Python、用户 site-packages、Conda base、全局包目录、系统包管理器、持久化 `PATH` 或 shell 配置。
+## 3. 用户与使用场景
 
-## 3. 术语与边界
+### 3.1 目标用户
 
-### 3.1 项目环境
+- 使用 Claude Code 或 Codex 执行 `plan`／`review` 的工程人员；
+- 希望获得独立审查，但不希望配置或授权另一个模型 CLI 的用户；
+- 在 Windows、macOS 或 Linux 上使用 UXUCode，且需要跨平台一致行为的用户。
 
-满足以下任一条件的环境视为项目环境：
+### 3.2 典型场景
 
-- 位于目标仓库内部，例如 `.venv/`、项目本地依赖目录或项目本地工具目录；
-- 由仓库内明确合同指定，例如项目说明、`AGENTS.md`、包装脚本、运行时版本文件、包管理器配置、锁文件、Dev Container 或 CI 命令；
-- 由用户针对当前项目和当前操作明确指定。
+- 规划中出现非平凡架构、接口、数据、安全、兼容或回滚决定；
+- 完成代码变更后，需要独立检查正确性、架构、安全、性能或测试覆盖；
+- 主 Agent 长时间工作后，需要一个未继承其推理过程的对抗性审查者；
+- 当前执行者本身是子 Agent，无法继续嵌套发起子 Agent；
+- 宿主暂时不支持子 Agent，或子 Agent 调用失败。
 
-项目环境不因目录名恰好是 `.venv` 就自动可信；若发生创建、修复、替换或删除，仍需检查精确路径、仓库归属、链接／重解析点、现有内容和回滚条件。
+## 4. 术语
 
-### 3.2 仓库外环境
+### 4.1 交叉验证
 
-以下目标默认视为仓库外环境：
+交叉验证是由独立上下文的审查者根据给定 ARTIFACT 与 CONTRACT 主动寻找缺陷，再由主 Agent 逐项复核和分类的过程。
 
-- 系统 Python、用户 Python、用户 site-packages、Conda base 或共享 Conda 环境；
-- 全局 npm、pnpm、Yarn、RubyGems、Cargo、Java、.NET 或其他语言工具安装位置；
-- `pipx`、系统包管理器、系统服务、注册表、持久化用户／系统环境变量；
-- 用户 shell profile、全局 Git 配置、IDE 全局配置和宿主全局插件缓存；
-- 任何不属于当前仓库且未被项目合同或用户明确指定的运行时或工具目录。
+交叉验证不等于：
 
-读取版本、定位可执行文件或用系统解释器创建项目内虚拟环境，不等于授权修改该系统解释器。不得把“可以执行”推断成“可以向其中安装依赖”。
+- 必须使用不同供应商或不同底层模型；
+- 多数投票或自动接受子 Agent 结论；
+- 重复运行同一提示直到得到满意答案；
+- 允许子 Agent 修改代码、提交、推送、部署或扩大任务范围。
 
-### 3.3 环境修改
+### 4.2 子 Agent
 
-环境修改包括安装、升级、降级、卸载包，创建、修复、替换或删除环境，修改持久化配置、解释器选择、`PATH`、profile、注册表或全局工具状态。
+子 Agent 是由当前宿主的原生 Agent／subagent 能力启动、具有隔离任务上下文的审查执行者。不得通过 Shell 启动另一个模型 CLI 来模拟子 Agent。
 
-仅运行只读版本检查、查询路径或读取项目配置不属于环境修改。
+### 4.3 主 Agent
 
-## 4. 统一决策顺序
+主 Agent 是持有完整用户目标、工作区上下文和最终裁决责任的编排者。子 Agent 输出只是待核验数据，不是最终结论。
 
-Claude Code、Codex 和 OpenClaw 在可能依赖或改变开发环境的操作前必须按以下顺序判断：
+## 5. 统一行为合同
 
-1. **读取项目合同**：先检查适用的项目指令、运行说明、清单、锁文件、版本文件、包装脚本、CI 和已有测试命令。
-2. **确认安装边界**：确定当前命令属于哪个仓库、子项目、工作区和包管理器；出现竞争锁文件或相互冲突的指令时停止并说明冲突。
-3. **定位实际运行时**：使用只读检查确认将执行的解释器、包管理器或包装脚本来自何处，不依赖激活状态或命令名称猜测。
-4. **复用项目机制**：优先使用仓库声明的包装脚本、项目本地环境和精确可执行文件。
-5. **创建项目环境**：仅当用户请求的实施、修复、测试或环境设置确实需要，且项目没有更高优先级合同，才创建项目内环境。
-6. **仓库外变更门禁**：任何仓库外环境修改都必须先取得针对当前精确动作的明确授权。
-7. **失败即停止**：环境缺失、损坏、归属不明或无法安全修复时，报告阻塞和最小恢复选项；不得静默使用全局环境继续。
+### 5.1 触发条件
 
-不要求跨命令保持 shell 激活状态。能直接调用项目环境中的精确可执行文件时，应优先直接调用，以避免不同 shell、子进程或代理工具之间的激活状态漂移。
+本变更不扩大交叉验证的适用范围。继续仅在现有合同认定为非平凡的决定或需要独立审查的变更上触发，例如：
 
-## 5. Python 默认合同
+- 跨模块或服务边界；
+- 修改分支逻辑或无法由类型系统证明的不变量；
+- 涉及架构、安全、生产、数据迁移、公开接口、不可逆操作或显著回滚风险；
+- 准备对非显然事实作出“安全”“符合规格”或等价强结论；
+- `review` 需要独立的正确性、安全或测试视角。
 
-### 5.1 选择优先级
+机械重命名、格式化、纯读取、列目录、运行既定测试和显然的一行修改不得为了形式感发起子 Agent。
 
-Python 项目按以下优先级选择环境：
+### 5.2 Doubt cycle
 
-1. 项目指令或包装脚本明确指定的环境和命令；
-2. 与 `pyproject.toml`、锁文件、CI 和项目说明一致的 uv、Poetry、Pipenv、Conda、Dev Container 或其他项目机制；
-3. 已存在且可验证属于当前项目的 `.venv/`；
-4. 没有其他明确合同时，在项目根目录创建 `.venv/`；
-5. 若以上均不可安全使用，停止并请求用户决定，不得回退到系统或用户 Python 安装依赖。
+每个适用的 doubt cycle 使用以下单一路径：
 
-### 5.2 命令合同
+1. **CLAIM**：主 Agent 写明待成立的主张及其重要性；
+2. **EXTRACT**：提取最小 ARTIFACT 与 CONTRACT，移除作者推理和 CLAIM；
+3. **DELEGATE**：主 Agent 发起一个 fresh-context 对抗性子 Agent；
+4. **RECONCILE**：主 Agent 回到原始证据，依次分类为合同误读、有效且可行动、有效权衡或噪声；
+5. **STOP**：仅在无新增实质发现、已完成三轮或用户明确覆盖时停止。
 
-- Windows 默认直接使用 `.venv\Scripts\python.exe`；
-- POSIX 默认直接使用 `.venv/bin/python`；
-- 使用 pip 时，通过所选解释器执行 `python -m pip`，不得使用无法证明归属的裸 `pip`；
-- 使用 uv、Poetry、Pipenv 或 Conda 时，遵循项目现有锁文件、配置和包装命令，不额外创建第二套环境；
-- 创建 `.venv/` 时可以使用已验证的系统 Python 作为引导解释器，但依赖必须安装到新建的项目环境；
-- 激活虚拟环境不是成功证据；必须通过精确可执行路径、解释器报告或等价只读证据确认实际环境；
-- `.venv/` 缺失或损坏时，不得通过字符串替换、复制其他机器环境或向系统 Python 补装依赖来伪装修复。
+同一个未改变的 ARTIFACT 不得重复发起子 Agent。一个 doubt cycle 不再包含“单模型审查后再询问是否跨模型”的第二层升级；DELEGATE 本身就是该周期的交叉验证。
 
-### 5.3 项目内变更授权
+### 5.3 Review 交叉验证
 
-当用户已明确要求构建、修复、测试或配置项目，而完成任务需要项目内 `.venv/` 时，创建或更新该项目环境属于请求范围内的正常实施步骤；仍须遵守依赖来源、锁文件、网络权限、脚本执行和回滚安全要求。
+`review` 仍由主 Agent 审查相关 diff 和上下文，并按实际风险选择逻辑角色：
 
-对于状态、审查、解释、诊断或其他只读请求，不得因为发现环境缺失而自动创建环境或安装依赖。
+- 普通正确性、可读性、架构、性能和复杂度审查使用 `reviewer`；
+- 存在安全、隐私、认证、权限、密钥或不可信输入边界时增加 `security-reviewer`；
+- 测试映射、失败路径或验证证据需要独立检查时增加 `test-reviewer`。
 
-## 6. 其他生态的统一合同
+多个互不依赖的审查视角可在宿主支持时并行发起，但不得机械调用全部角色。主 Agent 必须合并、去重并核对每项发现，最终输出仍遵守 `Critical`、`Important`、`Suggestion` 的公开 `review` 合同。
 
-本规范不把 Python `.venv/` 强加给其他生态。其他生态必须遵守等价原则：
+Claude Code 可直接使用插件原生 Agent。Codex 必须发起宿主原生通用子 Agent，并把对应 `Codex/agents/*.md` 作为只读角色提示资产显式纳入委派任务；不得假定这些 Markdown 文件已注册为可按名称选择的 Codex 自定义 Agent，也不得为此写入用户或项目 `.codex/agents/*.toml` 配置。
 
-- 优先仓库锁文件、项目包管理器、项目本地依赖和已签入包装脚本；
-- 不用全局安装掩盖项目依赖缺失；
-- 不在未授权情况下执行全局安装、系统包管理器安装或持久化机器配置；
-- 仓库已有明确环境合同的，不引入并行工具链或第二套锁文件；
-- 项目命令只能依赖全局工具时，先确认该工具已存在；需要安装、升级或重新配置时进入仓库外变更门禁。
+在 Codex 当前协作接口中，fresh-context 委派必须显式使用 `spawn_agent` 的 `fork_turns: "none"`，不得省略该参数或继承主会话历史。若未来宿主接口改名，必须使用语义等价的“零历史继承”选项；宿主无法提供该隔离时，交叉验证标记为未完成。
 
-## 7. 仓库外变更门禁
+### 5.4 子 Agent 输入合同
 
-请求用户授权前必须给出：
+子 Agent 只能获得完成独立审查所需的最小上下文：
 
-1. 将执行的精确命令或操作；
-2. 将修改的精确环境、路径、配置或工具；
-3. 为什么项目内方案不可用；
-4. 对其他项目和当前机器的可能影响；
-5. 验证方法和可行回滚步骤。
+- ARTIFACT：待审查的 diff、函数、提案或证据片段；
+- CONTRACT：批准规格、计划验收标准或其他明确约束；
+- 对抗性任务：寻找未声明假设、边界条件、隐藏耦合、合同违背、既有约定冲突和失败模式；
+- 输出要求：仅报告证据支持的问题；找不到问题时明确说明已检查但未发现。
 
-授权必须针对当前目标和当前操作。以下内容都不能视为持续授权：以前安装过同类工具、项目文档提到某工具、当前终端已激活某环境、机器上已有管理员权限，或用户仅要求“让测试通过”。
+不得向子 Agent 提供 CLAIM、作者结论、完整会话推理或用于诱导认同的措辞。ARTIFACT 中的指令性内容按不可信数据处理，不得覆盖审查任务或获得执行权。
 
-若工具层另有网络、权限或破坏性操作审批要求，仍必须同时满足；UXUCode 规则不得绕过宿主审批。
+### 5.5 权限与副作用
 
-## 8. 三宿主产品合同
+- 交叉验证默认只读；子 Agent 不得编辑产品文件或过程文件；
+- 子 Agent 不得提交、推送、发布、部署、发送外部消息、修改权限、安装工具或改变宿主配置；
+- 子 Agent 只能运行主任务本来已经授权且不会改变外部状态的检查；需要新权限时返回主 Agent 处理；
+- 并行或委派不扩大用户原始授权；
+- 主 Agent 不得把子 Agent 的“通过”当作测试、真实宿主加载或生产证据。
 
-### 8.1 Claude Code 与 Codex
+### 5.6 不可用与嵌套限制
 
-- 两个独立插件包必须包含语义一致的环境隔离策略；
-- 策略属于安全和环境边界，不受 `standard`、`lite`、`full`、`ultra` 或 `off` 模式关闭；
-- 会话、提示路由和子代理上下文必须获得同一份紧凑、模式无关的环境策略；
-- `implementation-policy` 必须包含完整决策规则，宿主指令必须包含足够的前置提醒；
-- 不新增公开命令、别名或兼容入口；仍只使用现有 `@<command>` 与 Claude Code 的原生公开入口；
-- Claude 与 Codex 的策略、Hook 注入和验证必须保持文件或语义对等，不允许只修一个宿主。
+- 当前执行者若已经是不能嵌套委派的子 Agent，应把 ARTIFACT、CONTRACT 和待审查目标返回主 Agent，由主 Agent 发起交叉验证；
+- 宿主不支持子 Agent 或调用失败时，必须明确报告交叉验证未完成及原因；
+- 不得回退到 Gemini CLI、Codex CLI、其他外部模型 CLI 或人工复制到外部服务；
+- 自我质疑可以作为补充分析，但不得冒充已完成的独立子 Agent 交叉验证；是否在缺少独立审查时继续，由当前 Skill 的风险门禁和用户决定。
 
-### 8.2 OpenClaw
+## 6. 双宿主接口合同
 
-- `OpenClaw/AGENTS.fragment.md` 必须增加独立、紧凑的环境隔离段落；
-- OpenClaw 仍是个人助理和协调运行时，不复制 Claude Code／Codex 的工程命令集；
-- 当 OpenClaw 代用户执行开发或自动化命令时，必须遵守相同的项目环境优先级和仓库外变更门禁；
-- profile validator 必须验证环境隔离段落存在且包含失败即停止和明确授权语义；
-- OpenClaw 评估用例必须覆盖“缺少虚拟环境时不得直接向系统环境安装”以及“用户明确授权仓库外变更前需报告目标和影响”。
+### 6.1 Claude Code
 
-### 8.3 当前 UXUCode 仓库自身
+- 使用 Claude Code 的原生 Agent 能力和现有 `Claude/agents/` 角色；
+- 公开命令仍为 `/uxu-code:<command>`；
+- 不通过 `codex exec`、`gemini` 或其他 Shell CLI 取得审查意见。
 
-- 根 `AGENTS.md` 和 `Codex/AGENTS.md` 必须包含与产品策略一致的环境隔离边界；
-- 本仓库当前为 Node.js 项目，不得为了验证本规范创建 Python `.venv/` 或安装 Python 依赖；
-- 实施和测试不得修改当前机器的系统、用户或全局开发环境。
+### 6.2 Codex
 
-## 9. 文档与版本合同
+- 使用 Codex 的原生子 Agent／协作能力；需要 reviewer、security-reviewer 或 test-reviewer 视角时，读取对应 `Codex/agents/*.md` 角色提示资产并将其完整职责显式交给通用子 Agent；
+- 当前 Codex 协作接口必须以 `spawn_agent` 和 `fork_turns: "none"` 创建 fresh-context 子 Agent；不得依赖该工具默认值，未来接口只能换用语义等价的零历史继承选项；
+- 不把 `Codex/agents/*.md` 当作宿主已注册的自定义 Agent，不新增用户级或项目级 `.codex/agents/*.toml`；
+- 公开命令仍为 `@<command>`；
+- 不通过 `codex exec`、`gemini` 或其他 Shell CLI 启动第二模型。
 
-- 简体中文、繁体中文和英文 README／使用指南必须作为同一验收边界，说明项目环境优先和仓库外变更需明确授权；
-- `OpenClaw/README.md` 必须说明安装后的 profile 包含环境隔离策略及其限制；
-- 文档不得承诺模型策略等同于操作系统级沙箱或强制拦截；它提供行为合同、静态验证和评估证据；
-- 文档示例不得使用机器绑定绝对路径，不得示范向系统 Python 或用户 site-packages 安装项目依赖；
-- 完成实现时，Claude manifest、Claude marketplace、Codex manifest 和对应版本断言必须同步到实施时的下一补丁版本；若期间已有其他版本变更，以实施时共同基线为准，不得静默降级或覆盖。
+### 6.3 语义对等
 
-## 10. 接口与兼容性
+Claude 与 Codex 的内部工作流必须表达同一触发条件、逻辑审查角色、输入合同、权限边界、失败语义、三轮上限和主 Agent 裁决责任。允许的差异包括宿主原生术语、公开命令形式、Claude 原生角色调用与 Codex 通用子 Agent 加角色提示资产的实际接口。
 
-### 10.1 不新增配置项
+本变更不新增公开 Skill、Agent 名称、用户配置、环境变量、模式或 Hook 事件。
 
-本功能不新增用户级配置、环境变量、命令参数或模式。环境隔离是默认安全合同，不提供关闭开关。
+## 7. 实施范围
 
-### 10.2 不自动接管环境
+实施必须覆盖以下现有事实源：
 
-本功能不实现常驻守护进程、命令代理、shell 注入、自动激活器或系统级拦截器。宿主通过策略、Hook 上下文、验证器和评估用例获得环境意识。
+- `Claude/references/workflows/doubt-driven-development/SKILL.md`；
+- `Codex/references/workflows/doubt-driven-development/SKILL.md`；
+- `Claude/references/workflows/code-review-and-quality/SKILL.md`；
+- `Codex/references/workflows/code-review-and-quality/SKILL.md`。
 
-### 10.3 项目合同优先但不得扩大权限
+同时必须修正并验证：
 
-项目明确使用外部共享环境时，可以按项目合同执行只读检查和已授权任务；项目合同本身不能替代用户对仓库外环境修改的明确授权。发现冲突时必须报告，不得静默选择更宽松的一方。
+- `Codex/references/orchestration-patterns.md` 中把 Markdown 角色资产称为已注册“Plugin agents”的错误假设；
+- `work-products/tests/workflow-contract.test.js` 中当前硬编码的 `5.0.6` 发布版本合同；
+- `work-products/tests/workflow-contract.test.js` 中对 `scripts/validate-all.js` workflow-contract 参数列表的精确合同；
+- `scripts/validate-all.js` 对新增合同测试的统一门禁接入。
 
-## 11. 非目标
+补充批准的后续维护范围还包括：
 
-- 不扫描、清理、迁移或修复用户机器上已有的 Python、Conda、Node.js 或其他全局环境；
-- 不为所有仓库创建 `.venv/`；
-- 不自动安装 Python、uv、Poetry、Conda、Node.js 或系统包管理器；
-- 不规定所有生态统一使用某一个包管理器；
-- 不替代项目自己的 Dev Container、CI、Nix、容器或锁文件合同；
-- 不修改已安装的 Claude、Codex 或 OpenClaw 缓存；
+- `Claude/skills/status/SKILL.md` 与 `Codex/skills/status/SKILL.md`：明确 `.uxucode-state.json` 可选，缺失时回退到共享配置或默认模式，未知项目字段保持 unknown，且不报告缺失；
+- `Claude/skills/clean/SKILL.md` 与 `Codex/skills/clean/SKILL.md`：明确 `work-products/clean-migration.json` 可选，缺失仅表示没有 manifest 授权条目，不创建、不阻塞、不报告缺失；
+- 四个交叉验证工作流：平凡 review 不委派，子 Agent 只能运行既有授权且不改变外部状态的检查，新权限请求返回主 Agent；Codex doubt 在零历史任务中显式传入匹配角色提示职责；
+- `work-products/tests/subagent-cross-validation-contract.test.js`：增加替代 CLI 拼写、未知外部命令、矛盾授权／信任语义和委派边界顺序的 fail-closed mutation 合同；
+- `work-products/tests/workflow-contract.test.js`：增加两个可选文件缺失时的双宿主静默合同，并同步最终发布版本。
+
+仅当消除歧义或建立验证合同确有必要时，才修改：
+
+- 两宿主的 `skills/plan/SKILL.md` 与 `skills/review/SKILL.md`；
+- 两宿主的 `references/orchestration-patterns.md`；
+- 现有 Agent 角色说明。
+
+新增持久合同测试固定为 `work-products/tests/subagent-cross-validation-contract.test.js`。测试文件从其最终位置引用仓库文件时必须使用例如 `../../Claude/...`、`../../Codex/...` 的相对路径，不得写入机器绝对路径。
+
+原始功能候选曾同步为 `5.0.7`；补充批准的后续 Debug／Review 维护修复完成后，Claude manifest、Claude marketplace、Codex manifest、两宿主版本断言与既有发布版本合同测试的最终事实源统一为 `5.0.10`。不得修改已安装插件缓存或以缓存内容反向覆盖仓库源码。
+
+## 8. 非目标
+
+- 不安装、升级、卸载或配置 Gemini CLI、Codex CLI 或任何模型 CLI；
+- 不删除用户机器上已经安装的外部 CLI、认证信息或配置；
+- 不保证或强制子 Agent 使用不同底层模型；
+- 不新增模型选择器、供应商路由、API key 配置或费用控制层；
+- 不改变 `plan`、`review` 之外其他 Skill 的触发范围；
+- 不让 OpenClaw 复制 Claude／Codex 工程 Skill 或 Agent 编排；
+- 本次 `@spec` 不修改 `work-products/plan.md` 或 `work-products/todo.md`；获批后的 `@plan` 可按本规格替换它们；
 - 不提交、推送、发布、部署或重装插件；
-- 不以策略文字宣称已经证明真实宿主或操作系统级强制行为。
+- 不把静态合同测试宣称为真实 Claude Code／Codex 子 Agent 调用成功。
 
-## 12. 风险与缓解
+## 9. 文档合同
 
-### 12.1 过度强制 `.venv/`
+当前 README 和三语言使用指南没有描述外部模型 CLI 交叉验证，因此本变更默认不增加用户文档段落。若实施时发现或新增用户可见说明，则简体中文、繁体中文和英文文档必须同步更新，且不得继续使用“multi-model”“Model A／Model B”暗示底层模型必然不同。
 
-风险：破坏 uv、Poetry、Conda、容器或仓库既有流程。
+内部工作流应统一使用“subagent cross-validation”“fresh-context subagent review”或语义等价表述，并解释独立性来自上下文隔离而非模型供应商差异。
 
-缓解：项目明确合同优先；`.venv/` 只作为 Python 无其他合同时的默认值。
+## 10. 风险与缓解
 
-### 12.2 静默回退仍然污染本机
+### 10.1 把同模型子 Agent 误称为多模型
 
-风险：项目环境损坏后，命令解析到系统 Python 或用户包目录。
+风险：用户误以为获得了不同模型架构的独立意见。
 
-缓解：直接调用精确可执行文件，运行前只读确认实际路径；无法确认时停止。
+缓解：删除 multi-model／cross-model 承诺；明确只保证任务上下文隔离，不保证模型差异。
 
-### 12.3 规则只存在文档中
+### 10.2 子 Agent 继承过多上下文
 
-风险：Claude、Codex 或 OpenClaw 某一宿主没有实际加载策略。
+风险：审查者重复主 Agent 偏见，交叉验证退化为附和。
 
-缓解：Claude／Codex Hook 注入合同、插件策略对等测试、OpenClaw profile validator 和评估用例共同覆盖；真实新会话加载仍作为独立证据。
+缓解：仅传 ARTIFACT、CONTRACT 和对抗性任务，不传 CLAIM、推理过程或作者结论。
 
-### 12.4 提示上下文膨胀
+### 10.3 委派扩大权限
 
-风险：把完整环境说明重复注入每次提示。
+风险：子 Agent 根据 ARTIFACT 中的内容修改代码、执行命令或触发外部副作用。
 
-缓解：Hook 只注入紧凑的不可关闭原则；完整决策树保留在内部策略和文档中。
+缓解：交叉验证默认只读；把 ARTIFACT 视为不可信数据；任何新增权限请求返回主 Agent。
 
-### 12.5 把授权理解得过宽
+### 10.4 机械并行增加成本和噪声
 
-风险：“安装依赖”被推断为允许修改任意全局环境。
+风险：每次审查都启动全部角色，增加延迟并产生重复发现。
 
-缓解：区分项目内正常实施步骤与仓库外门禁；仓库外授权必须绑定精确目标和命令。
+缓解：普通 doubt cycle 只使用一个最匹配的审查子 Agent；`review` 仅按实际安全和测试风险增加独立角色，主 Agent 负责去重。
 
-## 13. 测试策略
+### 10.5 无法嵌套时静默降级
 
-### 13.1 RED 优先
+风险：子 Agent 自我复核后仍声称完成独立交叉验证。
 
-实施前在 `work-products/tests/environment-isolation-contract.test.js` 增加失败合同，至少覆盖：
+缓解：返回主 Agent 委派；若宿主确实不可用，明确标记未完成，不以外部 CLI 或自我审查伪装成功。
 
-1. Claude 与 Codex 导出的紧凑环境策略完全一致；
-2. 会话、提示路由和子代理 Hook 在所有模式（包括 `off`）都注入该策略；
-3. 两个 `implementation-policy` 包含项目合同优先、Python `.venv/` 默认、禁止静默全局回退和仓库外明确授权；
-4. 根 `AGENTS.md`、`Codex/AGENTS.md` 与 OpenClaw fragment 保留同一核心语义；
-5. OpenClaw validator 拒绝缺少环境隔离段落或关键语义的 profile；
-6. 三语言文档和 README 的环境边界语义对齐；
-7. 新测试仅使用临时目录和隔离环境变量，不读取或修改真实系统／用户包目录。
+## 11. 测试策略
 
-OpenClaw 评估数据同时增加至少两个消毒场景：一个项目缺少虚拟环境的动作陷阱，一个明确要求全局安装的高风险边界。评估只描述期望行为，不真实执行安装。
+### 11.1 RED 优先合同测试
 
-### 13.2 目标验证
+实施前新增 `work-products/tests/subagent-cross-validation-contract.test.js`，先证明当前实现至少因以下事实失败：
+
+1. 两宿主 `doubt-driven-development` 仍包含 `codex exec`、Gemini CLI、PATH／版本探测、认证确认、手工外部审查或逐次 CLI 授权语义；
+2. `code-review-and-quality` 仍以 Multi-Model、Model A、Model B 表达交叉验证；
+3. 尚无静态合同保证交叉验证只使用宿主原生子 Agent、输入仅含 ARTIFACT 与 CONTRACT、子 Agent 默认只读、主 Agent 负责复核；
+4. 尚无静态合同保证嵌套受限或调用失败时不会回退到外部 CLI；
+5. `scripts/validate-all.js` 尚未纳入新合同测试。
+
+### 11.2 GREEN 合同
+
+最小实现完成后，新测试至少验证：
+
+1. 四个目标内部工作流中不存在交叉验证用的外部 CLI 命令、发现、认证、授权或人工外部复制路径；
+2. 两宿主都要求在适用条件下发起 fresh-context 子 Agent，并保留 ARTIFACT／CONTRACT、对抗性提示、主 Agent 复核和三轮上限；
+3. doubt cycle 使用单一子 Agent 交叉验证路径，不再叠加第二层 cross-model 询问；
+4. `review` 相关工作流按风险选择 `reviewer`、`security-reviewer`、`test-reviewer`，且不机械调用全部角色；
+5. Claude 使用宿主原生角色；Codex 使用通用原生子 Agent 加显式角色提示资产，不假定 `Codex/agents/*.md` 已注册；
+6. 子 Agent 权限不超过原始任务，默认不写入、不发布、不部署；
+7. Codex 明确使用 `fork_turns: "none"` 或未来语义等价的零历史继承选项，禁止依赖默认的完整历史 fork；
+8. 嵌套受限时把 ARTIFACT、CONTRACT 和审查目标返回主 Agent；其他委派失败明确报告未完成，且不存在 CLI 回退；
+9. 子 Agent 结论不得替代测试、真实宿主加载或生产证据；
+10. 新测试逐宿主断言共同语义，并只允许已定义的命令形式、原生角色机制和 Codex 隔离参数差异；不得把 `validate-skill-parity.js` 的目录集合检查误当成内部 workflow 语义对等证据；
+11. 新测试通过 `scripts/validate-all.js` 进入统一静态门禁，且既有参数列表合同同步更新；
+12. 测试内部仅使用从 `work-products/tests/` 出发的仓库相对路径；
+13. 既有发布版本合同测试同步验证最终维护候选 `5.0.10`；
+14. 两宿主 `status`／`clean` 明确两个可选文件缺失时静默、非阻塞，且有持久合同测试；
+15. review 只在非平凡变更或确需独立视角时委派，四个工作流都把新权限请求交还主 Agent；
+16. 静态合同以 mutation fixture 拒绝替代 CLI 调用、未知外部审查命令、矛盾授权／信任语义和错误的 ARTIFACT 边界顺序。
+
+### 11.3 验证命令
 
 ```text
-node --test work-products/tests/environment-isolation-contract.test.js
-node --test work-products/tests/workflow-contract.test.js work-products/tests/mode-policy-contract.test.js
-node --test work-products/tests/OpenClaw/tests/validate-profile.test.js work-products/tests/OpenClaw/tests/evaluation.test.js
+node --test work-products/tests/subagent-cross-validation-contract.test.js
 node scripts/validate-skill-parity.js
-node scripts/validate-guide-parity.js
-node scripts/validate-readme-scope.js
 node scripts/validate-all.js
 git -c safe.directory=C:/Code/UXUCode diff --check
 ```
 
-测试命令不得安装依赖或修改仓库外环境。静态校验、本地测试、已安装缓存、新宿主会话和真实命令行为必须分别报告，不得互相替代。
+静态合同、本地 Node 测试、安装缓存、新宿主会话和真实子 Agent 调用是不同证据层级，必须分别报告。
 
-## 14. 可衡量验收标准
+## 12. 可衡量验收标准
 
-全部条件满足后才可认为实现完成：
+以下条件用于验收仓库源码候选；静态合同只能证明仓库表达了该行为，不能证明已安装插件、新会话或真实子 Agent 已执行成功：
 
-1. Claude Code、Codex、OpenClaw 都包含项目环境优先、仓库外默认只读、明确授权和失败即停止语义；
-2. Python 无项目特定合同时明确默认 `.venv/`，并使用环境内精确解释器执行依赖命令；
-3. 已有 uv、Poetry、Pipenv、Conda、Dev Container 或项目包装脚本不会被第二套 `.venv/` 覆盖；
-4. 系统 Python、用户 site-packages、Conda base、全局包目录、持久化 `PATH` 和系统包管理器不会被静默修改；
-5. 只读请求不会触发环境创建或依赖安装；
-6. 环境缺失、损坏或边界冲突时不会静默回退到全局环境；
-7. Claude／Codex 策略对等测试、Hook 注入测试、OpenClaw validator、OpenClaw 评估合同和三语言文档校验全部通过；
-8. 所有新增测试位于 `work-products/tests/`，并仅使用从最终位置出发的仓库相对路径；
-9. `work-products/SPEC.md` 可被 Git 正常跟踪，不依赖 `git add -f`；
-10. 两宿主 manifest、Claude marketplace 和版本断言同步到同一下一补丁版本；
-11. `node scripts/validate-all.js` 与 `git -c safe.directory=C:/Code/UXUCode diff --check` 通过；
-12. 结论明确区分仓库静态证据、已安装缓存、新会话加载和真实环境保护行为。
+1. 受影响 Skill 不再提出或执行 Gemini CLI、Codex CLI、其他模型 CLI 或人工外部复制交叉验证；
+2. 工作流要求每个满足原有交叉验证触发条件的 doubt cycle 在宿主可用时发起一个 fresh-context 子 Agent；
+3. 工作流要求该子 Agent 仅接收 ARTIFACT、CONTRACT 和对抗性审查任务，不接收 CLAIM 或主 Agent 推理；Codex 明确使用 `fork_turns: "none"` 或语义等价的零历史继承选项；
+4. 工作流要求主 Agent 逐项复核子 Agent 发现，不投票、不盲从、不把子 Agent 结论当作测试通过；
+5. 工作流禁止对同一未修改 ARTIFACT 重复委派，循环仍最多三轮；
+6. `review` 工作流只按证据需要增加安全或测试角色，并由主 Agent 合并去重；Claude 使用原生角色，Codex 使用通用子 Agent 加显式角色提示；
+7. 子 Agent 默认只读，不能扩大授权或自行提交、推送、发布、部署、安装工具或修改配置，其结论不能替代测试、真实宿主加载或生产证据；
+8. 嵌套受限时把 ARTIFACT、CONTRACT 和审查目标返回主 Agent；其他调用失败明确报告交叉验证未完成，且没有外部 CLI 回退；
+9. Claude 与 Codex 的相关内部工作流语义对等；
+10. 新合同测试先 RED 后 GREEN，直接逐宿主验证 workflow 语义，并被 `node scripts/validate-all.js` 执行；
+11. 所有新增测试位于 `work-products/tests/` 且仅使用最终位置相对路径；
+12. Claude manifest、Claude marketplace、Codex manifest、两宿主版本断言和既有发布版本合同测试统一为 `5.0.10`；
+13. 两宿主 `status`／`clean` 对可选文件缺失保持静默、非阻塞，并由 `workflow-contract.test.js` 直接验证；
+14. 平凡 review 不委派，权限请求交还主 Agent，Codex 角色职责进入 `fork_turns: "none"` 的委派任务；
+15. fail-closed mutation 合同覆盖替代 CLI、未知外部命令、矛盾信任／授权语义和 ARTIFACT 边界顺序；
+16. `node scripts/validate-all.js` 与 `git -c safe.directory=C:/Code/UXUCode diff --check` 通过；
+17. 最终报告明确区分仓库静态证据、已安装缓存、新会话加载和真实子 Agent 行为；
+18. 未经另行授权更新插件并在 Claude Code／Codex 新会话完成真实 smoke 前，只能报告“仓库源码候选通过、运行时未验证”，不得宣称完整宿主行为已验收。
 
-## 15. 已批准设计决定
+## 13. 已重新批准及补充批准的设计决定
 
-用户已批准以下设计决定：
+用户已于 2026-08-15 重新批准第 1–8 项；随后又明确补充批准第 6、9、10 项所述的 `5.0.10` 维护范围：
 
-1. 接受“项目既有合同优先，Python 无其他合同时默认 `.venv/`”，而不是所有 Python 项目无条件强制 `.venv/`；
-2. 接受仓库外环境修改必须逐次明确授权，且该安全边界在 `off` 模式也不能关闭；
-3. 接受本阶段只通过策略、Hook 上下文、验证器、文档和评估建立意识，不实现系统级命令拦截器；
-4. 接受实现时同步三个宿主表面、三语言文档和下一补丁版本。
+1. “交叉验证”保证 fresh-context 子 Agent，不保证不同底层模型；
+2. 删除现有“先子 Agent、再询问外部 cross-model CLI”的重复两段式流程，一个对抗性子 Agent 即完成该 doubt cycle 的独立审查；
+3. 在原有触发条件成立且宿主支持时直接发起子 Agent，不再逐次询问用户选择 CLI；宿主自身的权限门禁仍然有效；
+4. 普通 doubt cycle 使用一个最匹配的子 Agent，`review` 仅在安全或测试风险确实存在时增加可并行逻辑角色；Claude 可调用原生角色，Codex 使用通用子 Agent 加显式角色提示；
+5. OpenClaw 不在本次 Skill 行为变更范围内；
+6. 原始功能候选为 `5.0.7`；纳入后续明确 Debug／Review 维护修复后的最终候选统一为 `5.0.10`，但本次 `@spec` 不实施、不提交、不安装或发布。
+7. 不把 `Codex/agents/*.md` 误当成宿主已注册角色，不新增用户或项目 `.codex/agents/*.toml`；只把现有 Markdown 用作只读提示资产。
+8. Codex fresh-context 委派显式使用 `fork_turns: "none"` 或未来语义等价的零历史继承选项；不依赖默认历史 fork。
+9. `.uxucode-state.json` 与 `work-products/clean-migration.json` 均为可选文件；缺失本身不是 blocker，不创建、不报告缺失。
+10. 后续 Review 修复必须保留平凡变更不委派、既有授权边界、新权限交还、角色职责显式传递、统一严重度和 fail-closed mutation 证据。
 
-本规范可作为 `@plan` 的事实源。任何上述决定发生变化，必须先修订本文件并重新批准。
+本文件现为 `@plan`／`@build` 的规格事实源。任何上述决定再次变化，必须先修订本文件并重新批准。

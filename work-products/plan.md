@@ -1,550 +1,323 @@
-# 实施计划：`C:\Code` Python 虚拟环境修复与全局 pip 清理准备
+# 实施计划：子 Agent 交叉验证
 
-日期：2026-08-08
-执行入口：后续经批准使用 `@build` 逐任务执行；只有 `@build auto` 才可连续执行稳定阶段。
-当前状态：任务 1-18 已执行；FakeShield 两套 WSL2 环境与 CUDA 扩展 smoke 已通过，两套全局 Python 的高置信 pip 清理已完成。
+状态：已完成并同步补充维护范围（2026-08-15；任务 7／7 已完成）
 
-## 1. 规划依据
+## 1. 规划基线
 
-本计划以以下证据为基础，目标、范围、安全边界和可验证结果已经足够明确，不需要新增规格：
+本计划以已重新批准并补充批准的 `work-products/SPEC.md` 为唯一产品事实源。此前三轮 fresh-context 子 Agent 审查已纠正 Codex 角色加载、零历史继承、门禁耦合、版本合同、回滚和证据边界；初始任务完成后的 Debug／Review 又形成两个已完成的维护任务。用户已明确批准把最终版本同步为 `5.0.10`，并把可选文件静默语义与后续审查修复纳入规格及计划事实源。
 
-- 用户要求检查 `C:\Code` 下全部项目，修复应使用但缺失或损坏的项目虚拟环境，并记录项目所用 pip 库，为后续清理本机全局 pip 环境提供依据。
-- `work-products/SPEC.md` 已批准项目本地环境优先、默认 `.venv/`、外部环境修改需单独授权、环境边界不清时停止等统一约束。
-- 2026-08-08 只读审计覆盖 27 个顶层目录、12 个含 Python 的目录和 1,013 个非虚拟环境 `.py` 文件；发现 6 个健康环境、2 个损坏环境和 8 个明确缺失环境的工作区。
-- 当前全局 Python 3.12 `pip check` 失败：`opencv-python-headless 4.13.0.92` 与 `tifffile 2026.5.15` 要求 NumPy 2.x，而现有 `numpy 1.26.4`；Python 3.14 全局环境 `pip check` 通过。
+本计划只生成过程产物，不修改产品实现，不授权提交、推送、插件安装、缓存更新、发布或真实宿主操作。后续普通 `@build` 每次只执行一个任务；只有明确的 `@build auto` 才可连续执行稳定任务。
 
-本计划只规划后续修改。本次 `@plan` 不创建或删除 `.venv/`，不安装、升级或卸载包，不执行项目业务入口，不修改全局 Python。
+## 2. 已锁定设计
 
-## 2. 目标与完成定义
+- 交叉验证保证 fresh-context 子 Agent 和对抗性上下文隔离，不保证不同底层模型。
+- 每个适用 doubt cycle 只有一条 `CLAIM → EXTRACT → DELEGATE → RECONCILE → STOP` 路径，不再叠加外部 CLI 询问。
+- 子 Agent 只接收 ARTIFACT、CONTRACT 和对抗性任务；默认只读，不能扩大权限。
+- 普通 doubt cycle 使用一个匹配角色；`review` 仅按真实安全或测试风险增加角色，可并行但不机械全量调用。Claude 可使用原生角色；Codex 以 `spawn_agent` 的 `fork_turns: "none"` 发起通用原生子 Agent，并显式传入现有 `Codex/agents/*.md` 角色提示资产。
+- Claude 与 Codex 保持语义对等；仅允许宿主原生术语和公开命令形式不同。
+- 嵌套受限时把 ARTIFACT、CONTRACT 和审查目标交还主 Agent；其他委派失败明确报告交叉验证未完成，不回退到外部 CLI、人工外部复制或伪装成独立验证的自我审查。
+- `.uxucode-state.json` 与 `work-products/clean-migration.json` 均为可选文件；缺失不是 blocker，不创建、不报告缺失。
+- 平凡 review 不委派；四个工作流只允许既有授权且不改变外部状态的检查，新权限请求返回主 Agent；静态 mutation 合同必须 fail closed。
 
-完成后应满足：
+## 3. 范围与变更预算
 
-1. 每个需要第三方 Python 包的可运行项目或独立子项目都有明确、项目本地且被忽略的环境路径；Windows 默认使用 `.venv\Scripts\python.exe`，POSIX 使用 `.venv/bin/python`。
-2. 每个环境都有可审查的直接依赖事实源；禁止只依赖全局 `site-packages`、隐式传递依赖或文档中的裸 `pip install`。
-3. 新建或修复环境通过解释器启动、`python -m pip check`、关键依赖导入及该项目适用的现有测试或无副作用 smoke 验证。
-4. 损坏环境仅在确认目标为项目内真实目录且不是链接或重解析点后处理；先同目录备份，失败恢复，成功验证后才可删除备份。
-5. GMSSL 云、边、端三侧均不在本机运行：cloud/edge 在明确审批前保持目标主机未执行，端侧为嵌入式固件且不使用 Python；本机 root/attack/model 环境只作工具、攻击验证与训练开发。Watermark 已按批准旧版路线验收，FakeShield 已按批准 WSL2 路线完成单 GPU CUDA 扩展 smoke。不以 Windows 静态检查替代 Linux、CUDA、NPU 或旧 Python 运行证据。
-6. 全局 pip 清理前保存可回滚快照，完成 `C:\Code` 外使用者审计，并获得单独的卸载授权；虚拟环境修复本身不授权全局卸载。
+最终候选触及 17 个产品／合同文件；其中前 13 个属于原始交叉验证实施，后 4 个属于补充批准的可选文件维护修复：
 
-## 3. 已确认环境矩阵
+1. 新增 `work-products/tests/subagent-cross-validation-contract.test.js`；
+2. 修改四个内部工作流：
+   - `Claude/references/workflows/doubt-driven-development/SKILL.md`
+   - `Codex/references/workflows/doubt-driven-development/SKILL.md`
+   - `Claude/references/workflows/code-review-and-quality/SKILL.md`
+   - `Codex/references/workflows/code-review-and-quality/SKILL.md`
+3. 修正 `Codex/references/orchestration-patterns.md` 对 Codex Markdown 角色资产的加载假设；
+4. 修改 `scripts/validate-all.js`；
+5. 同步五个版本事实源和一个既有版本合同测试：
+   - `Claude/.claude-plugin/plugin.json`
+   - `Claude/.claude-plugin/marketplace.json`
+   - `Codex/.codex-plugin/plugin.json`
+   - `Claude/scripts/validate-plugin.js`
+   - `Codex/scripts/validate-plugin.js`
+   - `work-products/tests/workflow-contract.test.js`
 
-### 3.1 保留并验证
+补充维护文件：
 
-| 环境 | 当前状态 | 直接依赖来源 |
-|---|---|---|
-| `AShareQuantFusion/.venv` | Python 3.12.13，`pip check` 通过 | `requirements.txt`、`requirements-dev.txt` |
-| `BestCfCdn/.venv` | Python 3.12.10，`pip check` 通过 | `requirements.txt` 与 setup 的 Brotli 合同 |
-| `GMSSL/attack/.venv` | Python 3.12.10，`pip check` 通过 | `attack/requirements.txt` |
-| `GMSSL/model_training/.venv` | Python 3.12.10，`pip check` 通过 | 当前仅能由静态导入和已安装包恢复，缺正式清单 |
-| `MarkItDown/.venv` | Python 3.12.10，`pip check` 通过 | 各 package 的 `pyproject.toml` |
-| `Study/Python/IA_1/venv` | Python 3.14.5，`pip check` 通过 | 当前为 `requests`、`beautifulsoup4`，缺正式清单 |
+14. `Claude/skills/status/SKILL.md`；
+15. `Codex/skills/status/SKILL.md`；
+16. `Claude/skills/clean/SKILL.md`；
+17. `Codex/skills/clean/SKILL.md`。
 
-健康环境的 `pyvenv.cfg` 中部分 `command` 字段仍记录迁移前路径，但解释器可启动；不得只因该元数据陈旧而重建。
+后续 Review 对四个工作流、Codex orchestration、新合同测试和既有 workflow 合同的加固均落在上述既有文件内，不再扩大文件集合。`work-products/SPEC.md`、`work-products/plan.md` 与 `work-products/todo.md` 是本次批准后同步的过程事实源，不计入产品／合同文件预算。
 
-### 3.2 需要新建
+不修改两宿主公开 `plan`／`review` Skill、Claude orchestration patterns、Agent 定义、README、三语言使用指南或 OpenClaw。最终候选未突破该边界。
 
-- `BingSitemapSubmit/.venv`
-- `ProxySever/.venv`
-- `GetURLScheme/.venv`
-- `Study/Python/IA_2/.venv`
-- `Study/Python/IA_Plus_1/.venv`
-- `Study/Python/IA_Plus_2/.venv`
-- `EditBanana/.venv`
-- `Competitions/MingZhen/FakeShield-main/DTE-FDM/.venv` 与 `MFLM/.venv`，已在批准的 Ubuntu 20.04 / CUDA 11.6.2 目标创建并验证
-
-### 3.3 损坏或平台限定
-
-- `Competitions/AIGC/watermark/.venv`：原环境指向已不存在的 Acer Python 3.14；现已按批准路线用项目内 NuGet CPython 3.7.9 离线重建，旧坏环境保留为同目录备份。
-- `Study/OS/LessonTask1/.venv`：已损坏，但源码只使用标准库；不重建，后续仅在精确确认路径并获得删除授权后清理。
-- `GMSSL/cloud_layer/.venv`、`GMSSL/edge_layer/.venv`：分别由云端 VPS 和边缘 Orange Pi 的 setup 在部署主机创建；Windows checkout 缺失不等于缺陷。`device_layer` 为端侧固件，不创建 Python 环境。
-
-### 3.4 不需要环境
-
-- `ACM`、`Shadowrocket` 当前只使用 Python 标准库。
-- 其余 15 个顶层目录未发现 Python 文件。
-
-## 4. 依赖图与执行顺序
+## 4. 依赖顺序
 
 ```text
-任务 1 全局与项目基线快照
-  ├─> 任务 2 BingSitemapSubmit
-  ├─> 任务 3 ProxySever
-  ├─> 任务 4 GetURLScheme
-  ├─> 任务 5 Study 各作业环境
-  ├─> 任务 7 EditBanana 依赖合同 ─> 任务 8 EditBanana 环境
-  ├─> 任务 9 GMSSL 清单 ─> 任务 10 GMSSL 平台验证
-  ├─> 任务 11 健康环境清单漂移
-  ├─> 任务 12 Watermark 兼容决策 ─审批─> 任务 13 Watermark 修复
-  └─> 任务 14 FakeShield 兼容决策 ─审批─> 任务 15 FakeShield 环境
-
-任务 2-5 ─> 检查点 A
-任务 7-11 ─> 检查点 B
-任务 12-15 ─> 检查点 C
-检查点 A/B/C ─> 任务 16 跨项目复核
-任务 16 ─> 任务 17 全局 pip 清理候选报告
-任务 17 ─单独授权─> 任务 18 全局 pip 清理
+任务 1：建立 RED 合同
+  ├─> 任务 2：改造 doubt-driven-development
+  └─> 任务 3：改造 code-review-and-quality
+          任务 2 + 任务 3
+                  └─> 任务 4：接入统一门禁
+                              └─> 任务 5：形成原始 5.0.7 候选并完成总门禁
+                                          └─> 任务 6：修复可选文件缺失误报
+                                                      └─> 任务 7：修复 Review 发现并同步 5.0.10
 ```
 
-任务 2、3、4 可在任务 1 后独立执行；Study、EditBanana、GMSSL 也可在各自事实源固定后独立验证。任何共享全局 Python 的修改必须串行并推迟到任务 18。
+任务 2 与任务 3 在任务 1 完成后逻辑上可并行，但同一执行者应保持顺序实施，以便把测试失败精确归因。版本同步最后执行，避免中间态被误报为可发布版本。
 
-## 5. 任务明细
+## 5. 实施任务
 
-### 任务 1：持久化只读基线与回滚快照
+### 任务 1：建立子 Agent 交叉验证 RED 合同
 
-**范围**
+**说明：** 新增一个 Node.js 持久合同测试，先锁定当前外部 CLI 行为、缺失的子 Agent 合同、审查角色语义和统一门禁接入缺口。
 
-- 在 `work-products/reviews/` 记录 27 个目录的 Python 环境矩阵、项目直接依赖映射、`py -0p`、两个全局解释器的 `pip freeze --all`、`pip list --not-required` 和 `pip check` 输出。
-- 记录所有现有 `pyvenv.cfg`、环境解释器版本、环境内顶层包及 `pip check` 结果。
-- 快照不得包含凭据、环境变量值、私有索引 Token 或项目数据。
+**范围：**
 
-**验收标准**
+- 新建 `work-products/tests/subagent-cross-validation-contract.test.js`。
+- 使用 Node.js 标准库和 `__dirname` 出发的 `../..` 仓库相对引用，不增加依赖。
+- 将断言拆成 doubt-driven、review、Codex 隔离／角色机制、统一门禁四个可单独筛选的测试，禁止用过宽关键词误伤“禁止回退到外部 CLI”这类合规负向说明。
 
-- 基线能区分“健康、损坏、缺失、标准库无需环境、平台限定”五类。
-- 两个全局解释器和六个健康环境都有精确版本及完整包快照。
-- 当前 Python 3.12 冲突被原样记录，不在本任务修复。
+**验收标准：**
 
-**验证**
+- [x] 测试精确拒绝 `codex exec`、Gemini 调用／探测、逐次 CLI 授权、人工外部审查、`Multi-Model Review Pattern`、`Model A`／`Model B` 等旧行为。
+- [x] 测试要求 fresh-context 子 Agent、ARTIFACT／CONTRACT、对抗性任务、只读权限、主 Agent 复核、三轮上限；Codex 必须出现 `fork_turns: "none"` 或明确的零历史继承合同。
+- [x] 测试要求嵌套受限时交还 ARTIFACT、CONTRACT 和审查目标，普通委派失败明确标记未完成，且子 Agent 结论不得替代测试或真实宿主证据。
+- [x] 测试逐宿主断言共同语义，只允许 Claude 原生角色与 Codex 通用子 Agent 加显式角色提示／隔离参数等已定义差异；不把 `validate-skill-parity.js` 当作内部 workflow 对等证据。
+- [x] 当前源码运行该测试为预期 RED，4 个测试组分别命中旧 cross-model 分支、Model A／B 审查、Codex Markdown Agent 误注册假设和统一门禁缺项。
+
+**验证：**
 
 ```powershell
-py -0p
-py -3.12 -m pip freeze --all
-py -3.12 -m pip list --not-required
-py -3.12 -m pip check
-py -3.14 -m pip freeze --all
-py -3.14 -m pip list --not-required
-py -3.14 -m pip check
+node --test work-products/tests/subagent-cross-validation-contract.test.js
 ```
 
-**回滚**：只新增本地审计记录；删除本任务新建的 `work-products/reviews/` 文件即可，不触碰环境。
+预期：非零退出；记录失败断言，不把 RED 误报为仓库回归。
 
-### 任务 2：隔离 BingSitemapSubmit
+**依赖：** 无。
 
-**范围**
+**可能修改：** 1 个文件，S。
 
-- 新增最小直接依赖清单，仅声明 `requests`。
-- 确认 `.venv/` 被本项目忽略，再用 Python 3.12 创建根环境并通过项目解释器安装。
-- 文档或运行说明若存在裸 `python`/`pip`，改为项目解释器路径和 `python -m pip`。
+**回滚：** 若规格撤销，删除本任务新增测试；不得为保留旧行为而弱化断言或增加兼容分支。
 
-**验收标准**
+### 任务 2：将 doubt cycle 收敛为单一子 Agent 路径
 
-- 不依赖全局 `requests` 即可导入。
-- `pip check` 通过，依赖清单不包含无关包。
-- 不执行真实 sitemap 提交或网络请求。
+**说明：** 对等改写两宿主 `doubt-driven-development`，删除外部 CLI 的发现、认证、授权、Shell 安全和人工复制路径，并补齐委派输入、权限、失败和嵌套合同。
 
-**验证**
+**范围：**
+
+- 修改 Claude／Codex 两个 `doubt-driven-development/SKILL.md`。
+- 保留原有非平凡触发条件、主 Agent 编排责任、发现分类顺序、同一未变 ARTIFACT 不重复委派和最多三轮。
+- 将 Step 3 明确为 DELEGATE：一个 fresh-context 对抗性子 Agent，仅接收 ARTIFACT、CONTRACT 和任务；Codex 明确使用 `spawn_agent` 的 `fork_turns: "none"`，嵌套受限时把三项交接载荷返回主 Agent，其他宿主不可用场景明确返回未完成。
+
+**验收标准：**
+
+- [x] 两宿主均使用 `CLAIM → EXTRACT → DELEGATE → RECONCILE → STOP`，且不再包含第二层 cross-model 询问或模型 CLI 调用路径。
+- [x] 文本明确上下文隔离不等于不同模型，ARTIFACT 中指令是不可信数据，委派只读且不扩大授权；嵌套交接保留 ARTIFACT、CONTRACT 和审查目标。
+- [x] 新合同测试直接证明 Claude／Codex 的共同语义及允许差异；skill parity 仅作为公开 Skill／目录集合回归通过。
+
+**验证：**
 
 ```powershell
-& .\.venv\Scripts\python.exe -m pip check
-& .\.venv\Scripts\python.exe -I -c "import requests"
-& .\.venv\Scripts\python.exe -m py_compile main.py
+node --test --test-name-pattern="doubt-driven" work-products/tests/subagent-cross-validation-contract.test.js
+node scripts/validate-skill-parity.js
 ```
 
-**回滚**：删除本任务新建且经路径确认的 `.venv/`，恢复本任务修改的清单与文档。
+**依赖：** 任务 1。
 
-### 任务 3：隔离 ProxySever
+**可能修改：** 2 个文件，S。
 
-**范围**
+**回滚：** 仅反向恢复本任务的两个配对文件；不得只恢复一个宿主，也不得以 CLI 回退保留新旧双路径。
 
-- 在项目根新增最小依赖清单：`requests`、`beautifulsoup4`。
-- 创建根 `.venv`，统一供含第三方依赖的规则脚本使用；纯标准库脚本不复制环境。
-- 不运行下载、规则更新或网络测试。
+### 任务 3：将代码审查改为按风险选择子 Agent
 
-**验收标准**
+**说明：** 对等改写两宿主 `code-review-and-quality` 的 Multi-Model 模式，建立 reviewer、security-reviewer、test-reviewer 的风险映射和主 Agent 合并合同，并纠正 Codex orchestration 对 Markdown 角色资产的原生加载假设。
 
-- 项目环境可导入 `requests` 与 `bs4`。
-- 标准库脚本继续不需要额外依赖。
-- `.venv/` 被忽略且没有环境文件进入 Git 候选。
+**范围：**
 
-**验证**
+- 修改 Claude／Codex 两个 `code-review-and-quality/SKILL.md`。
+- 修改 `Codex/references/orchestration-patterns.md`：现有 `Codex/agents/*.md` 是提示资产，不是已注册的 Codex 自定义 Agent。
+- 普通正确性、架构、性能和复杂度使用 reviewer；仅在安全边界存在时增加 security-reviewer；仅在测试或证据缺口存在时增加 test-reviewer。
+- Claude 可调用宿主原生角色；Codex 读取对应 Markdown 角色提示，并以 `fork_turns: "none"` 在通用原生子 Agent 的任务中显式传入职责、只读边界和输出要求，不写入 `.codex/agents/*.toml`。
+- 独立视角可并行，主 Agent 必须合并、去重、回到证据复核，并继续输出既有 `Critical`、`Important`、`Suggestion` 分级。
+
+**验收标准：**
+
+- [x] 删除 Multi-Model、Model A／Model B 以及不同模型必然独立的暗示，统一为 fresh-context subagent review。
+- [x] 角色选择由实际风险驱动，不机械调用全部角色；并行不扩大权限且子 Agent 默认只读。
+- [x] Codex 不依赖未注册角色名称，orchestration 与 workflow 都明确使用通用子 Agent 加角色提示资产。
+- [x] 新合同测试直接证明 Claude／Codex 的共同审查语义及允许差异；skill parity 仅作为公开 Skill／目录集合回归通过。
+
+**验证：**
 
 ```powershell
-& .\.venv\Scripts\python.exe -m pip check
-& .\.venv\Scripts\python.exe -I -c "import requests, bs4"
-Get-ChildItem -Recurse -Filter *.py | ForEach-Object { & .\.venv\Scripts\python.exe -m py_compile $_.FullName }
+node --test --test-name-pattern="review workflows|Codex role prompts" work-products/tests/subagent-cross-validation-contract.test.js
+node scripts/validate-skill-parity.js
 ```
 
-**回滚**：仅移除精确项目根下新建环境并恢复清单；不删除脚本生成物或规则数据。
+**依赖：** 任务 1。
 
-### 任务 4：隔离 GetURLScheme 的运行与构建依赖
+**可能修改：** 3 个文件，M。
 
-**范围**
+**回滚：** 同时反向恢复两个配对 workflow 与 Codex orchestration；不得保留一套“多模型”和一套“子 Agent”的分裂术语，也不得留下错误的 Codex 原生角色声明。
 
-- 保留运行依赖 `customtkinter`、`Pillow`。
-- 将 `PyInstaller` 记录为开发/构建依赖，不混入最小运行清单。
-- 创建根 `.venv`；重建产物不属于本任务，旧 `build/` 证据不删除。
+### 检查点 A：工作流合同
 
-**验收标准**
+- [x] 任务 1 的 doubt-driven 与 review focused 测试均由 RED 转 GREEN。
+- [x] 四个目标工作流不存在外部模型 CLI 执行、探测、认证、逐次授权或人工外部复制路径。
+- [x] 新合同测试逐宿主证明内部 workflow 语义对等；`node scripts/validate-skill-parity.js` 仅证明公开 Skill 与目录集合未回归。
+- [x] 未修改公开 Skill、Agent、Claude orchestration、文档或 OpenClaw。
 
-- 运行环境可导入 `customtkinter` 和 `PIL`。
-- 构建依赖有独立事实源，且能在项目环境中找到 PyInstaller。
-- 不启动 GUI，不覆盖现有构建产物。
+### 任务 4：把新合同接入统一静态门禁
 
-**验证**
+**说明：** 将新测试作为既有 `workflow contracts` 阶段的一部分，确保未来改动不能绕过交叉验证合同。
+
+**范围：**
+
+- 修改 `scripts/validate-all.js`，在 workflow contracts 参数列表中加入新测试一次。
+- 同步修改 `work-products/tests/workflow-contract.test.js` 对该参数列表的精确期望；本任务只改门禁列表合同，不改版本断言。
+- 不新增门禁阶段、不改变其他测试顺序或命令。
+
+**验收标准：**
+
+- [x] `subagent-cross-validation-contract.test.js` 在统一门禁中恰好出现一次。
+- [x] 新测试的门禁断言与完整目标测试均通过。
+- [x] 统一门禁仍保持原有 12 个阶段，不影响 OpenClaw 和其他合同测试。
+
+**验证：**
 
 ```powershell
-& .\.venv\Scripts\python.exe -m pip check
-& .\.venv\Scripts\python.exe -I -c "import customtkinter, PIL"
-& .\.venv\Scripts\python.exe -m PyInstaller --version
-& .\.venv\Scripts\python.exe -m py_compile main.py
+node --test work-products/tests/subagent-cross-validation-contract.test.js
+node scripts/validate-all.js
 ```
 
-**回滚**：移除新建环境与新增构建清单；保留原 `build/`、`dist/` 和用户文件。
+**依赖：** 任务 2、任务 3。
 
-### 任务 5：隔离 Study 的独立作业
+**可能修改：** 2 个文件，S。
 
-**范围**
+**回滚：** 同时移除门禁列表项和既有列表合同中的对应期望；不重排或改写其他门禁。
 
-- 为 `IA_1` 补充依赖清单但复用健康 `venv/`，不强制改名。
-- 为 `IA_2` 创建 `.venv`，直接依赖为 `requests`、`beautifulsoup4`、`matplotlib`、`python-docx`。
-- 为 `IA_Plus_1`、`IA_Plus_2` 分别创建 `.venv`，直接依赖为 `mindspore`、`numpy`、`matplotlib`、`python-docx`。
-- `OS/LessonTask1` 不重建环境；只记录坏环境为待授权清理项。
+### 任务 5：形成原始 5.0.7 候选并完成静态验收
 
-**验收标准**
+**说明：** 将 Claude manifest、Claude marketplace、Codex manifest、两宿主验证器和既有发布版本合同测试原子同步为 `5.0.7`，然后执行完整本地静态门禁。
 
-- 四个第三方依赖作业目录各自有清单和可用解释器，不共享父目录或全局包。
-- MindSpore 作业使用已验证兼容的 Python 3.12 与明确版本，不从当前全局环境隐式继承。
-- 不下载数据集、不训练模型、不生成或覆盖课程报告。
+**范围：**
 
-**验证**
+- 修改三个清单和两个验证器中的共享版本事实。
+- 在任务 4 已修改的 `work-products/tests/workflow-contract.test.js` 中，仅继续更新测试标题、`expectedVersion` 和验证器正则期望。
+- 审计最终 diff，确认没有缓存、安装状态、文档、OpenClaw 或无关改动。
+- 最终报告分开陈述仓库静态证据、已安装缓存、新宿主会话和真实子 Agent 调用证据。
+
+**验收标准：**
+
+- [x] 五个版本事实源及既有发布版本合同测试全部为 `5.0.7`，不存在部分升级或静默降级。
+- [x] focused 测试、两宿主插件验证、skill parity、统一 12 阶段门禁和 diff check 全部通过。
+- [x] 结论只声明仓库源码／本地静态结果；未执行的缓存更新、新会话加载和真实宿主子 Agent 行为明确标为未验证。
+
+**验证：**
 
 ```powershell
-& .\Python\IA_1\venv\Scripts\python.exe -m pip check
-& .\Python\IA_1\venv\Scripts\python.exe -I -c "import requests, bs4"
-& .\Python\IA_2\.venv\Scripts\python.exe -I -c "import requests, bs4, matplotlib, docx"
-& .\Python\IA_Plus_1\.venv\Scripts\python.exe -I -c "import mindspore, numpy, matplotlib, docx"
-& .\Python\IA_Plus_2\.venv\Scripts\python.exe -I -c "import mindspore, numpy, matplotlib, docx"
+node --test work-products/tests/subagent-cross-validation-contract.test.js
+node Claude/scripts/validate-plugin.js
+node Codex/scripts/validate-plugin.js
+node scripts/validate-skill-parity.js
+node scripts/validate-all.js
+git -c safe.directory=C:/Code/UXUCode diff --check
 ```
 
-**回滚**：按作业目录分别删除本任务新建环境和清单；绝不删除数据集、报告、图片或损坏的 `LessonTask1/.venv`，除非另获删除授权。
+**依赖：** 任务 4。
 
-### 检查点 A：低风险 Windows 项目
+**可能修改：** 6 个文件，M。
 
-- 任务 2-5 的环境均使用项目解释器通过 `pip check` 和无副作用导入验证。
-- 全局 Python 包和版本未改变。
-- 没有执行网络提交、下载、GUI、训练或报告生成。
-- 经人工确认后再继续大型或平台敏感项目。
+**回滚：** 若整体功能回滚，必须同时撤销任务 4 的门禁项，并让五个版本事实源、既有版本合同测试、五个工作流／orchestration 文件和新测试一起回到同一前版；禁止留下指向已删除测试的门禁项或只降部分版本。
 
-### 任务 6：复核低风险项目依赖闭包
+### 任务 6：修复可选状态与迁移文件缺失误报
 
-**范围**
+**说明：** 根据可复现 Debug 证据，让两宿主 `status`／`clean` 明确两个可选文件缺失时的静默、非阻塞语义，并用既有 workflow 合同锁定。
 
-- 对任务 2-5 执行 `pip list --not-required`、静态导入与清单对照。
-- 直接导入必须直接声明；传递依赖不得因“目前碰巧安装”而省略。
-- 将结果追加到中央环境清单。
+**范围：**
 
-**验收标准**
+- 成对修改 Claude／Codex `skills/status/SKILL.md` 与 `skills/clean/SKILL.md`；
+- 在 `work-products/tests/workflow-contract.test.js` 增加可选文件缺失合同；
+- 不创建 `.uxucode-state.json` 或 `work-products/clean-migration.json`，不改变运行时代码。
 
-- 每个直接第三方导入能映射到清单中的分发包。
-- 未把标准库、项目内模块或无关全局包误写入清单。
+**验收标准：**
 
-**验证**：逐项目重复静态导入扫描、`pip check` 和关键导入 smoke。
+- [x] `.uxucode-state.json` 缺失时回退共享配置或默认模式，未知字段保持 unknown，不报告 missing；
+- [x] `work-products/clean-migration.json` 缺失时仅表示没有 manifest 授权条目，不创建、不阻塞、不报告 missing；
+- [x] 双宿主 Skill 对等，focused workflow 合同与统一门禁通过。
 
-**回滚**：仅回退错误的清单修订；不重建已验证环境。
-
-### 任务 7：固定 EditBanana 的依赖配置
-
-**范围**
-
-- 明确一个根 `.venv` 供主程序、`sam3` 和 `sam3_service` 共用，符合现有 service 文档。
-- 将依赖划分为：core、SAM3 runtime、service、OCR 可选、RMBG 可选、notebooks/dev/train。
-- 固定 PyTorch/torchvision 与 CPU/CUDA 选择规则；禁止一次安装全部大型可选依赖。
-- 把文档和脚本中的裸 `pip` 改为根环境解释器的 `python -m pip`。
-
-**验收标准**
-
-- 每个功能配置有唯一安装命令和清晰依赖来源。
-- `sam3_service` 不创建第二套环境。
-- PaddleOCR、Pix2Text、ONNX Runtime、ModelScope、训练依赖保持显式可选。
-
-**验证**：静态对照 `requirements.txt`、`sam3/pyproject.toml`、service 清单及三个 README 安装段；本任务不安装包。
-
-**回滚**：恢复依赖文件和文档；由于本任务不创建环境，无环境回滚。
-
-### 任务 8：创建并验证 EditBanana 根环境
-
-**依赖**：任务 7。
-
-**范围**
-
-- 先安装 core、PyTorch/torchvision、SAM3 editable 包和 service 依赖。
-- 只安装用户明确选择的可选功能组。
-- 不下载模型权重，不登录 Hugging Face/ModelScope，不启动 API 服务。
-
-**验收标准**
-
-- `pip check` 通过。
-- core、SAM3、service 的关键模块均能导入。
-- 环境安装清单与实际顶层包被记录。
-
-**验证**
+**验证：**
 
 ```powershell
-& .\.venv\Scripts\python.exe -m pip check
-& .\.venv\Scripts\python.exe -I -c "import cv2, fastapi, numpy, PIL, requests, torch, torchvision, yaml"
-& .\.venv\Scripts\python.exe -I -c "import sam3"
+node --test --test-name-pattern="optional state and migration artifacts" work-products/tests/workflow-contract.test.js
+node scripts/validate-all.js
+git -c safe.directory=C:/Code/UXUCode diff --check
 ```
 
-如仓库已有无网络单元测试，再使用项目解释器运行；不得以模型下载失败替代环境验证。
+**依赖：** 任务 5。
 
-**回滚**：失败时保留安装日志，删除精确根 `.venv` 后重建；不得修改模型缓存或全局 Torch。
+**可能修改：** 5 个文件，M。
 
-### 任务 9：补齐 GMSSL 的环境事实源
+**回滚：** 成对撤销四个 Skill 和对应合同断言；不得只恢复一个宿主，也不得创建可选文件作为兼容回退。
 
-**范围**
+### 任务 7：修复交叉验证 Review 发现并同步最终 5.0.10
 
-- 为 `model_training` 增加直接依赖清单：`torch`、`pandas`、`numpy`、`scikit-learn`、`joblib`，版本以当前健康环境和模型兼容性为依据。
-- 为本地 `tools/` 建立独立 tooling 依赖清单：`paramiko`、`psycopg`、`werkzeug`；决定使用根 `.venv`，不复用 attack/model 环境。
-- 把 cloud/edge setup 内嵌依赖同步为可审查清单或由合同测试确保二者一致，但不改变目标部署语义。
+**说明：** 根据上一轮 `@review` 的 RED 证据修复平凡委派、权限交还、Codex 角色职责传递、严重度残留和静态合同 fail-closed 缺口，并原子同步最终维护版本 `5.0.10`。
 
-**验收标准**
+**范围：**
 
-- 四个边界 attack、model、cloud、edge 和本地 tooling 的依赖互不含混。
-- 根 tooling 环境不包含训练或部署运行时的大型包。
-- 不执行 SSH、部署、服务控制或目标主机操作。
+- 加固四个交叉验证 workflow 与 `Codex/references/orchestration-patterns.md`；
+- 扩充 `work-products/tests/subagent-cross-validation-contract.test.js` 的 mutation fixtures 与委派边界顺序合同；
+- 同步三个 manifest／marketplace、两个插件验证器和 workflow 发布版本合同为 `5.0.10`；
+- 保留任务 6 的可选文件维护合同，不新增公开命令、配置、兼容路径或依赖。
 
-**验证**：静态导入与清单对照；现有 `attack`、`model_training` 环境继续 `pip check` 通过。
+**验收标准：**
 
-**回滚**：恢复清单和合同测试；不碰现有健康环境。
+- [x] 平凡 review 不委派；四个 workflow 只允许运行既有授权且不改变外部状态的检查，新权限请求返回主 Agent；
+- [x] Codex doubt 的 `fork_turns: "none"` message 显式包含匹配角色职责，ARTIFACT 不可信边界先于 payload；
+- [x] mutation fixtures fail closed 地拒绝替代 CLI、未知外部审查命令和矛盾授权／信任语义；
+- [x] 版本事实源统一为 `5.0.10`，focused 5／5、workflow 102／102、OpenClaw 30／30、统一 12／12 与 diff check 通过。
 
-### 任务 10：验证 GMSSL 本地与目标平台环境
-
-**依赖**：任务 9。
-
-**范围**
-
-- 在 Windows 创建并验证根 tooling `.venv`，只运行无网络导入和现有本地测试。
-- cloud/edge 环境只能在批准的 Linux/Orange Pi 目标或等价 VM 中由官方 setup 创建。
-- Windows 静态检查只证明脚本合同，不证明 systemd、PostgreSQL、Mosquitto、GmSSL CLI、RKNN/NPU 或真实服务。
-
-**验收标准**
-
-- tooling 环境可导入 `paramiko`、`psycopg`、`werkzeug`。
-- cloud/edge setup 明确使用各自项目内 `.venv`，无外部 pip 修改。
-- 平台验证状态分别标注为通过、失败或未执行。
-
-**验证**
+**验证：**
 
 ```powershell
-& .\.venv\Scripts\python.exe -m pip check
-& .\.venv\Scripts\python.exe -I -c "import paramiko, psycopg, werkzeug"
+node --test work-products/tests/subagent-cross-validation-contract.test.js
+node Claude/scripts/validate-plugin.js
+node Codex/scripts/validate-plugin.js
+node scripts/validate-skill-parity.js
+node scripts/validate-all.js
+git -c safe.directory=C:/Code/UXUCode diff --check
 ```
 
-POSIX 验证命令必须在对应目标环境中另行记录。
+**依赖：** 任务 6。
 
-**回滚**：本地 tooling 环境可精确删除；目标平台 setup 需采用其项目自带回滚流程，禁止从 Windows 远程猜测性删除。
+**可能修改：** 12 个既有文件，M。
 
-### 任务 11：修正健康环境的直接依赖漂移
+**回滚：** 按候选整体反向恢复 workflow、orchestration、合同测试和六个版本合同表面；禁止部分降版或保留会调用已删除合同的门禁项。安装缓存与宿主注册不属于本任务回滚范围。
 
-**范围**
+## 6. 完成检查点
 
-- AShareQuantFusion：复核直接导入的 `openpyxl` 等是否应直接声明。
-- BestCfCdn：复核直接导入的 `urllib3` 与 setup 要求的 Brotli 实现是否应写入清单。
-- MarkItDown：确认根环境对应 `markitdown[all]` 与实际开发用途。
-- 只在事实源缺失时修订清单，不因 `pyvenv.cfg command` 的旧路径重建健康环境。
-
-**验收标准**
-
-- 直接导入与依赖清单一致。
-- 六个既有健康环境仍可启动且 `pip check` 通过。
-- 未运行 AShare 训练、BestCfCdn 网络测速或 MarkItDown 外部服务。
-
-**验证**：各仓库项目解释器执行 `pip check`、关键导入及适用的现有本地测试；遵守各仓库 `AGENTS.md`。
-
-**回滚**：只回退清单修订，不删除健康环境。
-
-### 检查点 B：大型项目与健康环境
-
-- EditBanana root 环境和 GMSSL tooling 环境通过。
-- GMSSL cloud/edge 的静态、Linux、NPU 证据被清楚分层。
-- 六个原健康环境未被无理由重建。
-- 所有依赖事实源与直接导入一致。
-
-### 任务 12：决定 Watermark 的兼容路线
-
-**范围**
-
-- 根据官方包元数据核对 `tensorflow==1.13.1`、现有 PyTorch 代码和 Windows/Linux 支持矩阵。
-- 区分：复现旧环境、将 TensorFlow 与 PyTorch 脚本拆环境、或现代化依赖。现代化属于行为兼容变更，必须先更新规格并批准。
-- 补齐当前清单遗漏的 Flask、Flask-Cors、Kornia、LPIPS、Matplotlib、MoviePy、SciPy、Torch、TorchVision、PyTorch-Wavelets、TorchGeometry 等实际直接依赖。
-
-**验收标准**
-
-- 形成唯一推荐解释器、平台和依赖组合。
-- 明确哪些脚本属于 TensorFlow、PyTorch 或 Web 边界。
-- 未获用户批准前不创建替代环境、不删除损坏环境。
-
-**验证**：官方兼容元数据、静态导入和入口映射相互一致。
-
-**回滚**：本任务仅产生决策记录和清单草案，可直接回退；旧坏环境保持原样。
-
-### 任务 13：安全修复 Watermark 环境
-
-**依赖**：任务 12 的路线获得明确批准。
-
-**范围**
-
-- 验证旧 `.venv` 是项目内真实目录且非重解析点。
-- 将其改名为同目录唯一备份，再按批准的解释器和平台创建新 `.venv`。
-- 安装经批准的依赖组合并执行分边界导入；成功后才申请删除备份。
-
-**验收标准**
-
-- 新环境解释器、pip、依赖导入和适用 smoke 测试通过。
-- 创建失败时旧环境目录被恢复；不存在“半修复”状态。
-- 不把当前 Python 3.14 当作默认兼容解释器。
-
-**验证**：`pip check`、TensorFlow/PyTorch/Web 分组导入和无数据副作用的入口检查。
-
-**回滚**：删除失败的新环境并原子恢复备份；删除旧备份需要另行确认。
-
-### 任务 14：决定 FakeShield 的平台与锁定策略
-
-**范围**
-
-- 核对 PyTorch、CUDA、FlashAttention、DeepSpeed、MMCV/MMDetection、LLaVA/DTE-FDM 的兼容矩阵。
-- 将约百项冻结清单区分为直接依赖、传递锁定、子项目 editable 安装和运行时脚本临时切换。
-- 取消“脚本运行期间裸 `pip install` 切换 Transformers”的设计，改为预先建立的确定环境或明确拆分环境方案。
-
-**验收标准**
-
-- 形成唯一目标平台、Python、CUDA 与安装顺序。
-- 明确是单环境还是按模型拆分；不得静默选择。
-- Windows 不支持的 GPU 构建步骤标记为未执行而不是通过。
-
-**验证**：官方兼容元数据、现有 `requirements.txt`、DTE-FDM `pyproject.toml` 与 shell 脚本一致性检查。
-
-**回滚**：本任务仅修改计划/依赖合同草案时可直接回退，不创建环境。
-
-### 任务 15：创建并验证 FakeShield 环境
-
-**依赖**：任务 14 的方案获得明确批准，并提供相符平台。
-
-**执行状态**：已完成。两套 Python 3.9.25 环境分别通过 `pip check`、lock 一致性、关键导入与 RTX 4060 CUDA 扩展 smoke；未下载模型/数据，未启动服务、推理或训练。
-
-**范围**
-
-- 在已批准的拆分路径 `DTE-FDM/.venv` 与 `MFLM/.venv` 创建环境。
-- 严格按批准顺序安装 PyTorch/CUDA 基础、MMCV/MMDetection、DTE-FDM editable 包及训练可选项。
-- 不下载模型、不启动 Gradio/API、不运行训练。
-
-**验收标准**
-
-- `pip check` 通过，关键模块可导入。
-- shell 脚本不再运行时修改活动环境。
-- GPU 能力和扩展加载在目标平台独立验证。
-
-**验证**：环境信息、`pip check`、关键导入、CUDA/FlashAttention 只读能力检查及仓库已有无数据副作用测试。
-
-**回滚**：删除精确新环境或恢复预先备份；模型、数据集和外部缓存不删除。
-
-### 检查点 C：遗留 AI 环境
-
-- Watermark 与 FakeShield 都有经批准的兼容矩阵。
-- 损坏环境采用备份—创建—验证—清理顺序。
-- 未把现代化升级伪装成环境修复。
-- GPU/Linux/NPU 证据与 Windows 静态证据分开记录。
-
-### 任务 16：跨项目环境复核
-
-**范围**
-
-- 重新扫描 27 个顶层目录的 Python 文件、依赖事实源、环境路径、`pyvenv.cfg` 和裸 `python`/`pip` 调用。
-- 确认所有新增 `.venv/` 均被对应仓库忽略，且不存在链接、重解析点或项目外目标。
-- 更新中央环境矩阵，标注每个项目通过、失败、未执行或无需环境。
-
-**验收标准**
-
-- 除明确豁免的标准库项目和平台未执行项外，没有第三方依赖项目继续依赖全局 pip。
-- 无新增环境文件被 Git 跟踪。
-- 每个项目的验证证据能由清单中的命令重放。
-
-**验证**：重新执行只读清单脚本、各环境 `pip check`、关键导入及各 Git 仓库 `git diff --check`。
-
-**回滚**：本任务只修订报告；发现缺陷返回对应任务，不做跨项目批量删除。
-
-### 任务 17：生成全局 pip 清理候选报告
-
-**依赖**：任务 16 全部适用项目完成。
-
-**范围**
-
-- 将任务 1 的两个全局 freeze 与修复后项目环境映射对照。
-- 先审计 `C:\Code` 外脚本、IDE、Codex/Claude 工具、pipx 和用户自动化是否依赖全局包。
-- 将候选分为：可卸载、仍被外部使用、依赖归属不明、基础工具保留。
-
-**验收标准**
-
-- 每个拟卸载顶层包都有“项目已迁移”和“`C:\Code` 外无使用者”两项证据。
-- `pip`、`setuptools`、`wheel`、解释器和 Windows 系统集成包默认保留。
-- Python 3.12 当前冲突被作为重建或清理输入，不在报告阶段修复。
-
-**验证**：静态引用扫描、命令入口扫描、`pip show` 反向依赖和两个全局 `pip check`。
-
-**回滚**：只生成报告，无系统变更。
-
-### 任务 18：经单独授权清理全局 pip
-
-**依赖**：任务 17 报告获用户逐项批准。
-
-**执行状态**：已完成用户逐批批准的清理。Python 3.12 两轮共卸载 28 包，freeze 97→69；Python 3.14 卸载 15 包，freeze 107→92。条件式工具栈与共享缓存未修改，既有 NumPy 冲突未扩大也未修复。
-
-**范围**
-
-- 按解释器和小批次卸载已批准的顶层包；不自动递归删除所有传递依赖。
-- 每批后运行 `pip check`、项目环境 smoke 和已知外部工具检查。
-- 如果 Python 3.12 依赖图无法安全收敛，优先建议重建全局解释器，而不是反复原地升级 NumPy。
-
-**验收标准**
-
-- 只卸载批准清单中的包。
-- 所有项目仍使用自己的解释器并通过既定验证。
-- 全局环境最终 `pip check` 通过，或明确记录为保持未修改的 NO-GO。
-
-**验证**：每批前后保存 `pip freeze --all`，运行 `pip check`、`pip list --not-required` 和任务 16 的跨项目 smoke 集。
-
-**回滚**：使用任务 1 的精确 freeze 在对应全局解释器恢复已卸载包；恢复失败立即停止后续批次。解释器卸载、重装或系统 PATH 修改需要新的明确授权。
-
-## 6. 测试与产物位置约束
-
-- 若某个 Git 项目需要新增持久合同测试，放在该项目自己的 `work-products/tests/`，测试中的仓库引用必须相对最终位置。
-- 不在 `C:\Code` 根目录创建通用脚本或隐藏兼容层。
-- 环境清单和机器快照保存在 `C:\Code\UXUCode\work-products\reviews/`，作为本机过程证据；各项目的依赖文件才是长期事实源。
-- 不提交 `.venv/`、全局 freeze 中的本机绝对路径、凭据或私有索引信息。
+- [x] 补充批准规格的仓库源码验收标准全部映射到任务 1–7；真实安装、新会话与子 Agent smoke 明确保留为独立证据层。
+- [x] 新合同测试经历可解释的 RED，再在最小实现后 GREEN。
+- [x] `node scripts/validate-all.js` 与 `git -c safe.directory=C:/Code/UXUCode diff --check` 通过。
+- [x] 每个改动行都可追溯到规格；没有兼容层、别名、外部 CLI 回退或无关重构。
+- [x] 最终状态只报告“仓库源码候选通过、运行时未验证”；本计划已经用户单独批准，进入 `@ship` 仍需单独执行最终发布门禁。
+- [x] 最终维护版本合同为 `5.0.10`，可选文件语义和后续 Review 修复均已纳入正式范围。
 
 ## 7. 风险与缓解
 
 | 风险 | 影响 | 缓解 |
 |---|---|---|
-| Watermark 的 TensorFlow 1.13.1 与当前解释器不兼容 | 高 | 已使用项目内 CPython 3.7.9 隔离复现并保留旧环境备份；不升级或复用全局解释器 |
-| FakeShield 的 CUDA/FlashAttention/MMCV 组合不一致 | 高 | 已固定平台、Python、CUDA 与安装顺序，并以 bitsandbytes、FlashAttention、MMCV 三项真实 GPU smoke 验证 |
-| 把 GMSSL Windows 静态结果当成 Linux/NPU 通过 | 高 | 平台证据分层，目标 setup 独立验收 |
-| 删除损坏环境后无法恢复 | 高 | 项目内真实目录检查、同目录备份、失败原子恢复 |
-| 全局清理破坏 `C:\Code` 外工具 | 高 | 先做全机使用者审计并逐项授权 |
-| 传递依赖被误当成直接依赖或被遗漏 | 中 | 静态导入、清单与环境元数据三方对照 |
-| 大型可选依赖使 EditBanana 环境膨胀 | 中 | core/service/SAM3/可选组分层，只安装选定组 |
-| 迁移前路径仍存在于 `pyvenv.cfg command` | 低 | 以解释器实际启动和 `pip check` 为准，不无理由重建 |
+| 禁词断言过宽，连合规的“禁止 CLI 回退”也拒绝 | 中 | 断言具体命令和正向旧流程，同时要求明确的负向失败合同 |
+| 两宿主文本漂移 | 高 | 同任务成对修改，并运行 skill parity 与逐宿主语义断言 |
+| 把 Codex Markdown 角色资产误当作已注册 Agent | 高 | Codex 明确使用通用原生子 Agent 并显式传入角色提示，不写用户／项目 Agent 配置 |
+| 子 Agent 获得 CLAIM 或完整会话推理 | 高 | 静态合同固定 ARTIFACT／CONTRACT-only 输入和对抗性任务 |
+| review 机械启动所有角色 | 中 | 测试风险映射与“不机械全量调用”语义 |
+| 版本先升级、行为尚未完成 | 中 | 版本同步置于最后任务，六个版本合同表面原子修改 |
+| 静态测试被误报为真实宿主成功 | 高 | 最终报告强制四层证据分离 |
+| 可选文件缺失被误报为配置损坏 | 中 | 双宿主 Skill 明确静默语义并由 workflow 合同验证 |
+| 后续 Review 修复脱离批准事实源 | 高 | 用户补充批准后同步 SPEC／plan／todo 到最终 5.0.10 候选 |
 
-## 8. 未决决策与人工批准门
+## 8. 未决问题
 
-1. Watermark 已批准并完成 Windows x64 / Python 3.7.9 / CPU / 单环境旧版复现；BCH 写回与 torchgeometry 几何等价另列业务风险。
-2. FakeShield 本机 WSL 2 / Ubuntu 20.04 / CUDA 11.6.2 的单 GPU 环境与扩展 smoke 已执行通过；四 GPU 训练、模型/数据、服务和推理仍未授权/未执行。
-3. GMSSL 是否另行授权连接云端 VPS、边缘 Orange Pi 做真实环境验收；未授权时两侧保持“未执行”。端侧 STM32 不属于 Python 环境审计。
-4. EditBanana 需要启用哪些可选组：PaddleOCR、Pix2Text、RMBG、notebooks、train/dev。
-5. 任务 18 的高置信全局 pip 清理已逐批获得授权并完成；继续清理条件式工具栈、共享缓存或修复 NumPy 冲突仍需新的明确授权。
-
-## 9. 最终验证门
-
-```powershell
-# UXUCode 计划文件门禁
-node scripts/validate-all.js
-git -c safe.directory=C:/Code/UXUCode diff --check
-
-# 每个实际修改的 Git 项目
-git -c safe.directory=<project-path> diff --check
-
-# 每个创建或修复的环境
-& <project>\.venv\Scripts\python.exe -m pip check
-& <project>\.venv\Scripts\python.exe -I -c "<关键依赖导入>"
-```
-
-适用项目环境已通过，平台未执行项已明确标注，跨项目扫描未发现全局依赖遗漏；本轮逐批批准的全局 pip 清理完成后仍须通过上述最终门禁，才可判定任务 1-18 完成。
+无。计划已经完成；真实安装、缓存更新、新会话加载和子 Agent runtime smoke 未获授权且未执行。

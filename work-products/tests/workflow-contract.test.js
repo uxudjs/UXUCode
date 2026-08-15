@@ -143,6 +143,23 @@ test('both clean and help skills describe manifest authorization and report v2',
   }
 });
 
+test('optional state and migration artifacts stay silent when absent', () => {
+  for (const pkg of packages) {
+    const status = readSkill(pkg, 'status');
+    const clean = readSkill(pkg, 'clean');
+
+    assert.match(status, /\.uxucode-state\.json.*optional/is);
+    assert.match(status, /absence alone.*not.*blocker/is);
+    assert.match(status, /do not report.*missing/is);
+    assert.match(clean, /clean-migration\.json.*optional/is);
+    assert.match(clean, /when.*absent.*no manifest-authorized entries/is);
+    assert.match(clean, /do not report.*missing/is);
+
+    const sessionContext = runHook(pkg, 'uxu-session-start.js');
+    assert.doesNotMatch(sessionContext, /\.uxucode-state\.json|missing|not found/i);
+  }
+});
+
 function ignoredPathsInTemporaryRepository(relativePaths) {
   const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'uxucode-gitignore-contract-'));
   const globalExcludes = path.join(tempRoot, 'global-excludes');
@@ -370,6 +387,7 @@ test('unified validation covers every repository gate and propagates the first f
       '--test',
       'work-products/tests/clean-contract.test.js',
       'work-products/tests/environment-isolation-contract.test.js',
+      'work-products/tests/subagent-cross-validation-contract.test.js',
       'work-products/tests/workflow-contract.test.js',
       'work-products/tests/mode-policy-contract.test.js',
       'work-products/tests/documentation-validator-contract.test.js'
@@ -530,8 +548,8 @@ test('audit and performance guidance stays ecosystem-neutral and evidence-gated'
   assert.match(notices, /Excluded from adoption:/);
 });
 
-test('release metadata and maintenance workflows enforce the 5.0.6 version contract', () => {
-  const expectedVersion = '5.0.6';
+test('release metadata and maintenance workflows enforce the 5.0.10 version contract', () => {
+  const expectedVersion = '5.0.10';
   const maintenanceContract =
     /every completed bug fix or optimization must update the release version consistently/;
   const claudeManifest = JSON.parse(
@@ -553,7 +571,7 @@ test('release metadata and maintenance workflows enforce the 5.0.6 version contr
       path.join(root, pkg, 'scripts', 'validate-plugin.js'),
       'utf8'
     );
-    assert.match(validator, /expected version 5\.0\.6/);
+    assert.match(validator, /expected version 5\.0\.10/);
     for (const skill of ['build', 'debug', 'simplify']) {
       assert.match(readSkill(pkg, skill), maintenanceContract);
     }

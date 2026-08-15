@@ -13,6 +13,7 @@ If the report contains a structured subprocess permission error such as `errorCo
 
 - With no argument, run the engine without arguments and report its zero-write preview.
 - With `apply`, run the engine with the exact `apply` argument. Execute only the complete prevalidated plan.
+- `work-products/clean-migration.json` is optional. When it is absent, there are no manifest-authorized entries; continue with fixed mappings and the ordinary preview. Its absence alone is not a blocker: do not create it and do not report it as missing.
 - Treat supported cross-language `test`/`spec` filenames only as discovery candidates. Move a file only through a fixed legacy mapping or an exact valid entry in `work-products/clean-migration.json`; otherwise preserve it as `preservedProductFiles`.
 - Require the version 1 manifest schema to provide exact `source`, `target`, `tracking`, and `rewritePolicy` values. Reject unknown fields, unsafe paths, duplicates, fixed-fact overrides, conflicts, links, and repository escape.
 - Reconcile every root `tasks/` entry before removing `/tasks/`; any unmapped or unsupported entry is `unclassifiedLegacyFiles`, makes the whole operation `BLOCKED`, and leaves `.gitignore` unchanged.
