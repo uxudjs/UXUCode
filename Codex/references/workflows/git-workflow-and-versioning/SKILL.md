@@ -9,6 +9,8 @@ description: 规范 git 工作流实践。适用于任何代码变更时。适�
 
 Git is your safety net. Treat commits as save points, branches as sandboxes, and history as documentation. With AI agents generating code at high speed, disciplined version control is the mechanism that keeps changes manageable, reviewable, and reversible.
 
+Commit, tag, push, revert, and release operations require explicit user authorization for the exact action. Examples and checklists are conditional guidance only; do not execute or imply authorization from passing tests, a completed task, or this reference.
+
 ## When to Use
 
 Always. Every code change flows through git.
@@ -31,19 +33,21 @@ This is the recommended default. Teams using gitflow or long-lived branches can 
 - **Release branches are acceptable.** When you need to stabilize a release while main moves forward.
 - **Feature flags > long branches.** Prefer deploying incomplete work behind flags rather than keeping it on a branch for weeks.
 
-### 1. Commit Early, Commit Often
+### 1. Commit Intentionally
 
-Each successful increment gets its own commit. Don't accumulate large uncommitted changes.
+Creating a commit requires explicit user authorization. A passing increment or completed change is evidence, not authorization; keep changes uncommitted unless the user asks to commit.
+
+Before any recovery action, identify the exact target, inspect and preserve uncommitted user changes, and choose a project-approved recoverable path. Never use `git reset --hard` or another destructive command that discards uncommitted work.
 
 ```
 Work pattern:
-  Implement slice → Test → Verify → Commit → Next slice
+  Implement slice → Test → Verify → Report → Next slice
 
 Not this:
   Implement everything → Hope it works → Giant commit
 ```
 
-Commits are save points. If the next change breaks something, you can revert to the last known-good state instantly.
+When commits are authorized, keep them intentional and atomic. If a later change breaks something, inspect the diff and use a recoverable project-approved path that preserves unrelated work.
 
 ### 2. Atomic Commits
 
@@ -176,17 +180,17 @@ Benefits:
 Agent starts work
     │
     ├── Makes a change
-    │   ├── Test passes? → Commit → Continue
-    │   └── Test fails? → Revert to last commit → Investigate
+    │   ├── Test passes? → Record evidence → Continue
+    │   └── Test fails? → Preserve user work → Investigate
     │
     ├── Makes another change
-    │   ├── Test passes? → Commit → Continue
-    │   └── Test fails? → Revert to last commit → Investigate
+    │   ├── Test passes? → Record evidence → Continue
+    │   └── Test fails? → Preserve user work → Investigate
     │
     └── Feature complete → All commits form a clean history
 ```
 
-This pattern means you never lose more than one increment of work. If an agent goes off the rails, `git reset --hard HEAD` takes you back to the last successful state.
+This pattern keeps each increment reviewable without treating a green check as commit authorization. If an increment fails, confirm the exact target and preserve unrelated or user-authored changes before using an allowed recovery mechanism.
 
 ## Change Summaries
 
@@ -287,6 +291,8 @@ The number is a promise, so make the code match it. A "patch" that changes behav
 
 A release is an immutable point in history, not a moving branch. Tag it so it can always be reproduced:
 
+Only after explicit user authorization for the exact tag and push, the authorized operator may run:
+
 ```bash
 git tag -a v1.4.0 -m "Release 1.4.0"
 git push origin v1.4.0
@@ -314,7 +320,7 @@ Write the entry in the same change that makes the change, while the impact is fr
 
 | Rationalization | Reality |
 |---|---|
-| "I'll commit when the feature is done" | One giant commit is impossible to review, debug, or revert. Commit each slice. |
+| "I'll commit when the feature is done" | If commits are authorized, keep each one logically scoped and reviewable; authorization still comes from the user. |
 | "The message doesn't matter" | Messages are documentation. Future you (and future agents) will need to understand what changed and why. |
 | "I'll squash it all later" | Squashing destroys the development narrative. Prefer clean incremental commits from the start. |
 | "Branches add overhead" | Short-lived branches are free and prevent conflicting work from colliding. Long-lived branches are the problem — merge within 1-3 days. |

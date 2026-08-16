@@ -7,21 +7,23 @@ description: 在编码前创建规格说明。适用于启动新项目、功能�
 
 ## Overview
 
-Write a structured specification before writing any code. The spec is the shared source of truth between you and the human engineer — it defines what we're building, why, and how we'll know it's done. Code without a spec is guessing.
+Require a specification when material ambiguity or risk remains. Clear user requirements or thorough, reproducible debug evidence may proceed directly to planning when they provide the objective, scope, constraints, and verifiable acceptance criteria.
+
+Size tasks by dependencies, risk, and verifiability; there is no universal file-count limit.
+
+Commit, tag, push, revert, and release operations require explicit user authorization for the exact action. Examples and checklists are conditional guidance only; do not execute or imply authorization from passing tests, a completed task, or this reference.
 
 ## When to Use
 
-- Starting a new project or feature
 - Requirements are ambiguous or incomplete
-- The change touches multiple files or modules
 - You're about to make an architectural decision
-- The task would take more than 30 minutes to implement
+- The change carries material migration, security, permission, or operational risk
 
-**When NOT to use:** Single-line fixes, typo corrections, or changes where requirements are unambiguous and self-contained.
+**When NOT to use:** Clear, self-contained requirements or thorough debug evidence that already defines a verifiable objective, scope, constraints, and acceptance criteria.
 
 ## The Gated Workflow
 
-Spec-driven development has four phases. Do not advance to the next phase until the current one is validated.
+When a specification is required, spec-driven development has four phases. Do not advance to the next phase until the current one is validated.
 
 ```
 SPECIFY ──→ PLAN ──→ TASKS ──→ IMPLEMENT
@@ -130,7 +132,7 @@ This lets you loop, retry, and problem-solve toward a clear goal rather than gue
 
 ### Phase 2: Plan
 
-With the validated spec, generate a technical implementation plan:
+With an approved specification, or with another sufficient planning basis when no spec is required, generate a technical implementation plan:
 
 1. Identify the major components and their dependencies
 2. Determine the implementation order (what must be built first)
@@ -152,7 +154,7 @@ Break the plan into discrete, implementable tasks:
 - Each task has explicit acceptance criteria
 - Each task includes a verification step (test, build, manual check)
 - Tasks are ordered by dependency, not by perceived importance
-- No task should require changing more than ~5 files
+- Task size follows dependencies, risk, and verifiability; keep tasks reviewable without imposing a universal file-count cap
 
 > Follow `planning-and-task-breakdown` for the full task-sizing and dependency-ordering mechanics; it is the canonical source. The template below is a lightweight inline form; if they ever diverge, `planning-and-task-breakdown` takes precedence.
 
@@ -174,14 +176,14 @@ The spec is a living document, not a one-time artifact:
 
 - **Update when decisions change** — If you discover the data model needs to change, update the spec first, then implement.
 - **Update when scope changes** — Features added or cut should be reflected in the spec.
-- **Commit the spec** — `work-products/SPEC.md` belongs in version control alongside the code. Its ignore rules must permit normal Git tracking; never depend on `git add -f`.
+- **Track the spec normally** — `work-products/SPEC.md` belongs in version control alongside the code. Its ignore rules must permit normal Git tracking; never depend on `git add -f`. Include it in a commit only after the user explicitly authorizes that commit.
 - **Reference the spec in PRs** — Link back to the spec section that each PR implements.
 
 ## Common Rationalizations
 
 | Rationalization | Reality |
 |---|---|
-| "This is simple, I don't need a spec" | Simple tasks don't need *long* specs, but they still need acceptance criteria. A two-line spec is fine. |
+| "This is simple, I don't need a spec" | A clear low-risk task may not need a spec, but it still needs a verifiable objective and acceptance criteria. |
 | "I'll write the spec after I code it" | That's documentation, not specification. The spec's value is in forcing clarity *before* code. |
 | "The spec will slow us down" | A 15-minute spec prevents hours of rework. Waterfall in 15 minutes beats debugging in 15 hours. |
 | "Requirements will change anyway" | That's why the spec is a living document. An outdated spec is still better than no spec. |
@@ -189,15 +191,15 @@ The spec is a living document, not a one-time artifact:
 
 ## Red Flags
 
-- Starting to write code without any written requirements
+- Starting to write code without a verifiable requirement or reproducible debug objective
 - Asking "should I just start building?" before clarifying what "done" means
 - Implementing features not mentioned in any spec or task list
 - Making architectural decisions without documenting them
-- Skipping the spec because "it's obvious what to build"
+- Skipping a needed spec while material ambiguity or risk remains
 
 ## Verification
 
-Before proceeding to implementation, confirm:
+When this workflow required a specification, confirm before implementation:
 
 - [ ] The spec covers all six core areas
 - [ ] The human has reviewed and approved the spec

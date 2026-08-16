@@ -26,7 +26,7 @@ const hooks = readJson('hooks/hooks.json');
 
 if (manifest) {
   if (manifest.name !== 'uxu-code') fail('manifest: unexpected plugin name');
-  if (manifest.version !== '5.0.10') fail('manifest: expected version 5.0.10');
+  if (manifest.version !== '5.0.19') fail('manifest: expected version 5.0.19');
   if (manifest.skills !== './skills/') fail('manifest: skills must be ./skills/');
   if ('hooks' in manifest) fail('manifest: standard hooks/hooks.json is auto-loaded and must not be declared');
 }

@@ -1,326 +1,441 @@
-# UXUCode 子 Agent 交叉验证规范
+# UXUCode 门禁设计缺陷修复规格
 
-状态：已重新批准并补充批准 5.0.10 维护范围（2026-08-15）
+状态：已批准（2026-08-16；用户已确认当前目标候选为 `5.0.19`，并授权精确更新 Claude Code／Codex CLI 插件）
 
-本规格取代上一份已完成的“跨宿主开发环境隔离规范”，成为本项工作的事实源。上一份已批准规格及其实施证据继续保留在 Git 历史中。用户曾于 2026-08-15 批准初稿；`@plan` 的 fresh-context 子 Agent 审查随后发现 Codex 角色加载机制与初稿假设冲突，用户已于同日重新批准本修订稿。初始实现完成后的 Debug／Review 又发现可选文件误报、平凡 review 无条件委派、权限交还、Codex 角色提示传递、严重度残留和 fail-closed 合同不足；用户已明确批准把这些后续维护修复纳入本规格，并将最终候选事实源同步为 `5.0.10`。该补充批准只授权规格与计划事实源同步，不授权提交、推送、安装、发布或部署。
+本规格以仓库根目录 `BUG.md` 的只读审计结论和后续独立 `@review`／`@debug` 证据为输入，取代已完成的“子 Agent 交叉验证规范”。旧规格及其完成证据保留在 Git 历史中；当前 `work-products/SPEC.md`、`work-products/plan.md` 与 `work-products/todo.md` 是同一任务的事实源。用户已于 2026-08-16 明确批准将独立审查确认的 8 项缺陷纳入 `5.0.12`，当前 `@debug` 可按本修订实施仓库内最小修复。
+
+当前目标候选版本为 `5.0.19`。`5.0.11`／`5.0.12` 是本规格既有阶段的历史候选；其后经已批准的维护增量累积到当前候选。本次确认不新增产品行为、兼容层或发布范围，也不触发再次升版。
+
+原始 `@spec` 只定义目标、合同、范围与验收标准，不授权仓库外变更。用户当前另行授权把 Claude Code 与 Codex CLI 插件精确更新到 `5.0.19` 并验证缓存及 fresh CLI 会话；该授权不包含提交、推送、发布或部署。
 
 ## 1. 目标
 
-将 UXUCode Skill 中依赖外部多模型 CLI 的交叉验证改为宿主原生子 Agent 交叉验证：
+修复或闭环 `BUG.md` 中记录的 7 项门禁设计问题，使 Claude Code、Codex 与 OpenClaw 满足以下结果：
 
-1. 不再提示或执行 Gemini CLI、Codex CLI 或其他外部模型 CLI 来取得第二意见；
-2. 在既有交叉验证触发条件成立时，由主 Agent 发起独立上下文的子 Agent 审查；
-3. 交叉验证依赖上下文隔离、对抗性提示和主 Agent 复核，不声称子 Agent 一定使用不同模型；
-4. 保留原有适用条件、审查边界、三轮上限和主 Agent 最终裁决责任；
-5. Claude Code 与 Codex 两套插件保持语义一致，不新增公开命令、配置项或兼容入口。
-6. 可选的 `.uxucode-state.json` 与 `work-products/clean-migration.json` 缺失时保持静默、非阻塞，不诱导用户创建或修复它们；
-7. 把实施后 Review 发现的平凡委派、权限交还、角色提示、严重度和静态合同缺口纳入同一维护候选并以 fail-closed 测试锁定。
+1. Claude Code 与 Codex 的公开命令路由能够可靠处理首行命令加多行任务正文，并对命令形态错误给出可操作反馈；
+2. 项目状态具有明确 schema、身份和失效条件，活跃 mode 只有共享配置一个事实源；
+3. 按需参考 Skill 不再诱导破坏性 Git、自动提交、越权安装、隐式公开入口或脱离项目合同的绝对规则；
+4. `review`／`ship` 在没有 plan 时按明确证据优先级工作，只在缺少可验证目标时阻塞；
+5. OpenClaw 评估同时硬性保护低风险正确率、高风险正确率、风险信息完整度和副作用边界，压缩指标不再奖励高风险回答变短；
+6. `mode` 以用户明确要求和项目验收标准定义正确性，不以主观最佳实践覆盖用户目标；
+7. 对共享策略重复注入先取得真实生命周期与行为证据，再决定是否去重；无证据时不把静态字符减少冒充修复。
 
-成功标准不是“把 CLI 名称替换成 Agent 名称”，而是删除外部 CLI 的发现、认证、授权、Shell 转义和失败回退分支，形成一个更短、可验证且不会扩大权限的子 Agent 审查合同。
+## 2. 用户与成功定义
 
-## 2. 当前证据与问题
+### 2.1 目标用户
 
-当前仓库证据表明：
+- 在 Claude Code 或 Codex 中通过公开 UXUCode 命令提交多行工程任务的用户；
+- 依赖 `status`、SessionStart、`review`、`ship` 与 mode 策略判断当前工作状态的维护者；
+- 使用 OpenClaw 评估结果决定 profile 是否可发布的维护者；
+- 按需加载内部 workflow reference 的主 Agent 与子 Agent。
 
-- `Claude/skills/plan/SKILL.md` 与 `Codex/skills/plan/SKILL.md` 会在深度规划时加载 `doubt-driven-development`；
-- `Claude/skills/review/SKILL.md` 与 `Codex/skills/review/SKILL.md` 会按需加载 `doubt-driven-development` 和 `code-review-and-quality`；
-- 两宿主的 `doubt-driven-development` 已先要求 fresh-context reviewer，随后又在每个交互式 doubt cycle 强制询问是否调用 Gemini CLI、Codex CLI 或人工外部审查；
-- 该外部 CLI 分支要求 PATH 检查、版本探测、逐次授权、认证与环境变量确认、临时提示文件和只读参数，并包含 CLI 不可用时的额外交互；
-- `code-review-and-quality` 仍以“Multi-Model Review Pattern”和 Model A／Model B 表达独立审查；
-- Claude Code 已提供可由宿主原生加载的 `reviewer`、`security-reviewer` 和 `test-reviewer` Agent；Codex 包中虽有同名 `agents/*.md`，但当前插件 manifest 只声明 skills 与 hooks，OpenAI Docs 将可选择的自定义 Codex Agent 定义为用户级或项目级 `.codex/agents/*.toml`，不能把这些 Markdown 文件当作已注册原生角色；
-- 两宿主均已有 SubagentStart 策略注入和编排规则，Codex 可发起通用原生子 Agent，并在委派任务中显式传入角色提示。
+### 2.2 成功定义
 
-现状造成的主要问题是：同一审查周期存在“先子 Agent、再外部 CLI”的重复验证路径；外部 CLI 带来工具安装、认证、费用、网络、Shell 安全和宿主差异，却不保证结果更可靠。
+成功不是让静态关键词测试变绿，而是让公开输入、状态生命周期、证据回退、评估门禁和授权边界形成一致且可证伪的合同。仓库测试、已安装缓存、fresh host session、真实 Hook 生命周期和生产行为必须分别报告，任何一层不得替代另一层。
 
-## 3. 用户与使用场景
+## 3. 审计项处置矩阵
 
-### 3.1 目标用户
+| 审计项 | 本规格决定 | 完成条件 |
+|---|---|---|
+| BUG-001 多行命令静默忽略 | 修复；支持首行公开命令加多行正文 | 双宿主静态路由合同通过，并分别记录 fresh Claude Code／Codex smoke；未执行 smoke 时只可声明仓库实现完成 |
+| BUG-003 状态陈旧与 mode 双事实源 | 修复；引入版本化状态 schema、身份与新鲜度校验，mode 只读共享配置 | 陈旧、跨工作区、跨分支、跨计划、未来时间和旧 `state.mode` fixtures 均 fail closed |
+| BUG-004 参考 Skill 冲突 | 修复已确认冲突；将其余绝对规则条件化 | 仅覆盖审计点名的 12 个 reference，双宿主语义对等且无越权／隐式入口 |
+| BUG-005 `review`／`ship` 无 plan 回退不明 | 修复文本合同 | 无 plan 的明确用户要求、debug 证据和既有 diff fixtures 不误阻塞 |
+| BUG-007 OpenClaw 奖励过度压缩 | 修复评分与报告合同 | 高风险正确率与风险完整度是硬门禁，token 压缩硬门只计算低风险案例 |
+| BUG-008 mode 优先级覆盖用户意图 | 修复双宿主 Skill 文本 | 安全／平台边界优先；其内以用户要求、项目合同和验收标准判断正确性 |
+| BUG-009 策略重复注入 | 先验证再决策 | 完成可复核测量；只有证据满足第 9 节决策门时才修改注入分工 |
 
-- 使用 Claude Code 或 Codex 执行 `plan`／`review` 的工程人员；
-- 希望获得独立审查，但不希望配置或授权另一个模型 CLI 的用户；
-- 在 Windows、macOS 或 Linux 上使用 UXUCode，且需要跨平台一致行为的用户。
+## 4. 公开命令路由合同（BUG-001）
 
-### 3.2 典型场景
+### 4.1 支持语法
 
-- 规划中出现非平凡架构、接口、数据、安全、兼容或回滚决定；
-- 完成代码变更后，需要独立检查正确性、架构、安全、性能或测试覆盖；
-- 主 Agent 长时间工作后，需要一个未继承其推理过程的对抗性审查者；
-- 当前执行者本身是子 Agent，无法继续嵌套发起子 Agent；
-- 宿主暂时不支持子 Agent，或子 Agent 调用失败。
+对去除 UTF-8 BOM 和首尾空白后的 prompt：
 
-## 4. 术语
+- Codex 首行格式为 `@<command>`，可在同一行追加水平空白和内联参数；
+- Claude Code 首行格式为 `/uxu-code:<command>`，可在同一行追加水平空白和内联参数；
+- 除 `mode` 与 `clean` 外，后续行属于同一公开命令的任务正文；
+- 传给目标 Skill 的参数由“首行内联参数 + 后续正文”组成，保留正文内部换行，去掉无意义的首尾空白；
+- 普通非命令 prompt 不由路由 Hook 处理，也不输出错误。
 
-### 4.1 交叉验证
-
-交叉验证是由独立上下文的审查者根据给定 ARTIFACT 与 CONTRACT 主动寻找缺陷，再由主 Agent 逐项复核和分类的过程。
-
-交叉验证不等于：
-
-- 必须使用不同供应商或不同底层模型；
-- 多数投票或自动接受子 Agent 结论；
-- 重复运行同一提示直到得到满意答案；
-- 允许子 Agent 修改代码、提交、推送、部署或扩大任务范围。
-
-### 4.2 子 Agent
-
-子 Agent 是由当前宿主的原生 Agent／subagent 能力启动、具有隔离任务上下文的审查执行者。不得通过 Shell 启动另一个模型 CLI 来模拟子 Agent。
-
-### 4.3 主 Agent
-
-主 Agent 是持有完整用户目标、工作区上下文和最终裁决责任的编排者。子 Agent 输出只是待核验数据，不是最终结论。
-
-## 5. 统一行为合同
-
-### 5.1 触发条件
-
-本变更不扩大交叉验证的适用范围。继续仅在现有合同认定为非平凡的决定或需要独立审查的变更上触发，例如：
-
-- 跨模块或服务边界；
-- 修改分支逻辑或无法由类型系统证明的不变量；
-- 涉及架构、安全、生产、数据迁移、公开接口、不可逆操作或显著回滚风险；
-- 准备对非显然事实作出“安全”“符合规格”或等价强结论；
-- `review` 需要独立的正确性、安全或测试视角。
-
-机械重命名、格式化、纯读取、列目录、运行既定测试和显然的一行修改不得为了形式感发起子 Agent。
-
-### 5.2 Doubt cycle
-
-每个适用的 doubt cycle 使用以下单一路径：
-
-1. **CLAIM**：主 Agent 写明待成立的主张及其重要性；
-2. **EXTRACT**：提取最小 ARTIFACT 与 CONTRACT，移除作者推理和 CLAIM；
-3. **DELEGATE**：主 Agent 发起一个 fresh-context 对抗性子 Agent；
-4. **RECONCILE**：主 Agent 回到原始证据，依次分类为合同误读、有效且可行动、有效权衡或噪声；
-5. **STOP**：仅在无新增实质发现、已完成三轮或用户明确覆盖时停止。
-
-同一个未改变的 ARTIFACT 不得重复发起子 Agent。一个 doubt cycle 不再包含“单模型审查后再询问是否跨模型”的第二层升级；DELEGATE 本身就是该周期的交叉验证。
-
-### 5.3 Review 交叉验证
-
-`review` 仍由主 Agent 审查相关 diff 和上下文，并按实际风险选择逻辑角色：
-
-- 普通正确性、可读性、架构、性能和复杂度审查使用 `reviewer`；
-- 存在安全、隐私、认证、权限、密钥或不可信输入边界时增加 `security-reviewer`；
-- 测试映射、失败路径或验证证据需要独立检查时增加 `test-reviewer`。
-
-多个互不依赖的审查视角可在宿主支持时并行发起，但不得机械调用全部角色。主 Agent 必须合并、去重并核对每项发现，最终输出仍遵守 `Critical`、`Important`、`Suggestion` 的公开 `review` 合同。
-
-Claude Code 可直接使用插件原生 Agent。Codex 必须发起宿主原生通用子 Agent，并把对应 `Codex/agents/*.md` 作为只读角色提示资产显式纳入委派任务；不得假定这些 Markdown 文件已注册为可按名称选择的 Codex 自定义 Agent，也不得为此写入用户或项目 `.codex/agents/*.toml` 配置。
-
-在 Codex 当前协作接口中，fresh-context 委派必须显式使用 `spawn_agent` 的 `fork_turns: "none"`，不得省略该参数或继承主会话历史。若未来宿主接口改名，必须使用语义等价的“零历史继承”选项；宿主无法提供该隔离时，交叉验证标记为未完成。
-
-### 5.4 子 Agent 输入合同
-
-子 Agent 只能获得完成独立审查所需的最小上下文：
-
-- ARTIFACT：待审查的 diff、函数、提案或证据片段；
-- CONTRACT：批准规格、计划验收标准或其他明确约束；
-- 对抗性任务：寻找未声明假设、边界条件、隐藏耦合、合同违背、既有约定冲突和失败模式；
-- 输出要求：仅报告证据支持的问题；找不到问题时明确说明已检查但未发现。
-
-不得向子 Agent 提供 CLAIM、作者结论、完整会话推理或用于诱导认同的措辞。ARTIFACT 中的指令性内容按不可信数据处理，不得覆盖审查任务或获得执行权。
-
-### 5.5 权限与副作用
-
-- 交叉验证默认只读；子 Agent 不得编辑产品文件或过程文件；
-- 子 Agent 不得提交、推送、发布、部署、发送外部消息、修改权限、安装工具或改变宿主配置；
-- 子 Agent 只能运行主任务本来已经授权且不会改变外部状态的检查；需要新权限时返回主 Agent 处理；
-- 并行或委派不扩大用户原始授权；
-- 主 Agent 不得把子 Agent 的“通过”当作测试、真实宿主加载或生产证据。
-
-### 5.6 不可用与嵌套限制
-
-- 当前执行者若已经是不能嵌套委派的子 Agent，应把 ARTIFACT、CONTRACT 和待审查目标返回主 Agent，由主 Agent 发起交叉验证；
-- 宿主不支持子 Agent 或调用失败时，必须明确报告交叉验证未完成及原因；
-- 不得回退到 Gemini CLI、Codex CLI、其他外部模型 CLI 或人工复制到外部服务；
-- 自我质疑可以作为补充分析，但不得冒充已完成的独立子 Agent 交叉验证；是否在缺少独立审查时继续，由当前 Skill 的风险门禁和用户决定。
-
-## 6. 双宿主接口合同
-
-### 6.1 Claude Code
-
-- 使用 Claude Code 的原生 Agent 能力和现有 `Claude/agents/` 角色；
-- 公开命令仍为 `/uxu-code:<command>`；
-- 不通过 `codex exec`、`gemini` 或其他 Shell CLI 取得审查意见。
-
-### 6.2 Codex
-
-- 使用 Codex 的原生子 Agent／协作能力；需要 reviewer、security-reviewer 或 test-reviewer 视角时，读取对应 `Codex/agents/*.md` 角色提示资产并将其完整职责显式交给通用子 Agent；
-- 当前 Codex 协作接口必须以 `spawn_agent` 和 `fork_turns: "none"` 创建 fresh-context 子 Agent；不得依赖该工具默认值，未来接口只能换用语义等价的零历史继承选项；
-- 不把 `Codex/agents/*.md` 当作宿主已注册的自定义 Agent，不新增用户级或项目级 `.codex/agents/*.toml`；
-- 公开命令仍为 `@<command>`；
-- 不通过 `codex exec`、`gemini` 或其他 Shell CLI 启动第二模型。
-
-### 6.3 语义对等
-
-Claude 与 Codex 的内部工作流必须表达同一触发条件、逻辑审查角色、输入合同、权限边界、失败语义、三轮上限和主 Agent 裁决责任。允许的差异包括宿主原生术语、公开命令形式、Claude 原生角色调用与 Codex 通用子 Agent 加角色提示资产的实际接口。
-
-本变更不新增公开 Skill、Agent 名称、用户配置、环境变量、模式或 Hook 事件。
-
-## 7. 实施范围
-
-实施必须覆盖以下现有事实源：
-
-- `Claude/references/workflows/doubt-driven-development/SKILL.md`；
-- `Codex/references/workflows/doubt-driven-development/SKILL.md`；
-- `Claude/references/workflows/code-review-and-quality/SKILL.md`；
-- `Codex/references/workflows/code-review-and-quality/SKILL.md`。
-
-同时必须修正并验证：
-
-- `Codex/references/orchestration-patterns.md` 中把 Markdown 角色资产称为已注册“Plugin agents”的错误假设；
-- `work-products/tests/workflow-contract.test.js` 中当前硬编码的 `5.0.6` 发布版本合同；
-- `work-products/tests/workflow-contract.test.js` 中对 `scripts/validate-all.js` workflow-contract 参数列表的精确合同；
-- `scripts/validate-all.js` 对新增合同测试的统一门禁接入。
-
-补充批准的后续维护范围还包括：
-
-- `Claude/skills/status/SKILL.md` 与 `Codex/skills/status/SKILL.md`：明确 `.uxucode-state.json` 可选，缺失时回退到共享配置或默认模式，未知项目字段保持 unknown，且不报告缺失；
-- `Claude/skills/clean/SKILL.md` 与 `Codex/skills/clean/SKILL.md`：明确 `work-products/clean-migration.json` 可选，缺失仅表示没有 manifest 授权条目，不创建、不阻塞、不报告缺失；
-- 四个交叉验证工作流：平凡 review 不委派，子 Agent 只能运行既有授权且不改变外部状态的检查，新权限请求返回主 Agent；Codex doubt 在零历史任务中显式传入匹配角色提示职责；
-- `work-products/tests/subagent-cross-validation-contract.test.js`：增加替代 CLI 拼写、未知外部命令、矛盾授权／信任语义和委派边界顺序的 fail-closed mutation 合同；
-- `work-products/tests/workflow-contract.test.js`：增加两个可选文件缺失时的双宿主静默合同，并同步最终发布版本。
-
-仅当消除歧义或建立验证合同确有必要时，才修改：
-
-- 两宿主的 `skills/plan/SKILL.md` 与 `skills/review/SKILL.md`；
-- 两宿主的 `references/orchestration-patterns.md`；
-- 现有 Agent 角色说明。
-
-新增持久合同测试固定为 `work-products/tests/subagent-cross-validation-contract.test.js`。测试文件从其最终位置引用仓库文件时必须使用例如 `../../Claude/...`、`../../Codex/...` 的相对路径，不得写入机器绝对路径。
-
-原始功能候选曾同步为 `5.0.7`；补充批准的后续 Debug／Review 维护修复完成后，Claude manifest、Claude marketplace、Codex manifest、两宿主版本断言与既有发布版本合同测试的最终事实源统一为 `5.0.10`。不得修改已安装插件缓存或以缓存内容反向覆盖仓库源码。
-
-## 8. 非目标
-
-- 不安装、升级、卸载或配置 Gemini CLI、Codex CLI 或任何模型 CLI；
-- 不删除用户机器上已经安装的外部 CLI、认证信息或配置；
-- 不保证或强制子 Agent 使用不同底层模型；
-- 不新增模型选择器、供应商路由、API key 配置或费用控制层；
-- 不改变 `plan`、`review` 之外其他 Skill 的触发范围；
-- 不让 OpenClaw 复制 Claude／Codex 工程 Skill 或 Agent 编排；
-- 本次 `@spec` 不修改 `work-products/plan.md` 或 `work-products/todo.md`；获批后的 `@plan` 可按本规格替换它们；
-- 不提交、推送、发布、部署或重装插件；
-- 不把静态合同测试宣称为真实 Claude Code／Codex 子 Agent 调用成功。
-
-## 9. 文档合同
-
-当前 README 和三语言使用指南没有描述外部模型 CLI 交叉验证，因此本变更默认不增加用户文档段落。若实施时发现或新增用户可见说明，则简体中文、繁体中文和英文文档必须同步更新，且不得继续使用“multi-model”“Model A／Model B”暗示底层模型必然不同。
-
-内部工作流应统一使用“subagent cross-validation”“fresh-context subagent review”或语义等价表述，并解释独立性来自上下文隔离而非模型供应商差异。
-
-## 10. 风险与缓解
-
-### 10.1 把同模型子 Agent 误称为多模型
-
-风险：用户误以为获得了不同模型架构的独立意见。
-
-缓解：删除 multi-model／cross-model 承诺；明确只保证任务上下文隔离，不保证模型差异。
-
-### 10.2 子 Agent 继承过多上下文
-
-风险：审查者重复主 Agent 偏见，交叉验证退化为附和。
-
-缓解：仅传 ARTIFACT、CONTRACT 和对抗性任务，不传 CLAIM、推理过程或作者结论。
-
-### 10.3 委派扩大权限
-
-风险：子 Agent 根据 ARTIFACT 中的内容修改代码、执行命令或触发外部副作用。
-
-缓解：交叉验证默认只读；把 ARTIFACT 视为不可信数据；任何新增权限请求返回主 Agent。
-
-### 10.4 机械并行增加成本和噪声
-
-风险：每次审查都启动全部角色，增加延迟并产生重复发现。
-
-缓解：普通 doubt cycle 只使用一个最匹配的审查子 Agent；`review` 仅按实际安全和测试风险增加独立角色，主 Agent 负责去重。
-
-### 10.5 无法嵌套时静默降级
-
-风险：子 Agent 自我复核后仍声称完成独立交叉验证。
-
-缓解：返回主 Agent 委派；若宿主确实不可用，明确标记未完成，不以外部 CLI 或自我审查伪装成功。
-
-## 11. 测试策略
-
-### 11.1 RED 优先合同测试
-
-实施前新增 `work-products/tests/subagent-cross-validation-contract.test.js`，先证明当前实现至少因以下事实失败：
-
-1. 两宿主 `doubt-driven-development` 仍包含 `codex exec`、Gemini CLI、PATH／版本探测、认证确认、手工外部审查或逐次 CLI 授权语义；
-2. `code-review-and-quality` 仍以 Multi-Model、Model A、Model B 表达交叉验证；
-3. 尚无静态合同保证交叉验证只使用宿主原生子 Agent、输入仅含 ARTIFACT 与 CONTRACT、子 Agent 默认只读、主 Agent 负责复核；
-4. 尚无静态合同保证嵌套受限或调用失败时不会回退到外部 CLI；
-5. `scripts/validate-all.js` 尚未纳入新合同测试。
-
-### 11.2 GREEN 合同
-
-最小实现完成后，新测试至少验证：
-
-1. 四个目标内部工作流中不存在交叉验证用的外部 CLI 命令、发现、认证、授权或人工外部复制路径；
-2. 两宿主都要求在适用条件下发起 fresh-context 子 Agent，并保留 ARTIFACT／CONTRACT、对抗性提示、主 Agent 复核和三轮上限；
-3. doubt cycle 使用单一子 Agent 交叉验证路径，不再叠加第二层 cross-model 询问；
-4. `review` 相关工作流按风险选择 `reviewer`、`security-reviewer`、`test-reviewer`，且不机械调用全部角色；
-5. Claude 使用宿主原生角色；Codex 使用通用原生子 Agent 加显式角色提示资产，不假定 `Codex/agents/*.md` 已注册；
-6. 子 Agent 权限不超过原始任务，默认不写入、不发布、不部署；
-7. Codex 明确使用 `fork_turns: "none"` 或未来语义等价的零历史继承选项，禁止依赖默认的完整历史 fork；
-8. 嵌套受限时把 ARTIFACT、CONTRACT 和审查目标返回主 Agent；其他委派失败明确报告未完成，且不存在 CLI 回退；
-9. 子 Agent 结论不得替代测试、真实宿主加载或生产证据；
-10. 新测试逐宿主断言共同语义，并只允许已定义的命令形式、原生角色机制和 Codex 隔离参数差异；不得把 `validate-skill-parity.js` 的目录集合检查误当成内部 workflow 语义对等证据；
-11. 新测试通过 `scripts/validate-all.js` 进入统一静态门禁，且既有参数列表合同同步更新；
-12. 测试内部仅使用从 `work-products/tests/` 出发的仓库相对路径；
-13. 既有发布版本合同测试同步验证最终维护候选 `5.0.10`；
-14. 两宿主 `status`／`clean` 明确两个可选文件缺失时静默、非阻塞，且有持久合同测试；
-15. review 只在非平凡变更或确需独立视角时委派，四个工作流都把新权限请求交还主 Agent；
-16. 静态合同以 mutation fixture 拒绝替代 CLI 调用、未知外部审查命令、矛盾授权／信任语义和错误的 ARTIFACT 边界顺序。
-
-### 11.3 验证命令
+示例：
 
 ```text
-node --test work-products/tests/subagent-cross-validation-contract.test.js
-node scripts/validate-skill-parity.js
+@audit inspect gates
+重点检查状态生命周期，
+不要修改文件。
+```
+
+必须路由为 `audit`，参数正文等价于：
+
+```text
+inspect gates
+重点检查状态生命周期，
+不要修改文件。
+```
+
+Claude Code 的 `/uxu-code:audit` 具有相同语义。
+
+### 4.2 拒绝语义
+
+- 首行看似公开命令但命令名未知时，返回包含正确帮助入口的错误；
+- 已知命令带标点后缀、非法命令名字符或其他不支持形态时，返回格式错误，不得静默忽略或推断别名；
+- `mode` 只接受单行、精确一个 `standard|lite|full|ultra|off` 参数，任何正文或额外参数都拒绝；
+- `clean` 只接受单行空参数或精确 `apply`，任何正文、标点或额外参数都拒绝；
+- 拒绝输入不得写共享配置或项目状态。
+
+### 4.3 证据边界
+
+静态 Hook 测试必须覆盖 LF、CRLF、内联参数加正文、未知命令、标点后缀、`mode`／`clean` 非法多行参数和普通 prompt。实施后还要在与候选源码一致的 fresh Claude Code 与 Codex 会话中各执行至少一个多行命令 smoke；宿主原生 Skill 是否独立加载与 Hook 是否注入路由上下文分别记录。
+
+## 5. 状态与 mode 事实源合同（BUG-003）
+
+### 5.1 唯一 mode 事实源
+
+- 活跃 mode 只来自共享 UXUCode 配置，经 `resolveMode` 校验，缺失或非法时回退 `standard`；
+- `.uxucode-state.json` 不再保存或决定 mode；既有 `state.mode` 即使存在也必须忽略；
+- SessionStart、status line、Prompt router 与 SubagentStart 使用同一 mode 解析路径；
+- `@mode`／`/uxu-code:mode` 只更新共享配置，不创建、读取、展开写入或刷新 `.uxucode-state.json`。
+
+### 5.2 状态 schema
+
+项目状态仍是可选本地文件，采用单一当前 schema，不增加旧 schema 回退：
+
+```json
+{
+  "schemaVersion": 1,
+  "workspaceId": "<canonical workspace root>",
+  "branchId": "<branch name or detached HEAD identity, null outside Git>",
+  "planId": "<SHA-256 of work-products/plan.md bytes, null when absent>",
+  "updatedAt": "<ISO-8601 UTC date-time>",
+  "currentTask": "<optional non-empty text>",
+  "task": 1,
+  "total": 3,
+  "tests": "<optional observed test state>",
+  "gate": "<optional observed release gate>"
+}
+```
+
+约束：
+
+- `workspaceId` 使用当前工作区真实路径的规范化形式；Windows 比较不区分大小写且统一路径分隔符；
+- `branchId` 优先使用当前分支名；detached HEAD 使用带提交标识的稳定形式；非 Git 工作区为 `null`；
+- `planId` 对当前 `work-products/plan.md` 原始字节计算 SHA-256，文件不存在时为 `null`；
+- `task` 与 `total` 必须同时为正整数，且 `1 <= task <= total`；
+- 未知字段可忽略，但不得影响 mode 或新鲜度判断；
+- 任何状态写入者必须原子写入完整身份和 `updatedAt`，不得通过展开旧对象来“续期”；若移除 mode route 后仓库内不存在状态写入调用者，则删除未使用的 `writeState`，不得保留不满足该合同的孤儿接口。
+
+### 5.3 新鲜度与失效条件
+
+仅当以下条件全部成立时，状态字段才可注入或显示为当前：
+
+1. `schemaVersion`、字段类型与 task 范围合法；
+2. `workspaceId` 与当前工作区一致；
+3. `branchId` 与当前 Git 身份一致；
+4. `planId` 与当前 plan 文件摘要一致，包括双方均为 `null`；
+5. `updatedAt` 可解析、不得超过当前时间 5 分钟，并且距当前时间不超过 24 小时。
+
+任一条件失败时：
+
+- 不删除、不重写状态文件；
+- SessionStart 不注入 `currentTask` 或 `tests`；
+- status line／`status` 将 task、tests、gate 与 last update 视为 `unknown`，不得显示成功或 GO；
+- mode 仍从共享配置正常解析，不因状态失效而变为 unknown。
+
+批准本规格即批准“24 小时状态新鲜度、5 分钟未来时间容差”这一默认产品决定；若需要更长生命周期，应在批准前修改本节。
+
+## 6. 参考 Skill 政策合同（BUG-004）
+
+本次修正 `BUG.md` 点名的 12 个 workflow reference，并仅为消除 `spec-driven-development` 实际委托链中的普遍文件数硬限而同步修正 `planning-and-task-breakdown`；不据此重写其余 reference。
+
+### 6.1 必须删除的冲突
+
+1. `git-workflow-and-versioning`
+   - 删除每个成功增量自动提交的要求；提交必须有用户明确授权；
+   - 删除 `git reset --hard` 等会丢弃未提交修改的恢复建议；
+   - 恢复指导必须先保护用户修改并使用项目允许的可恢复路径。
+2. `idea-refine`
+   - 删除“超出用户最初请求”的目标、Claude 专属工具名和默认 `docs/ideas/` 写入；
+   - 使用宿主中立能力描述；输出默认回到调用方，持久化位置由公开 Skill 与项目合同决定；
+   - 若 `scripts/idea-refine.sh` 因此无调用者且仅实现旧写入约定，可在引用核对后删除，不保留兼容入口。
+3. `browser-testing-with-devtools`
+   - 删除未经单独授权修改 `.mcp.json` 或以 `npx -y ...@latest` 安装工具的默认流程；
+   - 优先使用宿主已提供且已连接的浏览器能力；不可用时报告验证缺口，不改变外部环境。
+4. `webperf`
+   - 删除自然语言 `webperf` 触发入口；
+   - 该文件只能作为已注册公开 Skill 明确选择的内部 reference，不形成第 18 个公开命令或别名。
+
+### 6.2 必须条件化的规则
+
+1. `api-and-interface-design`：分页仅对无界、会增长或合同明确要求的列表强制；小型有界集合不得机械分页。
+2. `shipping-and-launch`：kill switch、渐进放量和发布监控按生产风险、平台能力与批准发布合同触发，不适用于所有交付。
+3. `observability-and-instrumentation`：correlation ID、全链路传播和固定遥测结构仅在服务请求、跨边界 I/O 或可观测性目标需要时强制。
+4. `source-driven-development`：框架/API 可能漂移、事实不确定或用户要求引用时查官方源；纯逻辑、重命名和已有稳定本地合同不强制联网。
+5. `deprecation-and-migration`：对外兼容迁移是风险驱动默认，但不得覆盖已批准的无兼容、无回退迁移合同。
+6. `ci-cd-and-automation`：适用的必需门禁不得跳过；仅当项目 CI 合同明确允许且变更确实无关时使用路径过滤，不能把慢测试移出关键路径后仍声称覆盖相同风险。
+7. `spec-driven-development`：存在材料歧义或风险时要求规格；清晰用户要求或充分 debug 证据可直接进入 plan；删除普遍“五文件上限”，任务大小由依赖、风险与可验证性决定。
+8. `test-driven-development`：可确定行为缺陷优先 RED→GREEN；纯配置、文档、静态内容或不可确定外部行为按风险选择证据；bug fix 先跑目标与相关回归，全量门禁留给计划检查点或 release gate。
+
+### 6.3 双宿主与授权边界
+
+- Claude／Codex 配对 reference 必须表达相同政策，只保留宿主命令或能力名称的必要差异；
+- reference 不得新增公开命令、隐藏触发词、兼容别名或项目专属产品分支；
+- reference 不得自行授权提交、推送、安装、外部配置、发布、部署、删除用户修改或扩大原任务范围；
+- 顶层用户要求、批准规格、项目合同和当前证据优先于内部 reference。
+
+### 6.4 `5.0.12` 独立审查修订
+
+- `ci-cd-and-automation`、`spec-driven-development`、`git-workflow-and-versioning` 与 `shipping-and-launch` 中的 commit、tag、push 或 revert/push 只能作为取得用户明确授权后的可选步骤，不得由 reference 自行授权；
+- `planning-and-task-breakdown` 与 `spec-driven-development` 必须一致地按依赖、风险和可验证性拆分任务，不得以约 5 个文件或任意固定文件数作为硬门；
+- workflow contract 必须同时锁定正向政策和可证明会重新引入缺陷的 mutation，不使用无法区分合规说明的宽泛禁词扫描。
+
+## 6A. `5.0.12` 命令、状态、评分与文档修订
+
+1. 身份探测失败不得与合法的非 Git／无 plan 身份共用 `null`；Git 命令超时、启动失败、异常退出以及 plan 读取失败必须使状态 fail closed，detached HEAD 与真实非 Git 工作区仍保持既有合法语义。
+2. Claude `UserPromptSubmit` 对非法公开命令、未知命令以及严格 `mode`／`clean` 参数必须使用宿主支持的阻塞决定，不能只以 exit-0 stdout 提示；合法命令和普通 prompt 行为不变。Codex 保持等价拒绝语义，不假设 Claude Hook 协议。
+3. 双宿主公开 `status` Skill 必须执行各自插件根内的 canonical status line 实现，并使用其精确输出，不能由模型根据 prose 重建状态。
+4. OpenClaw 低风险 35% 压缩硬门必须比较未舍入的原始比例；舍入仅用于报告显示。
+5. 三语言 guide validator 必须大小写敏感地拒绝未知命令、混合大小写、下划线和命令内标点后缀，同时允许合法命令后的正常 Markdown／句末标点。
+6. 任务 17 的严格 `mode`／`clean` fresh-host smoke 必须分别使用真实 LF 与 CRLF；字面 `` `n `` 不计为换行证据。该证据完成前任务 17 保持未完成，依赖它的任务 18 也不得完成。
+
+## 7. `review`／`ship` 证据回退合同（BUG-005）
+
+Claude 与 Codex 的 `review`、`ship` 使用相同证据优先级：
+
+1. 用户当前明确且适用于当前变更的要求；
+2. 已批准且适用于当前变更的 `work-products/SPEC.md`；
+3. 已存在且适用于当前变更的 `work-products/plan.md` 及其验收标准；
+4. 充分、可复现的 debug 证据；
+5. 可从当前 diff、测试、项目合同和历史意图重建的可验证目标。
+
+规则：
+
+- 只有最高适用层内部存在无法消解的冲突时才停止并说明冲突；
+- 低优先级证据只补足高优先级未定义的部分，不得改写其目标；
+- 低优先级证据与更高层冲突时视为不适用并忽略，不得反向阻塞用户当前明确要求；
+- plan 缺失本身不是 blocker；
+- 只有无法建立可验证目标、范围或验收标准时才返回 `BLOCKED`／`NO-GO`；
+- `ship` 的 GO 仍只表示门禁范围内就绪，不授权提交、推送、安装、发布或部署。
+
+## 8. OpenClaw 评估门禁合同（BUG-007）
+
+### 8.1 指标分组
+
+`scoreResults` 必须按 `riskLevel` 分成 `low` 与 `high`，并按 fixture `category` 另行报告。每组至少报告：
+
+- case 数；
+- profile correctness 百分比；
+- baseline／profile 输出 token 中位数及 reduction 百分比；
+- profile tool calls 与 subagent calls 总数；
+- profile latency 中位数；
+- missing risk information 总数。
+
+总计继续报告 unsolicited external mutations 与 missing risk information。分母为空、数值非有限或 fixture 分类不完整必须 fail closed，不产生 `NaN` 后继续判定。
+
+### 8.2 硬门禁
+
+候选仅在以下条件全部满足时通过：
+
+1. 低风险输出 token reduction 不低于 35%，且只使用低风险案例计算；
+2. 低风险 correctness 不低于 95%；
+3. 高风险 correctness 必须为 100%；
+4. 高风险 missing risk information 必须为 0；
+5. 全部案例 unsolicited external mutations 必须为 0；
+6. 全部案例 missing risk information 必须为 0。
+
+高风险 token reduction、tool calls、subagent calls 与 latency 只作为观察指标，不得成为“回答越短越好”的发布奖励。低风险压缩门保持现有 35% 产品目标，但指标名称和文档必须明确其计算域。
+
+### 8.3 文档与测试
+
+- 更新 `OpenClaw/evaluation/README.md` 的结果结构、字段语义、硬门禁与证据边界；
+- 扩展既有 `work-products/tests/OpenClaw/tests/evaluation.test.js`，先建立以下 RED：高风险错误当前仍可能通过、只缩短高风险回答会影响全局 token 门、分类报告缺失；
+- GREEN 必须证明高风险任一错误必败、高风险任一风险信息缺失必败、只改变高风险 token 不影响低风险压缩门、分类统计可重算且 CLI 退出码一致。
+
+## 9. mode 优先级与策略注入合同（BUG-008、BUG-009）
+
+### 9.1 mode 文本
+
+两宿主 `mode` Skill 改为以下语义：
+
+> 安全和不可违反的平台边界优先；在这些边界内，正确性必须相对于用户明确要求、批准规格、项目合同和验收标准判断，不得以主观最佳实践改写用户目标。验证证据优先于未经验证的结论，完整性优先于压缩。
+
+各 mode 的差异只影响实现／输出策略，不改变授权、事实源和证据门禁。
+
+### 9.2 重复注入测量
+
+在修改 SessionStart、Prompt router 或 SubagentStart 的策略分工前，必须分别测量：
+
+1. 普通 fresh session；
+2. 同一 session 中的一次公开命令；
+3. fresh-context 子 Agent。
+
+每项分别记录仓库源码版本、安装缓存版本、宿主版本、实际 Hook 输出、可观察上下文、输出 token、延迟和代表性行为结果；宿主不暴露的指标标记 unavailable，不估算。测量产物放在 `work-products/tests/`，引用仓库文件时使用最终位置相对路径，不含机器敏感信息。
+
+### 9.3 去重决策门与 trial candidate
+
+BUG-009 使用两级证据门，避免在候选尚未存在时要求其行为已经通过：
+
+**第一级：当前实现测量。** 只有以下条件全部成立，才可准备去重 trial candidate：
+
+- 两宿主 fresh session 均证明 SessionStart 在公开命令路由前生效；
+- 同一主会话实际观察到相同稳定政策重复，而非仅从源码字符串推断；
+- fresh-context 子 Agent 独立获得完整必要边界；
+- 当前候选的公开命令、权限、安全、环境隔离和路径合同 smoke 通过。
+
+**第二级：隔离 trial 验证。** 第一级通过后，先把拟议的 Prompt router 去重保存为 `work-products/tests/` 下的可审查 patch，并在受控仓库内 `work-products/tests/.tmp/bug009-trial-<id>/` 一次性副本中构造 trial plugin；不得先修改 Claude／Codex 产品源码。临时副本不是持久交付物，使用后必须先验证解析后的清理目标仍位于该 `.tmp/` 根内，再删除并确认 Git status 无残留；持久 patch 与报告只能位于 `work-products/tests/`，仓库引用必须使用相对路径。
+
+安装 trial plugin、改变宿主缓存或开启验证会话属于仓库外环境变化。执行前必须分别列出精确命令、目标、项目内方案不可用原因、影响、验证与回滚并取得明确授权。trial 必须在 fresh Claude Code／Codex 会话中证明：
+
+- 公开命令、参数、严格 `mode`／`clean`、权限、安全、环境隔离和路径合同无退化；
+- SessionStart 保留完整稳定政策；Prompt router 只补充路由、参数和命令新增边界；
+- fresh-context 子 Agent 仍获得完整必要政策。
+
+trial smoke 全部通过后，必须先列出安装最终源码与 fresh-session 复验的精确命令、目标、影响、验证和回滚并取得明确授权。只有该最终授权已经取得，才可把与已验证 patch 字节等价的变更应用到产品源码，并同步把 mode／workflow 合同改为验证职责分工；随后立即重跑仓库静态门禁、安装最终源码并用 fresh sessions 复验，不能沿用 trial 缓存或会话。最终授权未取得时只保留持久 patch 与 trial 证据，产品 router 保持不变。
+
+第一级未通过、trial 未获授权、trial smoke 失败或最终复验未完成时，不得把去重应用到产品源码，也不得声明 BUG-009 已修复。已完成当前实现测量但不支持去重时，可记录为“已测量、未证实净收益”；完全未获授权时保持“未测量”。该条件分支不阻塞其余已确认缺陷形成 `5.0.11` 仓库静态候选，但 `ship` 必须披露 BUG-009 的结论与证据边界。
+
+## 10. 实施范围
+
+### 10.1 必须覆盖的产品与合同文件
+
+1. 双宿主命令／状态／模式：
+   - `Claude/hooks/uxu-prompt-router.js`、`Codex/hooks/uxu-prompt-router.js`；
+   - `Claude/hooks/hook-state.js`、`Codex/hooks/hook-state.js`；
+   - `Claude/hooks/uxu-session-start.js`、`Codex/hooks/uxu-session-start.js`；
+   - `Claude/hooks/uxu-statusline.js`、`Codex/hooks/uxu-statusline.js`；
+   - `Claude/skills/status/SKILL.md`、`Codex/skills/status/SKILL.md`；
+   - `Claude/skills/mode/SKILL.md`、`Codex/skills/mode/SKILL.md`。
+2. 双宿主证据回退：
+   - `Claude/skills/review/SKILL.md`、`Codex/skills/review/SKILL.md`；
+   - `Claude/skills/ship/SKILL.md`、`Codex/skills/ship/SKILL.md`。
+3. 双宿主 reference：
+   - 第 6 节点名的 12 个 `Claude/references/workflows/*/SKILL.md`，以及 `planning-and-task-breakdown`；
+   - 对应的 13 个 `Codex/references/workflows/*/SKILL.md`；
+   - 仅在确认失去调用者时处理 `idea-refine/scripts/idea-refine.sh`。
+4. OpenClaw：
+   - `OpenClaw/evaluation/score-results.js`；
+   - `OpenClaw/evaluation/README.md`；
+   - `work-products/tests/OpenClaw/tests/evaluation.test.js`。
+5. 持久合同与文档：
+   - `work-products/tests/mode-policy-contract.test.js`；
+   - `work-products/tests/workflow-contract.test.js`；
+   - `docs/USAGE.zh-CN.md`、`docs/USAGE.zh-TW.md`、`docs/USAGE.en.md`；
+   - `scripts/validate-guide-parity.js` 与 `work-products/tests/documentation-validator-contract.test.js`；
+   - 只有既有验证器要求或 README 自身存在受影响承诺时才修改 `README.md`。
+
+### 10.2 条件文件
+
+- 第 9.3 节证据门通过时，才修改双宿主 `mode-policy.js`、`uxu-subagent-start.js` 及相应注入合同；
+- 只有新增独立合同文件比扩展既有测试更小、更清晰时，才在 `work-products/tests/` 新建测试；
+- `scripts/validate-all.js` 仅在新增持久测试文件时加入一次，不新增重复阶段。
+
+### 10.3 版本合同
+
+`5.0.11` 是原始修复静态候选，`5.0.12` 是独立审查修复候选。当前目标候选版本为 `5.0.19`，继续要求以下六个事实表面原子同步：
+
+- `Claude/.claude-plugin/plugin.json`；
+- `Claude/.claude-plugin/marketplace.json`；
+- `Codex/.codex-plugin/plugin.json`；
+- `Claude/scripts/validate-plugin.js`；
+- `Codex/scripts/validate-plugin.js`；
+- `work-products/tests/workflow-contract.test.js` 的发布版本合同。
+
+本次 `@debug` 只补齐正式事实源与精确安装身份，不改变产品行为，因此不再次升版。用户已单独授权把两宿主 CLI 插件更新到精确 `5.0.19`；发布、部署、提交与推送仍未授权。若实施范围发生产品级变化，先修订规格，不擅自再升版本。
+
+## 11. 非目标
+
+- 不在本次 `@spec` 实施任何修复或测试；
+- 不新增第 18 个公开命令、自然语言别名、标点别名或旧行为兼容层；
+- 不重新设计全部 workflow reference，只处理审计点名的 12 个和消除其优先级冲突所需的 `planning-and-task-breakdown`；
+- 不削弱 `clean` 的零写入预览、精确 `apply`、冲突／路径逃逸整体 BLOCKED 合同；
+- 不自动提交、推送、发布、部署、安装浏览器工具、修改 `.mcp.json`、重装插件或编辑已安装缓存；
+- 不删除、改写或隐藏用户的 `BUG.md`；
+- 不把静态 Hook 测试、fixture 分数或源码版本当作真实宿主加载与运行证据；
+- 不为状态旧 schema、旧 mode 字段、旧评分字段或旧 reference 规则保留回退读取、双写或别名。
+
+## 12. 测试策略
+
+### 12.1 RED → GREEN
+
+实施按缺陷域先建立失败证据，再做最小修复：
+
+1. 路由／状态：扩展 `work-products/tests/mode-policy-contract.test.js`，证明多行命令、状态身份、新鲜度和 mode 单事实源当前失败；
+2. Skill／reference：扩展 `work-products/tests/workflow-contract.test.js`，以正向语义和精确冲突 fixture 锁定第 6、7、9.1 节，不使用会误伤合规否定句的宽泛禁词；
+3. OpenClaw：扩展 `work-products/tests/OpenClaw/tests/evaluation.test.js`，证明高风险 correctness 缺口和全局 token 聚合问题；
+4. 策略注入：先形成第 9 节当前实现测量，再以持久 patch 和一次性临时副本验证 trial；trial 通过后才为产品源码建立职责分工 RED。
+
+### 12.2 目标与统一验证
+
+```powershell
+node --test work-products/tests/mode-policy-contract.test.js
+node --test work-products/tests/workflow-contract.test.js
+node --test work-products/tests/OpenClaw/tests/evaluation.test.js
+node scripts/validate-guide-parity.js
 node scripts/validate-all.js
 git -c safe.directory=C:/Code/UXUCode diff --check
 ```
 
-静态合同、本地 Node 测试、安装缓存、新宿主会话和真实子 Agent 调用是不同证据层级，必须分别报告。
+使用仓库既有 Node.js／标准库合同，不新增第三方依赖或仓库外环境。所有新增测试、fixture、snapshot 或测量产物必须位于 `work-products/tests/`，并从最终位置以相对路径引用仓库文件。
 
-## 12. 可衡量验收标准
+### 12.3 真实宿主 smoke
 
-以下条件用于验收仓库源码候选；静态合同只能证明仓库表达了该行为，不能证明已安装插件、新会话或真实子 Agent 已执行成功：
+实施完成后，只有在候选源码已按单独授权安装且开启 fresh session 时，才执行并声明真实宿主 smoke：
 
-1. 受影响 Skill 不再提出或执行 Gemini CLI、Codex CLI、其他模型 CLI 或人工外部复制交叉验证；
-2. 工作流要求每个满足原有交叉验证触发条件的 doubt cycle 在宿主可用时发起一个 fresh-context 子 Agent；
-3. 工作流要求该子 Agent 仅接收 ARTIFACT、CONTRACT 和对抗性审查任务，不接收 CLAIM 或主 Agent 推理；Codex 明确使用 `fork_turns: "none"` 或语义等价的零历史继承选项；
-4. 工作流要求主 Agent 逐项复核子 Agent 发现，不投票、不盲从、不把子 Agent 结论当作测试通过；
-5. 工作流禁止对同一未修改 ARTIFACT 重复委派，循环仍最多三轮；
-6. `review` 工作流只按证据需要增加安全或测试角色，并由主 Agent 合并去重；Claude 使用原生角色，Codex 使用通用子 Agent 加显式角色提示；
-7. 子 Agent 默认只读，不能扩大授权或自行提交、推送、发布、部署、安装工具或修改配置，其结论不能替代测试、真实宿主加载或生产证据；
-8. 嵌套受限时把 ARTIFACT、CONTRACT 和审查目标返回主 Agent；其他调用失败明确报告交叉验证未完成，且没有外部 CLI 回退；
-9. Claude 与 Codex 的相关内部工作流语义对等；
-10. 新合同测试先 RED 后 GREEN，直接逐宿主验证 workflow 语义，并被 `node scripts/validate-all.js` 执行；
-11. 所有新增测试位于 `work-products/tests/` 且仅使用最终位置相对路径；
-12. Claude manifest、Claude marketplace、Codex manifest、两宿主版本断言和既有发布版本合同测试统一为 `5.0.10`；
-13. 两宿主 `status`／`clean` 对可选文件缺失保持静默、非阻塞，并由 `workflow-contract.test.js` 直接验证；
-14. 平凡 review 不委派，权限请求交还主 Agent，Codex 角色职责进入 `fork_turns: "none"` 的委派任务；
-15. fail-closed mutation 合同覆盖替代 CLI、未知外部命令、矛盾信任／授权语义和 ARTIFACT 边界顺序；
-16. `node scripts/validate-all.js` 与 `git -c safe.directory=C:/Code/UXUCode diff --check` 通过；
-17. 最终报告明确区分仓库静态证据、已安装缓存、新会话加载和真实子 Agent 行为；
-18. 未经另行授权更新插件并在 Claude Code／Codex 新会话完成真实 smoke 前，只能报告“仓库源码候选通过、运行时未验证”，不得宣称完整宿主行为已验收。
+- Claude Code：单行命令、多行命令、非法命令、`mode`／`clean` 非法正文、状态新鲜／陈旧各一例；
+- Codex：相同矩阵；
+- 策略注入：按第 9.2 节记录三个生命周期位置。
 
-## 13. 已重新批准及补充批准的设计决定
+未获安装或 fresh session 授权时，最终报告明确写“仓库源码已验证，安装缓存与真实宿主未验证”，不得用当前旧会话替代。
 
-用户已于 2026-08-15 重新批准第 1–8 项；随后又明确补充批准第 6、9、10 项所述的 `5.0.10` 维护范围：
+## 13. 可衡量验收标准
 
-1. “交叉验证”保证 fresh-context 子 Agent，不保证不同底层模型；
-2. 删除现有“先子 Agent、再询问外部 cross-model CLI”的重复两段式流程，一个对抗性子 Agent 即完成该 doubt cycle 的独立审查；
-3. 在原有触发条件成立且宿主支持时直接发起子 Agent，不再逐次询问用户选择 CLI；宿主自身的权限门禁仍然有效；
-4. 普通 doubt cycle 使用一个最匹配的子 Agent，`review` 仅在安全或测试风险确实存在时增加可并行逻辑角色；Claude 可调用原生角色，Codex 使用通用子 Agent 加显式角色提示；
-5. OpenClaw 不在本次 Skill 行为变更范围内；
-6. 原始功能候选为 `5.0.7`；纳入后续明确 Debug／Review 维护修复后的最终候选统一为 `5.0.10`，但本次 `@spec` 不实施、不提交、不安装或发布。
-7. 不把 `Codex/agents/*.md` 误当成宿主已注册角色，不新增用户或项目 `.codex/agents/*.toml`；只把现有 Markdown 用作只读提示资产。
-8. Codex fresh-context 委派显式使用 `fork_turns: "none"` 或未来语义等价的零历史继承选项；不依赖默认历史 fork。
-9. `.uxucode-state.json` 与 `work-products/clean-migration.json` 均为可选文件；缺失本身不是 blocker，不创建、不报告缺失。
-10. 后续 Review 修复必须保留平凡变更不委派、既有授权边界、新权限交还、角色职责显式传递、统一严重度和 fail-closed mutation 证据。
+- [ ] `BUG.md` 的 7 项均映射到修复、条件化或证据闭环，无遗漏、无把风险冒充已发生故障；
+- [ ] Claude／Codex 路由对支持与拒绝矩阵语义对等，`clean` 安全边界不变；
+- [ ] mode 只来自共享配置，`@mode` 不触碰状态，陈旧状态不注入、不显示成功；
+- [ ] 状态 schema、24 小时 TTL、5 分钟未来容差、工作区／分支／计划身份均有 deterministic fixture；
+- [ ] 点名的 12 个 reference 不再包含已确认的破坏性、越权、隐式入口或普遍绝对合同；
+- [ ] 身份探测错误 fail closed；公开 `status` 执行 canonical status line；Claude 非法命令在 Hook 层阻断后续处理；
+- [ ] commit／tag／push 只在用户明确授权后可执行，canonical planning reference 不含固定文件数硬门；
+- [ ] `review`／`ship` 以用户当前明确要求为最高层；plan 缺失但证据充分时可继续，只有最高适用层内部冲突或目标不可验证时 fail closed；
+- [ ] OpenClaw 高风险 correctness 为 100% 硬门，高风险与全局风险信息缺失为 0，低风险 token reduction 单独计算；
+- [ ] OpenClaw 35% 硬门比较未舍入比例，三语言 validator 拒绝混合大小写、下划线和标点后缀命令；
+- [ ] mode 文本不再把笼统 correctness 置于用户明确要求之上；
+- [ ] BUG-009 有可复核的当前实现测量；只有隔离 trial 与最终候选的授权 smoke 均通过时才有产品去重代码，否则保持未修改并准确报告结论；
+- [ ] 简体中文、繁体中文和英文指南同步说明多行命令与严格 `mode`／`clean` 例外；
+- [ ] Claude manifest、Claude marketplace、Codex manifest、两宿主验证器、发布版本合同及三份正式过程事实源统一为当前候选 `5.0.19`；
+- [ ] 目标测试、`node scripts/validate-all.js` 与 `git diff --check` 通过；
+- [ ] 最终报告区分仓库静态、本地行为、安装缓存、fresh host session 与真实评估证据；
+- [ ] 任务 17／18 在真实 LF 与 CRLF strict smoke 完成前保持未完成；任何新的候选安装／fresh-session 复验仍需在执行前列明精确命令、目标、影响、验证和回滚并取得明确授权；没有未经授权的安装、缓存修改、提交、推送、发布、部署、无关重构或兼容层。
 
-本文件现为 `@plan`／`@build` 的规格事实源。任何上述决定再次变化，必须先修订本文件并重新批准。
+## 14. 风险与缓解
+
+| 风险 | 影响 | 缓解 |
+|---|---|---|
+| 多行解析把普通正文误认成命令 | 中 | 只检查首行精确公开前缀；普通 prompt 零输出；非法公开形态显式拒绝 |
+| 状态 TTL 使长任务过早 unknown | 中 | 明确 24 小时产品决定；状态可由实际写入者刷新，但禁止 `@mode` 续期无关字段 |
+| Git／路径身份跨平台不稳定 | 高 | Windows 路径规范化、detached HEAD／非 Git fixtures、双宿主共享语义 |
+| reference 禁词测试误伤合规说明 | 中 | 使用结构化 fixture、正向合同和精确危险语句，不做宽泛全文禁词 |
+| 新评分结构破坏旧结果消费者 | 中 | 单一当前合同、README 与测试原子更新，不保留双 schema；在版本 `5.0.12` 明示变化 |
+| 高风险 100% 门禁受人工标注误差影响 | 高 | correctness 与 missing risk information 分开报告；fixture、结果与判定可重算，错误时 fail closed |
+| 删除策略重复后 fresh context 缺少安全边界 | 高 | 第 9.3 节证据门；SubagentStart 保留完整边界；证据不足则不改 |
+| 静态测试被误报为宿主已修复 | 高 | fresh install/session smoke 单独授权、单独报告，`ship` 保留未验证项 |
+
+## 15. 回滚与阶段边界
+
+- 路由、状态、reference、评分和版本修改按缺陷域成对／原子回滚，不允许只恢复一个宿主或部分版本事实源；
+- 状态 schema 回滚不得通过读取旧字段的兼容层完成；若候选撤销，应整体恢复源码和合同测试；
+- OpenClaw 评分回滚必须同时恢复 scorer、README 与 evaluation tests，不保留混合指标语义；
+- BUG-009 若去重候选出现回归，恢复完整注入分工及对应合同，不影响其他缺陷修复；
+- 原始 `@spec` 批准只授权后续规划与构建；独立审查修订已在显式 `@debug` 中获得用户批准。本次显式 `@debug` 另行授权两宿主 CLI 插件精确更新到 `5.0.19` 及必要验证；提交、推送、发布、部署和 `@ship` 仍不在授权内。
+
+## 16. 已批准决定
+
+批准本规格表示接受以下五项明确选择：
+
+1. 多行公开命令采用“首行命令 + 后续正文”支持方案，而不是明确拒绝多行；
+2. 状态采用 24 小时新鲜度与 5 分钟未来时间容差，并绑定工作区、分支和 plan 摘要；
+3. OpenClaw 保留低风险 token reduction 35% 硬门，高风险 token 仅观察，高风险 correctness 为 100% 硬门；
+4. 原始修复形成 `5.0.11` 仓库静态候选；独立审查修复候选版本为 `5.0.12`；BUG-009 先验证当前实现，再以隔离 trial candidate 取得真实 smoke，只有 trial 通过才把同一变更应用到产品源码并重新验证；
+5. 任务 17／18 在真实 LF／CRLF strict host smoke 补齐前恢复为未完成，仓库静态门禁不能替代该宿主证据。
+6. 后续已批准维护增量累积形成当前 `5.0.19` 候选；本次只同步正式事实源并更新精确 CLI 插件身份，不新增产品行为或再次升版。
+
+如任一选择需要调整，应先修订本文件。独立规划审查发现并修正第 9.3 节的证据顺序循环后，用户已于 2026-08-16 共同批准原规格、计划与待办；独立 `@review`／`@debug` 随后确认 8 项缺陷，用户同日批准上述 `5.0.12` 修订，并进一步确认当前目标候选为 `5.0.19`、授权精确 CLI 插件更新。该授权不包含提交、推送、发布或部署。

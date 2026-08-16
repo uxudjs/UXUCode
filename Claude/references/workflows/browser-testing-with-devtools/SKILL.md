@@ -1,13 +1,13 @@
 ---
 name: browser-testing-with-devtools
-description: 通过 Chrome DevTools MCP 在真实浏览器中测试。适用于构建或调试任何浏览器中运行的内容。适用于需要检查 DOM、捕获控制台错误、分析网络请求、性能分析、或使用真实运行时数据验证视觉输出时。需要配置 chrome-devtools MCP 服务器。
+description: 通过宿主已连接的浏览器能力在真实浏览器中测试。适用于构建或调试任何浏览器中运行的内容。适用于需要检查 DOM、捕获控制台错误、分析网络请求、性能分析、或使用真实运行时数据验证视觉输出时。
 ---
 
 # Browser Testing with DevTools
 
 ## Overview
 
-Use Chrome DevTools MCP to give your agent eyes into the browser. This bridges the gap between static code analysis and live browser execution — the agent can see what the user sees, inspect the DOM, read console logs, analyze network requests, and capture performance data. Instead of guessing what's happening at runtime, verify it.
+Use browser capabilities already connected by the host to bridge static code analysis and live browser execution. Inspect the visible page, DOM, console, network, and performance data only through capabilities available in the current session.
 
 ## When to Use
 
@@ -21,28 +21,11 @@ Use Chrome DevTools MCP to give your agent eyes into the browser. This bridges t
 
 **When NOT to use:** Backend-only changes, CLI tools, or code that doesn't run in a browser.
 
-## Setting Up Chrome DevTools MCP
+## Capability Boundary
 
-### Installation
+Use browser capabilities already provided and connected by the host. Browser testing does not authorize installing tools, editing `.mcp.json`, or changing external configuration. If an appropriate browser capability is unavailable, stop browser verification and report the validation gap.
 
-Add the following to your project's `.mcp.json` or Claude Code settings:
-
-```json
-{
-  "mcpServers": {
-    "chrome-devtools": {
-      "command": "npx",
-      "args": ["-y", "chrome-devtools-mcp@latest", "--isolated"]
-    }
-  }
-}
-```
-
-`-y` skips the npx install confirmation. By default the server launches Chrome with its own dedicated profile (under `~/.cache/chrome-devtools-mcp/`), separate from your personal browser; `--isolated` goes one step further and uses a temporary profile that is wiped when the browser closes. This is the right setup for most testing.
-
-There is also `--autoConnect` (Chrome 144+, requires enabling remote debugging via `chrome://inspect/#remote-debugging`), which attaches the agent to your **running** Chrome instead. Only use it when the test genuinely needs your logged-in state — see Profile Isolation under Security Boundaries first.
-
-### Available Tools
+### Available Capabilities
 
 Chrome DevTools MCP provides these capabilities:
 

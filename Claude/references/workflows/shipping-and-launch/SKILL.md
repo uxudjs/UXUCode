@@ -7,7 +7,11 @@ description: 准备生产环境上线。适用于准备部署到生产环境时�
 
 ## Overview
 
-Ship with confidence. The goal is not just to deploy — it's to deploy safely, with monitoring in place, a rollback plan ready, and a clear understanding of what success looks like. Every launch should be reversible, observable, and incremental.
+Ship with confidence. The goal is not just to deploy — it's to deploy safely, with a rollback plan ready and a clear understanding of what success looks like. Production and other risk-bearing launches should be reversible and observable, using incremental controls when the platform and release contract support them.
+
+Kill switches, staged rollout, and post-release monitoring are required when production risk, platform capabilities, or the approved release contract calls for them. They are not universal requirements for every delivery; choose controls proportional to the verified release risk.
+
+Commit, tag, push, revert, and release operations require explicit user authorization for the exact action. Examples and checklists are conditional guidance only; do not execute or imply authorization from passing tests, a completed task, or this reference.
 
 ## When to Use
 
@@ -15,7 +19,7 @@ Ship with confidence. The goal is not just to deploy — it's to deploy safely, 
 - Releasing a significant change to users
 - Migrating data or infrastructure
 - Opening a beta or early access program
-- Any deployment that carries risk (all of them)
+- Any deployment whose verified risk or approved contract requires launch controls
 
 ## The Pre-Launch Checklist
 
@@ -76,7 +80,7 @@ Ship with confidence. The goal is not just to deploy — it's to deploy safely, 
 
 ## Feature Flag Strategy
 
-Ship behind feature flags to decouple deployment from release:
+When risk and platform capabilities call for a kill switch or gradual exposure, ship behind feature flags to decouple deployment from release:
 
 ```typescript
 // Feature flag check
@@ -250,7 +254,7 @@ Every deployment needs a rollback plan before it happens:
 ### Rollback Steps
 1. Disable feature flag (if applicable)
    OR
-1. Deploy previous version: `git revert <commit> && git push`
+1. After explicit user authorization for the exact revert and push, deploy the previous version: `git revert <commit> && git push`
 2. Verify rollback: health check, error monitoring
 3. Communicate: notify team of rollback
 
@@ -275,7 +279,7 @@ Every deployment needs a rollback plan before it happens:
 | Rationalization | Reality |
 |---|---|
 | "It works in staging, it'll work in production" | Production has different data, traffic patterns, and edge cases. Monitor after deploy. |
-| "We don't need feature flags for this" | Every feature benefits from a kill switch. Even "simple" changes can break things. |
+| "We don't need feature flags for this" | Assess production risk, platform support, and the release contract; use a flag when it materially reduces an applicable risk. |
 | "Monitoring is overhead" | Not having monitoring means you discover problems from user complaints instead of dashboards. |
 | "We'll add monitoring later" | Add it before launch. You can't debug what you can't see. |
 | "Rolling back is admitting failure" | Rolling back is responsible engineering. Shipping a broken feature is the failure. |

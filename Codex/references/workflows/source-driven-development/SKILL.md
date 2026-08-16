@@ -7,7 +7,9 @@ description: 将每个实现决策根植于官方文档。适用于需要权威�
 
 ## Overview
 
-Every framework-specific code decision must be backed by official documentation. Don't implement from memory — verify, cite, and let the user see your sources. Training data goes stale, APIs get deprecated, best practices evolve. This skill ensures the user gets code they can trust because every pattern traces back to an authoritative source they can check.
+Consult official sources when framework or API behavior may have drifted, when a fact is uncertain, or when the user requests citations. Stable local logic, renames, and existing deterministic local contracts do not require network lookup. When external verification is required, prefer primary official sources and report unavailable evidence rather than guessing.
+
+Network research still follows user authorization, project contracts, and environment boundaries; this internal reference does not expand them.
 
 ## When to Use
 
@@ -16,13 +18,12 @@ Every framework-specific code decision must be backed by official documentation.
 - The user explicitly asks for documented, verified, or "correct" implementation
 - Implementing features where the framework's recommended approach matters (forms, routing, data fetching, state management, auth)
 - Reviewing or improving code that uses framework-specific patterns
-- Any time you are about to write framework-specific code from memory
+- Framework or API behavior may have changed or remains uncertain
 
 **When NOT to use:**
 
 - Correctness does not depend on a specific version (renaming variables, fixing typos, moving files)
 - Pure logic that works the same across all versions (loops, conditionals, data structures)
-- The user explicitly wants speed over verification ("just do it quickly")
 
 ## The Process
 
@@ -121,7 +122,7 @@ Surface the conflict. Don't silently pick one.
 
 ### Step 4: Cite Your Sources
 
-Every framework-specific pattern gets a citation. The user must be able to verify every decision.
+Every externally verified framework-specific pattern gets a citation. The user must be able to verify the decisions for which source lookup was required.
 
 **In code comments:**
 
@@ -171,7 +172,7 @@ Honesty about what you couldn't verify is more valuable than false confidence.
 
 ## Red Flags
 
-- Writing framework-specific code without checking the docs for that version
+- Writing version-sensitive or uncertain framework code without checking the applicable official docs
 - Using "I believe" or "I think" about an API instead of citing the source
 - Implementing a pattern without knowing which version it applies to
 - Citing Stack Overflow or blog posts instead of official documentation
@@ -185,7 +186,7 @@ Honesty about what you couldn't verify is more valuable than false confidence.
 After implementing with source-driven development:
 
 - [ ] Framework and library versions were identified from the dependency file
-- [ ] Official documentation was fetched for framework-specific patterns
+- [ ] Official documentation was fetched for version-sensitive, uncertain, or citation-requested patterns
 - [ ] All sources are official documentation, not blog posts or training data
 - [ ] Code follows the patterns shown in the current version's documentation
 - [ ] Non-trivial decisions include source citations with full URLs

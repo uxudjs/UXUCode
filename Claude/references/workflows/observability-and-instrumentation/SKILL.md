@@ -11,7 +11,7 @@ Code you can't observe is code you can't operate. Observability is the ability t
 
 ## When to Use
 
-- Building any feature that will run in production
+- Building a production feature whose operation requires service, I/O, or approved telemetry evidence
 - Adding a new service, endpoint, background job, or external integration
 - A production incident took too long to diagnose ("we couldn't tell what happened")
 - Setting up or reviewing alerting rules
@@ -51,7 +51,7 @@ Rule of thumb: metrics tell you **that** something is wrong, traces tell you **w
 
 ### 3. Structured logging
 
-Log events, not prose. Every log line is a JSON object with a stable event name and machine-readable fields:
+When structured telemetry is required, log events rather than prose. Use stable event names and machine-readable fields:
 
 ```typescript
 // BAD: string interpolation — unqueryable, inconsistent
@@ -76,7 +76,9 @@ logger.warn({
 | `info` | Significant business event (order placed, job finished) | None |
 | `debug` | Diagnostic detail | Off in production by default |
 
-**Correlation IDs are mandatory.** Generate (or accept) a request ID at the system boundary and attach it to every log line, span, and outbound call. Without it, you cannot reconstruct a single request from interleaved logs:
+Correlation IDs, end-to-end propagation, and a fixed telemetry schema are required for service requests, cross-boundary I/O, or an approved observability objective. They are not mechanical requirements for local-only programs or code with no applicable telemetry target.
+
+When that boundary applies, generate (or accept) a request ID at the system boundary and attach it to relevant log events, spans, and outbound calls. Without it, you cannot reconstruct one request from interleaved service telemetry:
 
 ```typescript
 // Express: child logger per request, ID propagated downstream
@@ -179,7 +181,7 @@ Instrumentation is code; it can be wrong. Before calling the work done, trigger 
 
 - A feature PR with retries, queues, or external calls and zero new telemetry
 - Log lines built by string interpolation instead of structured fields
-- No correlation/request ID — each log line is an orphan
+- Missing correlation/request IDs for applicable service requests or cross-boundary I/O
 - Metrics labeled with user IDs, raw URLs, or error message text (cardinality bomb)
 - Latency tracked as an average with no percentiles
 - Alerts that fire daily and get acknowledged without action
@@ -192,7 +194,7 @@ Instrumentation is code; it can be wrong. Before calling the work done, trigger 
 After instrumenting a feature, confirm:
 
 - [ ] The on-call questions for this feature are written down, and each signal maps to one
-- [ ] All log output is structured (JSON), with stable event names and a correlation ID on every line
+- [ ] Applicable service and cross-boundary telemetry is structured, with stable event names and correlation IDs propagated end to end
 - [ ] No secrets, tokens, or unredacted PII in any log line (spot-check actual output)
 - [ ] RED metrics exist for every new endpoint and every external dependency, with bounded label sets
 - [ ] Latency is a histogram; p95/p99 are queryable

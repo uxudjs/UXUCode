@@ -29,6 +29,26 @@ Claude Code 使用 `/uxu-code:<command>`，Codex 使用 `@<command>`。例如：
 @plan
 ```
 
+除 `mode` 和 `clean` 外，一般公開命令把命令入口和可選行內參數寫在首行；後續行屬於同一命令的任務正文。路由會保留任務正文內部換行，只移除無意義的首尾空白。
+
+Claude Code 範例：
+
+```text
+/uxu-code:audit inspect gates
+重點檢查狀態生命週期，
+不要修改檔案。
+```
+
+Codex 範例：
+
+```text
+@audit inspect gates
+重點檢查狀態生命週期，
+不要修改檔案。
+```
+
+`mode` 仍嚴格只接受單行，並且必須只有一個 `standard|lite|full|ultra|off` 參數。`clean` 也嚴格只接受單行：無參數只做零寫入預覽，精確的 `apply` 才會在檢查後執行；兩者都不得附加多行任務正文。
+
 `ship` 只給出合併或發佈就緒結論，不會自行提交、推送或部署。
 
 ## 3. 按宿主安裝

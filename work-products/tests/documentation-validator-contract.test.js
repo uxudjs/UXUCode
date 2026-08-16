@@ -10,6 +10,32 @@ const root = path.resolve(__dirname, '..', '..');
 const readme = fs.readFileSync(path.join(root, 'README.md'), 'utf8');
 const guideFiles = ['USAGE.zh-CN.md', 'USAGE.zh-TW.md', 'USAGE.en.md'];
 const guides = guideFiles.map((file) => fs.readFileSync(path.join(root, 'docs', file), 'utf8'));
+const multilineCommandContracts = [
+  [
+    '除 `mode` 和 `clean` 外，一般公开命令把命令入口和可选内联参数写在首行；后续行属于同一命令的任务正文。',
+    '路由会保留任务正文内部换行，只去除无意义的首尾空白。',
+    '`mode` 仍严格只接受单行，并且必须只有一个 `standard|lite|full|ultra|off` 参数。',
+    '`clean` 也严格只接受单行：无参数仅做零写入预览，精确的 `apply` 才会在检查后执行；两者都不得追加多行任务正文。',
+    '/uxu-code:audit inspect gates\n重点检查状态生命周期，\n不要修改文件。',
+    '@audit inspect gates\n重点检查状态生命周期，\n不要修改文件。'
+  ],
+  [
+    '除 `mode` 和 `clean` 外，一般公開命令把命令入口和可選行內參數寫在首行；後續行屬於同一命令的任務正文。',
+    '路由會保留任務正文內部換行，只移除無意義的首尾空白。',
+    '`mode` 仍嚴格只接受單行，並且必須只有一個 `standard|lite|full|ultra|off` 參數。',
+    '`clean` 也嚴格只接受單行：無參數只做零寫入預覽，精確的 `apply` 才會在檢查後執行；兩者都不得附加多行任務正文。',
+    '/uxu-code:audit inspect gates\n重點檢查狀態生命週期，\n不要修改檔案。',
+    '@audit inspect gates\n重點檢查狀態生命週期，\n不要修改檔案。'
+  ],
+  [
+    'Except for `mode` and `clean`, put a public command entry and any optional inline arguments on the first line; every following line is the same command\'s task body.',
+    'Routing preserves line breaks inside the task body and removes only meaningless leading and trailing whitespace.',
+    '`mode` remains strictly single-line and must contain exactly one `standard|lite|full|ultra|off` argument.',
+    '`clean` also remains strictly single-line: no argument is a zero-write preview, while exact `apply` executes only after review; neither command accepts a multiline task body.',
+    '/uxu-code:audit inspect gates\nFocus on state lifecycle,\nand do not modify files.',
+    '@audit inspect gates\nFocus on state lifecycle,\nand do not modify files.'
+  ]
+];
 
 function transformSection(content, start, end, transform) {
   const startIndex = content.indexOf(start);
@@ -29,6 +55,98 @@ function moveToken(section, token, before) {
 test('documentation validators accept the canonical README and guides', () => {
   assert.deepEqual(validateReadme(readme), []);
   assert.deepEqual(validateGuides(guides, readme), []);
+});
+
+test('canonical guides align multiline task bodies and strict single-line exceptions', () => {
+  guides.forEach((guide, index) => {
+    for (const token of multilineCommandContracts[index]) {
+      assert.ok(guide.includes(token), `${guideFiles[index]}: missing command-input contract ${token}`);
+    }
+  });
+});
+
+test('guide validator fails closed when any language command-input contract drifts', () => {
+  assert.deepEqual(validateGuides(guides, readme), []);
+  assert.ok(
+    validateGuides(guides.slice(0, 2), readme)
+      .some((failure) => failure.includes('exactly three language guides')),
+    'expected the guide validator to reject a missing language guide'
+  );
+
+  guides.forEach((guide, index) => {
+    for (const token of multilineCommandContracts[index]) {
+      const mutated = [...guides];
+      mutated[index] = guide.replace(token, 'weakened command-input wording');
+      assert.ok(
+        validateGuides(mutated, readme)
+          .some((failure) => failure.includes('multiline command contract')),
+        `${guideFiles[index]}: expected command-input contract failure for ${token}`
+      );
+    }
+  });
+});
+
+test('guide validator rejects an undocumented eighteenth command or alias', () => {
+  const unknownClaude = [...guides];
+  unknownClaude[2] += '\nUse `/uxu-code:invented` for another workflow.\n';
+  const unknownCodex = [...guides];
+  unknownCodex[2] += '\nUse `@invented` for another workflow.\n';
+
+  assert.ok(
+    validateGuides(unknownClaude, readme)
+      .some((failure) => failure.includes('unknown Claude Code public command')),
+    'expected the guide validator to reject an extra Claude Code command'
+  );
+  assert.ok(
+    validateGuides(unknownCodex, readme)
+      .some((failure) => failure.includes('unknown Codex public command')),
+    'expected the guide validator to reject an extra Codex command'
+  );
+});
+
+test('guide validator rejects mixed-case, underscore, Markdown, and dotted command variants', () => {
+  const mutations = [
+    ['/uxu-code:Invented', 'unknown Claude Code public command'],
+    ['/uxu-code:build.foo', 'unknown Claude Code public command'],
+    ['@Invented', 'unknown Codex public command'],
+    ['@evil_name', 'unknown Codex public command'],
+    ['@build.foo', 'unknown Codex public command'],
+    ['[ @invented ]', 'unknown Codex public command']
+  ];
+
+  guides.forEach((guide, index) => {
+    for (const [variant, expectedFailure] of mutations) {
+      const mutated = [...guides];
+      mutated[index] = `${guide}\nInvalid example: ${variant}\n`;
+      assert.ok(
+        validateGuides(mutated, readme).some((failure) => failure.includes(expectedFailure)),
+        `${guideFiles[index]}: accepted ${variant}`
+      );
+    }
+  });
+});
+
+test('guide validator rejects command-internal punctuation suffixes but allows Markdown punctuation', () => {
+  const mutations = [
+    ['`/uxu-code:build!`', 'invalid Claude Code public command token'],
+    ['`@build!`', 'invalid Codex public command token']
+  ];
+
+  guides.forEach((guide, index) => {
+    for (const [variant, expectedFailure] of mutations) {
+      const mutated = [...guides];
+      mutated[index] = `${guide}\nInvalid example: ${variant}\n`;
+      assert.ok(
+        validateGuides(mutated, readme).some((failure) => failure.includes(expectedFailure)),
+        `${guideFiles[index]}: accepted ${variant}`
+      );
+    }
+  });
+
+  const normalPunctuation = guides.map((guide) =>
+    `${guide}\nRun \`/uxu-code:build\`! Then run \`@build\`.\n`
+  );
+  assert.deepEqual(validateGuides(normalPunctuation, readme), []);
 });
 
 test('documentation validators require every language environment boundary', () => {

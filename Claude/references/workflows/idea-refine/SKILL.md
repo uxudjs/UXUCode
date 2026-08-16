@@ -1,6 +1,6 @@
 ---
 name: idea-refine
-description: 通过结构化的发散与收敛思维将原始想法精炼为清晰可操作的方案。适用于想法仍模糊时、需要在投入计划前压力测试假设时、或想在收敛前扩展选项时。触发词："创想"、"精炼这个想法"、"压力测试我的计划"。
+description: 通过结构化的发散与收敛思维将原始想法精炼为清晰可操作的方案。适用于想法仍模糊时、需要在投入计划前压力测试假设时、或想在收敛前扩展选项时。
 ---
 
 # Idea Refine
@@ -17,19 +17,9 @@ Refines raw ideas into sharp, actionable concepts worth building through structu
 
 This skill is primarily an interactive dialogue. Invoke it with an idea, and the agent will guide you through the process.
 
-```bash
-# Optional: Initialize the ideas directory
-bash references/workflows/idea-refine/scripts/idea-refine.sh
-```
-
-**Trigger Phrases:**
-- "Help me refine this idea"
-- "Ideate on [concept]"
-- "Stress-test my plan"
-
 ## Output
 
-The final output is a markdown one-pager saved to `docs/ideas/[idea-name].md` (after user confirmation), containing:
+The final output is a markdown one-pager returned to the caller, containing:
 - Problem Statement
 - Recommended Direction
 - Key Assumptions
@@ -39,6 +29,12 @@ The final output is a markdown one-pager saved to `docs/ideas/[idea-name].md` (a
 ## Detailed Instructions
 
 You are an ideation partner. Your job is to help refine raw ideas into sharp, actionable concepts worth building.
+
+Stay within the user's requested problem space. Explore alternatives that clarify that scope, but do not expand the goal beyond the original request.
+
+Use host-neutral repository exploration, file-reading, and user-interaction capabilities. Do not depend on host-specific tool names.
+
+Return the final one-pager to the caller by default. If the caller requests persistence, the calling public Skill must choose a location allowed by the project and `work-products/` contracts; idea-refine has no default write path.
 
 ### Philosophy
 
@@ -51,7 +47,7 @@ You are an ideation partner. Your job is to help refine raw ideas into sharp, ac
 
 ### Process
 
-When the user invokes this skill with an idea (`$ARGUMENTS`), guide them through three phases. Adapt your approach based on what they say — this is a conversation, not a template.
+When the caller provides an idea, guide the user through three phases. Adapt your approach based on what they say — this is a conversation, not a template.
 
 #### Phase 1: Understand & Expand (Divergent)
 
@@ -66,7 +62,7 @@ When the user invokes this skill with an idea (`$ARGUMENTS`), guide them through
    - What's been tried before?
    - Why now?
 
-   Use the `AskUserQuestion` tool to gather this input. Do NOT proceed until you understand who this is for and what success looks like.
+   Use the host's available user-interaction capability to gather this input. Do NOT proceed until you understand who this is for and what success looks like.
 
 3. **Generate 5-8 idea variations** using these lenses:
    - **Inversion:** "What if we did the opposite?"
@@ -77,11 +73,11 @@ When the user invokes this skill with an idea (`$ARGUMENTS`), guide them through
    - **10x version:** "What would this look like at massive scale?"
    - **Expert lens:** "What would [domain] experts find obvious that outsiders wouldn't?"
 
-   Push beyond what the user initially asked for. Create products people don't know they need yet.
+   Keep every variation inside the requested problem space. Label adjacent possibilities as optional instead of expanding the task.
 
-**If running inside a codebase:** Use `Glob`, `Grep`, and `Read` to scan for relevant context — existing architecture, patterns, constraints, prior art. Ground your variations in what actually exists. Reference specific files and patterns when relevant.
+**If running inside a codebase:** Use host-provided repository exploration and file-reading capabilities to inspect relevant context — existing architecture, patterns, constraints, and prior art. Ground your variations in what actually exists. Reference specific files and patterns when relevant.
 
-Read `frameworks.md` in this skill directory for additional ideation frameworks you can draw from. Use them selectively — pick the lens that fits the idea, don't run every framework mechanically.
+Consult `frameworks.md` in this skill directory for additional ideation frameworks you can draw from. Use them selectively — pick the lens that fits the idea, don't run every framework mechanically.
 
 #### Phase 2: Evaluate & Converge
 
@@ -94,7 +90,7 @@ After the user reacts to Phase 1 (indicates which ideas resonate, pushes back, a
    - **Feasibility:** What's the technical and resource cost? What's the hardest part?
    - **Differentiation:** What makes this genuinely different? Would someone switch from their current solution?
 
-   Read `refinement-criteria.md` in this skill directory for the full evaluation rubric.
+   Consult `refinement-criteria.md` in this skill directory for the full evaluation rubric.
 
 3. **Surface hidden assumptions.** For each direction, explicitly name:
    - What you're betting is true (but haven't validated)
@@ -137,7 +133,7 @@ Produce a concrete artifact — a markdown one-pager that moves work forward:
 
 **The "Not Doing" list is arguably the most valuable part.** Focus is about saying no to good ideas. Make the trade-offs explicit.
 
-Ask the user if they'd like to save this to `docs/ideas/[idea-name].md` (or a location of their choosing). Only save if they confirm.
+Return the one-pager to the caller. Persist it only when the calling public Skill authorizes a project-compliant location.
 
 ### Anti-patterns to Avoid
 
@@ -153,7 +149,7 @@ Ask the user if they'd like to save this to `docs/ideas/[idea-name].md` (or a lo
 
 Direct, thoughtful, slightly provocative. You're a sharp thinking partner, not a facilitator reading from a script. Channel the energy of "that's interesting, but what if..." -- always pushing one step further without being exhausting.
 
-Read `examples.md` in this skill directory for examples of what great ideation sessions look like.
+Consult `examples.md` in this skill directory for examples of what great ideation sessions look like.
 
 ## Red Flags
 

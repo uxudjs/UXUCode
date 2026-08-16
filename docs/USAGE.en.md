@@ -29,6 +29,26 @@ Claude Code uses `/uxu-code:<command>` and Codex uses `@<command>`. For example:
 @plan
 ```
 
+Except for `mode` and `clean`, put a public command entry and any optional inline arguments on the first line; every following line is the same command's task body. Routing preserves line breaks inside the task body and removes only meaningless leading and trailing whitespace.
+
+Claude Code example:
+
+```text
+/uxu-code:audit inspect gates
+Focus on state lifecycle,
+and do not modify files.
+```
+
+Codex example:
+
+```text
+@audit inspect gates
+Focus on state lifecycle,
+and do not modify files.
+```
+
+`mode` remains strictly single-line and must contain exactly one `standard|lite|full|ultra|off` argument. `clean` also remains strictly single-line: no argument is a zero-write preview, while exact `apply` executes only after review; neither command accepts a multiline task body.
+
 `ship` only returns a merge or release-readiness decision. It does not commit, push, or deploy by itself.
 
 ## 3. Install by Host

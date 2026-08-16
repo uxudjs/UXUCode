@@ -9,6 +9,8 @@ description: 将工作分解为有序任务。适用于有规格说明或明确�
 
 Decompose work into small, verifiable tasks with explicit acceptance criteria. Good task breakdown is the difference between an agent that completes work reliably and one that produces a tangled mess. Every task should be small enough to implement, test, and verify in a single focused session.
 
+Size tasks by dependencies, risk, and verifiability. File count is planning context, not a pass/fail limit: do not reject, split, or approve a task solely because it touches a fixed number of files. Split only when the dependency graph contains independently verifiable work or the task cannot be reviewed and validated as one coherent unit.
+
 ## When to Use
 
 - You have a spec and need to break it into implementable units
@@ -124,15 +126,15 @@ Add explicit checkpoints:
 
 ## Task Sizing Guidelines
 
-| Size | Files | Scope | Example |
-|------|-------|-------|---------|
-| **XS** | 1 | Single function or config change | Add a validation rule |
-| **S** | 1-2 | One component or endpoint | Add a new API endpoint |
-| **M** | 3-5 | One feature slice | User registration flow |
-| **L** | 5-8 | Multi-component feature | Search with filtering and pagination |
-| **XL** | 8+ | **Too large — break it down further** | — |
+| Size | Scope | Example |
+|------|-------|---------|
+| **XS** | One local behavior with direct verification | Add a validation rule |
+| **S** | One coherent component or endpoint | Add a new API endpoint |
+| **M** | One feature slice with dependent parts | User registration flow |
+| **L** | Cross-component work that remains one verifiable unit | Search with filtering and pagination |
+| **XL** | Multiple independently verifiable dependency subgraphs | Split along those dependency boundaries |
 
-If a task is L or larger, it should be broken into smaller tasks. An agent performs best on S and M tasks.
+Prefer reviewable tasks, but do not split a coherent change solely because of its size label or file count.
 
 **When to break a task down further:**
 - It would take more than one focused session (roughly 2+ hours of agent work)
@@ -225,7 +227,7 @@ Before starting implementation, confirm:
 - [ ] Every task has acceptance criteria
 - [ ] Every task has a verification step
 - [ ] Task dependencies are identified and ordered correctly
-- [ ] No task touches more than ~5 files
+- [ ] No task is split, rejected, or approved solely because of a fixed file count
 - [ ] Checkpoints exist between major phases
 - [ ] The human has reviewed and approved the plan
 

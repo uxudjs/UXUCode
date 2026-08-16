@@ -11,6 +11,10 @@ Create test files and related test artifacts only under `work-products/tests/`. 
 
 Write a failing test before writing the code that makes it pass. For bug fixes, reproduce the bug with a test before attempting a fix. Tests are proof — "seems right" is not done. A codebase with good tests is an AI agent's superpower; a codebase without tests is a liability.
 
+Deterministic behavior defects should normally use focused RED→GREEN proof before the fix. Pure configuration, documentation, static content, or externally nondeterministic behavior should use evidence proportionate to risk when a meaningful failing automation cannot be established.
+
+After a bug fix, run the focused regression and related regression commands during the implementation loop. Run the full repository gate at planned checkpoints or the release gate; do not substitute a full suite for focused defect proof.
+
 ## When to Use
 
 - Implementing any new logic or behavior
@@ -33,7 +37,7 @@ The TDD cycle is universal; the commands are not. Before writing the first test,
 - **Existing conventions** — where tests live, how files are named, what patterns neighboring tests follow
 - **Documented commands** — README, CONTRIBUTING, and CI workflows show the commands that actually gate merges
 
-Run the repository's focused-test command during the loop and its full-suite command before completion. Never assume a default like `npm test` — a Gradle, Cargo, or pytest project has its own equivalent.
+Run the repository's focused-test command and related regressions during the loop. Run its full gate at planned checkpoints or the release gate. Never assume a default like `npm test` — a Gradle, Cargo, or pytest project has its own equivalent.
 
 The examples below use TypeScript for illustration; the workflow is identical in any language once you've discovered the project's own tooling.
 
@@ -115,7 +119,7 @@ Bug report arrives
   Test PASSES (proving the fix works)
        │
        ▼
-  Run full test suite (no regressions)
+  Run related regressions (no regressions)
 ```
 
 **Example:**
@@ -390,8 +394,8 @@ For JavaScript/TypeScript testing patterns illustrating these principles — Jes
 
 After completing any implementation:
 
-- [ ] Every new behavior has a corresponding test
-- [ ] The full suite passes, run with the repository's own test command (`npm test`, `./gradlew test`, `pytest`, `go test ./...`, ...)
+- [ ] Every deterministic new behavior has corresponding focused evidence
+- [ ] Focused and related regressions pass with repository-native commands; the full gate passes at the applicable checkpoint or release gate
 - [ ] Bug fixes include a reproduction test that failed before the fix
 - [ ] Test names describe the behavior being verified
 - [ ] No tests were skipped or disabled

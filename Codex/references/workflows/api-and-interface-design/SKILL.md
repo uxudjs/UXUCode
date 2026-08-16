@@ -170,7 +170,9 @@ POST   /api/tasks/:id/comments → Add a comment to a task
 
 ### Pagination
 
-Paginate list endpoints:
+Pagination is required for unbounded or growing collections, and when the approved interface contract explicitly requires it. Small bounded collections may return a complete list when their limits are explicit and tested; do not add pagination mechanically.
+
+For collections that require pagination:
 
 ```typescript
 // Request
@@ -264,7 +266,7 @@ function getTask(id: TaskId): Promise<Task> { ... }
 | Rationalization | Reality |
 |---|---|
 | "We'll document the API later" | The types ARE the documentation. Define them first. |
-| "We don't need pagination for now" | You will the moment someone has 100+ items. Add it from the start. |
+| "We don't need pagination for now" | Prove the collection is small and bounded. If it can grow without a tested limit, add pagination. |
 | "PATCH is complicated, let's just use PUT" | PUT requires the full object every time. PATCH is what clients actually want. |
 | "We'll version the API when we need to" | Breaking changes without versioning break consumers. Design for extension from the start. |
 | "Nobody uses that undocumented behavior" | Hyrum's Law: if it's observable, somebody depends on it. Treat every public behavior as a commitment. |
@@ -277,7 +279,7 @@ function getTask(id: TaskId): Promise<Task> { ... }
 - Inconsistent error formats across endpoints
 - Validation scattered throughout internal code instead of at boundaries
 - Breaking changes to existing fields (type changes, removals)
-- List endpoints without pagination
+- Unbounded or growing list endpoints without pagination
 - Verbs in REST URLs (`/api/createTask`, `/api/getUsers`)
 - Third-party API responses used without validation or sanitization
 
@@ -288,7 +290,7 @@ After designing an API:
 - [ ] Every endpoint has typed input and output schemas
 - [ ] Error responses follow a single consistent format
 - [ ] Validation happens at system boundaries only
-- [ ] List endpoints support pagination
+- [ ] Unbounded, growing, or contract-required list endpoints support pagination; bounded lists document and test their limits
 - [ ] New fields are additive and optional (backward compatible)
 - [ ] Naming follows consistent conventions across all endpoints
 - [ ] API documentation or types are committed alongside the implementation

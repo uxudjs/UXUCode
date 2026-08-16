@@ -1,15 +1,24 @@
 #!/usr/bin/env node
 
-const { readConfig, readState } = require('./hook-state');
+const { readConfig, readStateStatus } = require('./hook-state');
+const { resolveMode } = require('./mode-policy');
 
-const config = readConfig();
-const state = readState();
-const mode = String(state.mode || config.mode || 'standard').toUpperCase();
-const task = Number.isInteger(state.task) && Number.isInteger(state.total)
-  ? ` task ${state.task}/${state.total}`
-  : '';
-const tests = state.tests ? ` · tests ${state.tests}` : '';
-const gate = state.gate ? ` · gate ${state.gate}` : '';
+function statusSnapshot() {
+  const config = readConfig();
+  const { status, state } = readStateStatus();
+  const mode = resolveMode(config.mode).toUpperCase();
+  const task = status === 'fresh' ? `${state.task}/${state.total}` : 'unknown';
+  const tests = status === 'fresh' && state.tests ? state.tests : 'unknown';
+  const gate = status === 'fresh' && state.gate ? state.gate : 'unknown';
 
-process.stdout.write(`[UXUCODE:${mode}]${task}${tests}${gate}`);
+  return {
+    line: `[UXUCODE:${mode}] task ${task} · tests ${tests} · gate ${gate}`,
+    currentTask: status === 'fresh' && state.currentTask ? state.currentTask : 'unknown',
+    updatedAt: status === 'fresh' ? state.updatedAt : 'unknown'
+  };
+}
+
+if (require.main === module) process.stdout.write(statusSnapshot().line);
+
+module.exports = { statusSnapshot };
 

@@ -19,7 +19,15 @@ const definitions = [
     evidenceBoundary: '不证明真实 Marketplace 安装',
     nestedCleanContract: '其他层级的 `<prefix>/work-products/tests/<rest>` 会归一到根级 `work-products/tests/<prefix>/<rest>`',
     cleanDiscoveryContract: '只用于跨语言发现候选，不证明归属',
-    permissionRetryContract: '仅在结构化权限错误且宿主提供审批机制时'
+    permissionRetryContract: '仅在结构化权限错误且宿主提供审批机制时',
+    multilineCommandContracts: [
+      '除 `mode` 和 `clean` 外，一般公开命令把命令入口和可选内联参数写在首行；后续行属于同一命令的任务正文。',
+      '路由会保留任务正文内部换行，只去除无意义的首尾空白。',
+      '`mode` 仍严格只接受单行，并且必须只有一个 `standard|lite|full|ultra|off` 参数。',
+      '`clean` 也严格只接受单行：无参数仅做零写入预览，精确的 `apply` 才会在检查后执行；两者都不得追加多行任务正文。',
+      '/uxu-code:audit inspect gates\n重点检查状态生命周期，\n不要修改文件。',
+      '@audit inspect gates\n重点检查状态生命周期，\n不要修改文件。'
+    ]
   },
   {
     readmeMarker: '# 🇹🇼 繁體中文',
@@ -34,7 +42,15 @@ const definitions = [
     evidenceBoundary: '不證明真實 Marketplace 安裝',
     nestedCleanContract: '其他層級的 `<prefix>/work-products/tests/<rest>` 會正規化到根層級 `work-products/tests/<prefix>/<rest>`',
     cleanDiscoveryContract: '只用於跨語言發現候選，不證明歸屬',
-    permissionRetryContract: '僅在結構化權限錯誤且宿主提供核准機制時'
+    permissionRetryContract: '僅在結構化權限錯誤且宿主提供核准機制時',
+    multilineCommandContracts: [
+      '除 `mode` 和 `clean` 外，一般公開命令把命令入口和可選行內參數寫在首行；後續行屬於同一命令的任務正文。',
+      '路由會保留任務正文內部換行，只移除無意義的首尾空白。',
+      '`mode` 仍嚴格只接受單行，並且必須只有一個 `standard|lite|full|ultra|off` 參數。',
+      '`clean` 也嚴格只接受單行：無參數只做零寫入預覽，精確的 `apply` 才會在檢查後執行；兩者都不得附加多行任務正文。',
+      '/uxu-code:audit inspect gates\n重點檢查狀態生命週期，\n不要修改檔案。',
+      '@audit inspect gates\n重點檢查狀態生命週期，\n不要修改檔案。'
+    ]
   },
   {
     readmeMarker: '# 🇺🇸 English',
@@ -49,7 +65,15 @@ const definitions = [
     evidenceBoundary: 'does not prove a live Marketplace installation',
     nestedCleanContract: 'Nested `<prefix>/work-products/tests/<rest>` paths are normalized to root-level `work-products/tests/<prefix>/<rest>`',
     cleanDiscoveryContract: 'only for cross-language candidate discovery and does not prove ownership',
-    permissionRetryContract: 'only for a structured permission error when the host offers approval'
+    permissionRetryContract: 'only for a structured permission error when the host offers approval',
+    multilineCommandContracts: [
+      'Except for `mode` and `clean`, put a public command entry and any optional inline arguments on the first line; every following line is the same command\'s task body.',
+      'Routing preserves line breaks inside the task body and removes only meaningless leading and trailing whitespace.',
+      '`mode` remains strictly single-line and must contain exactly one `standard|lite|full|ultra|off` argument.',
+      '`clean` also remains strictly single-line: no argument is a zero-write preview, while exact `apply` executes only after review; neither command accepts a multiline task body.',
+      '/uxu-code:audit inspect gates\nFocus on state lifecycle,\nand do not modify files.',
+      '@audit inspect gates\nFocus on state lifecycle,\nand do not modify files.'
+    ]
   }
 ];
 const commands = ['help', 'spec', 'plan', 'build', 'debug', 'test', 'review', 'simplify', 'ship', 'mode', 'audit', 'debt', 'commit', 'compress', 'stats', 'status', 'clean'];
@@ -119,8 +143,57 @@ function requireOrdered(scope, tokens, message, failures) {
   }
 }
 
+function commandCodeScopes(value) {
+  const scopes = [];
+  let inFence = false;
+
+  for (const line of value.split(/\r?\n/)) {
+    if (/^\s*```/.test(line)) {
+      inFence = !inFence;
+      continue;
+    }
+    if (inFence) {
+      scopes.push(line);
+      continue;
+    }
+    for (const match of line.matchAll(/`([^`]+)`/g)) {
+      scopes.push(match[1]);
+    }
+  }
+
+  return scopes;
+}
+
+function rejectPunctuatedKnownCommands(guide, file, failures) {
+  const patterns = [
+    {
+      pattern: /\/uxu-code:([A-Za-z][A-Za-z0-9_-]*)([^\sA-Za-z0-9_.-][^\s]*)/g,
+      label: 'Claude Code',
+      prefix: '/uxu-code:'
+    },
+    {
+      pattern: /(?:^|[^A-Za-z0-9_.+-])@([A-Za-z][A-Za-z0-9_-]*)([^\sA-Za-z0-9_.-][^\s]*)/g,
+      label: 'Codex',
+      prefix: '@'
+    }
+  ];
+
+  for (const scope of commandCodeScopes(guide)) {
+    for (const { pattern, label, prefix } of patterns) {
+      for (const match of scope.matchAll(pattern)) {
+        if (commands.includes(match[1])) {
+          failures.push(file + ': invalid ' + label + ' public command token ' + prefix + match[1] + match[2]);
+        }
+      }
+    }
+  }
+}
+
 function validateGuides(guides, readme) {
 const failures = [];
+if (!Array.isArray(guides) || guides.length !== files.length) {
+  return ['expected exactly three language guides'];
+}
 const baselineLevels = headingLevels(guides[0]);
 
 guides.forEach((guide, index) => {
@@ -154,6 +227,22 @@ guides.forEach((guide, index) => {
       failures.push(file + ': missing paired command ' + command);
     }
   }
+  for (const contract of definition.multilineCommandContracts) {
+    if (!guide.includes(contract)) {
+      failures.push(file + ': multiline command contract is missing ' + contract);
+    }
+  }
+  for (const match of guide.matchAll(/\/uxu-code:([A-Za-z][A-Za-z0-9_-]*(?:\.[A-Za-z0-9_-]+)*)/g)) {
+    if (!commands.includes(match[1])) {
+      failures.push(file + ': unknown Claude Code public command ' + match[1]);
+    }
+  }
+  for (const match of guide.matchAll(/(?:^|[^A-Za-z0-9_.+-])@([A-Za-z][A-Za-z0-9_-]*(?:\.[A-Za-z0-9_-]+)*)/gm)) {
+    if (!commands.includes(match[1])) {
+      failures.push(file + ': unknown Codex public command ' + match[1]);
+    }
+  }
+  rejectPunctuatedKnownCommands(guide, file, failures);
   for (const mode of modes) {
     if (!guide.includes(tick + mode + tick)) failures.push(file + ': missing mode ' + mode);
   }

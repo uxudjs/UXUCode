@@ -13,6 +13,10 @@ Automate quality gates so that no change reaches production without passing test
 
 **Faster is Safer:** Smaller batches and more frequent releases reduce risk, not increase it. A deployment with 3 changes is easier to debug than one with 30. Frequent releases build confidence in the release process itself.
 
+Every CI gate required by the project contract and relevant to the claimed risk must run and may not be skipped. Path filters may omit a job only when the project CI contract allows it and the change cannot affect that job's risk; skipped slow tests cannot be claimed as covering the same risk.
+
+Commit, tag, push, revert, and release operations require explicit user authorization for the exact action. Examples and checklists are conditional guidance only; do not execute or imply authorization from passing tests, a completed task, or this reference.
+
 ## When to Use
 
 - Setting up a new project's CI pipeline
@@ -23,7 +27,7 @@ Automate quality gates so that no change reaches production without passing test
 
 ## The Quality Gate Pipeline
 
-Every change goes through these gates before merge:
+Every change goes through the applicable project-required gates before merge:
 
 ```
 Pull Request Opened
@@ -51,7 +55,7 @@ Pull Request Opened
   Ready for review
 ```
 
-**No gate can be skipped.** If lint fails, fix lint — don't disable the rule. If a test fails, fix the code — don't skip the test.
+**Applicable required gates cannot be skipped.** If lint fails, fix lint rather than disabling a required rule. If a required test fails, fix the code rather than skipping the test.
 
 ## GitHub Actions Configuration
 
@@ -175,16 +179,16 @@ Copy the failure output
 Feed it to the agent:
 "The CI pipeline failed with this error:
 [paste specific error]
-Fix the issue and verify locally before pushing again."
+Fix the issue and verify locally; request explicit authorization before pushing again."
     │
     ▼
-Agent fixes → pushes → CI runs again
+Agent fixes → reports local verification → pushes only after explicit user authorization → CI runs again
 ```
 
 **Key patterns:**
 
 ```
-Lint failure → Agent runs `npm run lint --fix` and commits
+Lint failure → Agent runs `npm run lint --fix`; commits only after explicit user authorization
 Type error  → Agent reads the error location and fixes the type
 Test failure → Agent follows debugging-and-error-recovery skill
 Build error → Agent checks config and dependencies
@@ -316,12 +320,12 @@ Slow CI pipeline?
 │   └── Use actions/cache or setup-node cache option for node_modules
 ├── Run jobs in parallel
 │   └── Split lint, typecheck, test, build into separate parallel jobs
-├── Only run what changed
-│   └── Use path filters to skip unrelated jobs (e.g., skip e2e for docs-only PRs)
+├── Only run what changed when the project contract permits it
+│   └── Use path filters only for jobs proven unrelated to the change's risk
 ├── Use matrix builds
 │   └── Shard test suites across multiple runners
 ├── Optimize the test suite
-│   └── Remove slow tests from the critical path, run them on a schedule instead
+│   └── Keep required risk coverage in the critical path; schedule only supplemental checks
 └── Use larger runners
     └── GitHub-hosted larger runners or self-hosted for CPU-heavy builds
 ```
@@ -362,7 +366,7 @@ jobs:
 | Rationalization | Reality |
 |---|---|
 | "CI is too slow" | Optimize the pipeline (see CI Optimization below), don't skip it. A 5-minute pipeline prevents hours of debugging. |
-| "This change is trivial, skip CI" | Trivial changes break builds. CI is fast for trivial changes anyway. |
+| "This change is trivial, skip CI" | Run every gate the project contract requires for that change; use filtering only when the contract permits it and the risk is unrelated. |
 | "The test is flaky, just re-run" | Flaky tests mask real bugs and waste everyone's time. Fix the flakiness. |
 | "We'll add CI later" | Projects without CI accumulate broken states. Set it up on day one. |
 | "Manual testing is enough" | Manual testing doesn't scale and isn't repeatable. Automate what you can. |
@@ -381,7 +385,7 @@ jobs:
 
 After setting up or modifying CI:
 
-- [ ] All quality gates are present (lint, types, tests, build, audit)
+- [ ] All project-required quality gates are present and cover their claimed risks
 - [ ] Pipeline runs on every PR and push to main
 - [ ] Failures block merge (branch protection configured)
 - [ ] CI results feed back into the development loop

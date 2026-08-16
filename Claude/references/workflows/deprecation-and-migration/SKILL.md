@@ -11,6 +11,10 @@ Code is a liability, not an asset. Every line of code has ongoing maintenance co
 
 Most engineering organizations are good at building things. Few are good at removing them. This skill addresses that gap.
 
+Backward-compatible migration and rollback are risk-driven defaults for external consumers. An approved no-compatibility or no-fallback migration contract takes precedence; do not add adapters, dual writes, fallback reads, or rollback paths that contradict it.
+
+Migration side effects and compatibility layers still require authorization from the applicable user request and project contract; this internal reference does not expand that authority.
+
 ## When to Use
 
 - Replacing an old system, API, or library with a new one
@@ -62,13 +66,13 @@ Before deprecating anything, answer these questions:
 | **Advisory** | Migration is optional, old system is stable | Warnings, documentation, nudges. Users migrate on their own timeline. |
 | **Compulsory** | Old system has security issues, blocks progress, or maintenance cost is unsustainable | Hard deadline. Old system will be removed by date X. Provide migration tooling. |
 
-**Default to advisory.** Use compulsory only when the maintenance cost or risk justifies forcing migration. Compulsory deprecation requires providing migration tooling, documentation, and support — you can't just announce a deadline.
+**Default to advisory when no approved contract says otherwise.** Use compulsory only when the maintenance cost, risk, or approved migration contract justifies it. Compulsory deprecation normally requires migration tooling, documentation, and support proportional to the approved compatibility boundary.
 
 ## The Migration Process
 
 ### Step 1: Build the Replacement
 
-Don't deprecate without a working alternative. The replacement must:
+By default, don't deprecate an externally consumed system without a working alternative. If an approved no-compatibility contract intentionally removes it without replacement, follow that contract and surface the impact. Otherwise the replacement must:
 
 - Cover all critical use cases of the old system
 - Have documentation and migration guides
@@ -103,7 +107,7 @@ Migrate consumers one at a time, not all at once. For each consumer:
 5. Confirm no regressions
 ```
 
-**The Churn Rule:** If you own the infrastructure being deprecated, you are responsible for migrating your users — or providing backward-compatible updates that require no migration. Don't announce deprecation and leave users to figure it out.
+**The Churn Rule:** If you own the infrastructure being deprecated, you are responsible for the migration work defined by the approved contract. Do not invent a compatibility bridge when that contract explicitly rejects one.
 
 ### Step 4: Remove the Old System
 
@@ -121,7 +125,7 @@ Only after all consumers have migrated:
 
 ### Strangler Pattern
 
-Run old and new systems in parallel. Route traffic incrementally from old to new. When the old system handles 0% of traffic, remove it.
+When compatibility and rollback are required, run old and new systems in parallel and route traffic incrementally. Do not use this pattern when an approved no-compatibility contract rules it out.
 
 ```
 Phase 1: New system handles 0%, old handles 100%
@@ -163,7 +167,7 @@ function getTaskService(userId: string): TaskService {
 
 ### Database Schema Migrations (Expand/Contract)
 
-A schema change is the riskiest migration because the data is the one thing you cannot roll back by reverting a deploy. The failure mode is coupling the schema change to the code change: rename a column in the same release that starts using the new name, and during the rollout window — when old and new code run at once — one of them is querying a column that doesn't exist. The fix is to **never change a column in place**. Migrate in additive phases so old and new code are both valid at every step.
+A schema change is high risk because data cannot be restored merely by reverting code. Unless an approved migration contract explicitly chooses a no-compatibility or no-fallback cutover, use additive phases so old and new code remain valid throughout the rollout.
 
 ```
 EXPAND ──────────────→ MIGRATE ──────────────→ CONTRACT
@@ -184,7 +188,7 @@ Each step is independently deployable and reversible: if step 4 misbehaves, roll
 
 **Rules:**
 - **Additive first, destructive last and alone.** Adds (new nullable column, new table, new index) are safe in any deploy; drops and renames get their own deploy *after* no code references the old shape.
-- **Every migration has a tested down path.** A migration you can't reverse is a deploy you can't roll back. Write and run the `down` before merging.
+- **Test the approved rollback path.** When rollback is part of the approved migration contract, write and run the `down` before merging; when no-fallback is explicitly approved, do not invent one.
 - **Backfill in batches, off the hot path.** A single `UPDATE` over millions of rows locks the table; chunk it and throttle.
 - **Build large indexes without blocking writes** (e.g. Postgres `CREATE INDEX CONCURRENTLY`).
 - **Decouple from code by feature flag** when the cutover is risky, exactly as in the Feature Flag Migration pattern above.
@@ -213,7 +217,7 @@ Zombie code is code that nobody owns but everybody depends on. It's not actively
 | "We can maintain both systems indefinitely" | Two systems doing the same thing is double the maintenance, testing, documentation, and onboarding cost. |
 | "Just rename the column, it's one line" | During the rollout, old and new code run together — one will query a column that no longer exists. Expand/contract, never rename in place. |
 | "I'll add the column and drop the old one in the same migration" | That couples a safe add to a destructive drop. Drops get their own deploy, after no code references the old shape. |
-| "We'll write the rollback if we need it" | A migration with no down path is a deploy you can't reverse. Write and run the `down` before merging. |
+| "We'll write the rollback if we need it" | Decide rollback in the approved migration contract. If required, test it before merging; if explicitly rejected, preserve the documented no-fallback boundary. |
 
 ## Red Flags
 
@@ -225,8 +229,8 @@ Zombie code is code that nobody owns but everybody depends on. It's not actively
 - Deprecation without measuring current usage
 - Removing code without verifying zero active consumers
 - A schema change and the code that depends on it shipped in the same deploy
-- A column renamed or dropped in place rather than via expand/contract
-- A migration merged with no tested down path, or a backfill that locks the table
+- A column renamed or dropped in place without either an approved no-compatibility cutover or the required expand/contract sequence
+- A migration that violates its approved rollback contract, or a backfill that locks the table
 
 ## Verification
 
@@ -241,7 +245,7 @@ After completing a deprecation:
 
 After a database schema migration:
 
-- [ ] The change ships in additive phases (expand → backfill → contract), not a single in-place edit
-- [ ] Old and new code are both valid against the schema at every deploy step
-- [ ] Each migration has a tested down path; backfills run in throttled batches
+- [ ] The change follows the approved compatibility contract: expand → backfill → contract when compatibility is required, or a documented no-compatibility cutover when it is not
+- [ ] Old and new code coexist only when the approved rollout requires simultaneous validity
+- [ ] Each required rollback path is tested; any approved no-fallback decision is explicit, and backfills run in throttled batches
 - [ ] Destructive steps (drop/rename) ship in their own deploy after no code references the old shape
