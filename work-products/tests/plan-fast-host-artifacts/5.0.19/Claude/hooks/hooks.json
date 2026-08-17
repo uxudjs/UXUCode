@@ -1,0 +1,46 @@
+{
+  "description": "Load the unified UXUCode workflow, policies, mode, and prompt router.",
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume|clear|compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node",
+            "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/uxu-session-start.js"],
+            "timeout": 5,
+            "statusMessage": "Loading UXUCode..."
+          }
+        ]
+      }
+    ],
+    "SubagentStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node",
+            "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/uxu-subagent-start.js"],
+            "timeout": 5,
+            "statusMessage": "Loading UXUCode policies..."
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node",
+            "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/uxu-prompt-router.js"],
+            "timeout": 5,
+            "statusMessage": "Routing UXUCode command..."
+          }
+        ]
+      }
+    ]
+  }
+}
+

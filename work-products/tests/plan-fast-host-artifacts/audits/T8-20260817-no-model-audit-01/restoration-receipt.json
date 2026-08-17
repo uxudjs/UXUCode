@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "attempt": "T8-20260817-host-smoke-05",
+  "status": "RESTORED_BYTE_IDENTICAL_TO_ATTEMPT_PRESTATE",
+  "claudeDelta": 0,
+  "codexConfigDelta": 0,
+  "codexCacheDelta": 0,
+  "rawReceiptSha256": "dd3e8e63412d926d9a96bde076c881b6e20c48891b97f9600e5a56e023192d33"
+}

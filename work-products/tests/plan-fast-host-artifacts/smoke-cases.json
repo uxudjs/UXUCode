@@ -1,0 +1,61 @@
+{
+  "schemaVersion": 1,
+  "cases": [
+    {
+      "id": "parallel-plan",
+      "workspace": "parallel",
+      "stage": "plan",
+      "claudePrompt": "/uxu-code:plan fast 仅依据已批准的 work-products/SPEC.md 生成计划与 todo。不得实施任务；完成后报告 execution strategy、safe concurrency limit、首个 wave 及其 barrier。",
+      "codexPrompt": "@plan fast 仅依据已批准的 work-products/SPEC.md 生成计划与 todo。不得实施任务；完成后报告 execution strategy、safe concurrency limit、首个 wave 及其 barrier。"
+    },
+    {
+      "id": "parallel-build",
+      "workspace": "parallel",
+      "stage": "build",
+      "claudePrompt": "/uxu-code:build 执行已批准 fast plan 的下一个安全 wave，然后在 wave barrier 后停止。不得继续后续 wave；不得写 fixture 工作区之外。",
+      "codexPrompt": "@build 执行已批准 fast plan 的下一个安全 wave，然后在 wave barrier 后停止。不得继续后续 wave；不得写 fixture 工作区之外。"
+    },
+    {
+      "id": "serial-plan",
+      "workspace": "serial",
+      "stage": "plan",
+      "claudePrompt": "/uxu-code:plan fast 仅依据已批准的 work-products/SPEC.md 生成计划与 todo。不得实施任务；必须显式报告安全并发上限与串行原因。",
+      "codexPrompt": "@plan fast 仅依据已批准的 work-products/SPEC.md 生成计划与 todo。不得实施任务；必须显式报告安全并发上限与串行原因。"
+    },
+    {
+      "id": "serial-build-auto",
+      "workspace": "serial",
+      "stage": "build",
+      "claudePrompt": "/uxu-code:build auto 连续执行已批准的稳定串行计划；验证每次只有一个任务运行。不得写 fixture 工作区之外。",
+      "codexPrompt": "@build auto 连续执行已批准的稳定串行计划；验证每次只有一个任务运行。不得写 fixture 工作区之外。"
+    },
+    {
+      "id": "partial-build",
+      "workspace": "partial",
+      "stage": "build",
+      "claudePrompt": "/uxu-code:build 从已验证的 partial-wave todo 继续下一个安全 wave。不得重跑 completed 的 P1；只执行 P2；barrier 通过前不得解锁 P3；不得写 fixture 工作区之外。",
+      "codexPrompt": "@build 从已验证的 partial-wave todo 继续下一个安全 wave。不得重跑 completed 的 P1；只执行 P2；barrier 通过前不得解锁 P3；不得写 fixture 工作区之外。"
+    },
+    {
+      "id": "default-plan",
+      "workspace": "default",
+      "stage": "plan",
+      "claudePrompt": "/uxu-code:plan 仅依据已批准的 work-products/SPEC.md 生成普通计划与 todo。不得启用 fast，不得实施任务。",
+      "codexPrompt": "@plan 仅依据已批准的 work-products/SPEC.md 生成普通计划与 todo。不得启用 fast，不得实施任务。"
+    },
+    {
+      "id": "default-build",
+      "workspace": "default",
+      "stage": "build",
+      "claudePrompt": "/uxu-code:build 只执行普通计划的下一个 pending 任务并停止；不得继续第二个任务；不得写 fixture 工作区之外。",
+      "codexPrompt": "@build 只执行普通计划的下一个 pending 任务并停止；不得继续第二个任务；不得写 fixture 工作区之外。"
+    },
+    {
+      "id": "default-build-auto",
+      "workspace": "default",
+      "stage": "build",
+      "claudePrompt": "/uxu-code:build auto 从当前 todo 连续执行普通计划剩余的稳定任务；不得写 fixture 工作区之外。",
+      "codexPrompt": "@build auto 从当前 todo 连续执行普通计划剩余的稳定任务；不得写 fixture 工作区之外。"
+    }
+  ]
+}

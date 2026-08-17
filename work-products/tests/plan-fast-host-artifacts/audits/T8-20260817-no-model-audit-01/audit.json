@@ -1,0 +1,56 @@
+{
+  "schemaVersion": 1,
+  "auditId": "T8-20260817-no-model-audit-01",
+  "auditedAt": "2026-08-17T17:01:21+08:00",
+  "status": "PASS",
+  "acceptanceMode": "EVIDENCE_AUDIT_NO_MODEL",
+  "authorization": "不做Claude和Codex模型校验，审计合理即视为通过",
+  "modelValidation": {
+    "claude": "NOT_REQUIRED_NOT_EXECUTED",
+    "codex": "NOT_REQUIRED_NOT_EXECUTED",
+    "modelCalls": 0,
+    "modelCostUsd": 0
+  },
+  "historicalCandidateInstall": {
+    "receipt": "candidate-install.json",
+    "receiptSha256": "69697d6eb65099ff0e7769e2d8ac46c6891083dd5d93f22efb4ef7f290d7a69e",
+    "status": "PASS",
+    "modelCalls": 0,
+    "claudeVersion": "5.0.20",
+    "codexVersion": "5.0.20",
+    "claudeFiles": 71,
+    "codexFiles": 71,
+    "claudeByteDelta": 0,
+    "codexByteDelta": 0,
+    "claudeValidator": "PASS",
+    "codexValidator": "PASS"
+  },
+  "behaviorContracts": {
+    "focusedPlanBuildHelpFixtureTests": "4/4 PASS",
+    "workflowContractTests": "154/154 PASS",
+    "openClawTests": "34/34 PASS",
+    "unifiedStaticGate": "12/12 PASS",
+    "repositoryPrestate": "31/31 PASS",
+    "diffCheck": "PASS",
+    "immutablePlanSha256": "1261d4d8ba399574fc773aa1f034656da695a60edffcc6c238749912386b2159"
+  },
+  "restoration": {
+    "receipt": "restoration-receipt.json",
+    "receiptSha256": "03cf9490291fbbb6209b17b10f29beb448db0df16d169f588d76f80549780fbb",
+    "status": "RESTORED_BYTE_IDENTICAL_TO_ATTEMPT_PRESTATE",
+    "claudeUserStateDelta": 0,
+    "codexConfigDelta": 0,
+    "codexCacheDelta": 0
+  },
+  "claimBoundary": {
+    "currentHostInstallation": "NOT_REQUIRED_NOT_VERIFIED",
+    "freshRuntime": "NOT_REQUIRED_NOT_VERIFIED",
+    "production": "NOT AUTHORIZED / NOT EXECUTED / UNVERIFIED"
+  },
+  "repositoryActions": {
+    "productCommit": false,
+    "push": false,
+    "publish": false,
+    "deploy": false
+  }
+}

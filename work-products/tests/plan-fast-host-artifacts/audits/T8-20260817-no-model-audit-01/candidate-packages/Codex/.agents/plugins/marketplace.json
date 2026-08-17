@@ -1,0 +1,20 @@
+{
+  "name": "uxu-code-codex",
+  "interface": {
+    "displayName": "UXUCode"
+  },
+  "plugins": [
+    {
+      "name": "uxu-code",
+      "source": {
+        "source": "local",
+        "path": "./"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}

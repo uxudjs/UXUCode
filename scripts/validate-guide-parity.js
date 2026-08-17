@@ -27,6 +27,12 @@ const definitions = [
       '`clean` 也严格只接受单行：无参数仅做零写入预览，精确的 `apply` 才会在检查后执行；两者都不得追加多行任务正文。',
       '/uxu-code:audit inspect gates\n重点检查状态生命周期，\n不要修改文件。',
       '@audit inspect gates\n重点检查状态生命周期，\n不要修改文件。'
+    ],
+    planFastContracts: [
+      '`plan fast` 只有在 `fast` 是精确小写首参数时启用安全并行规划；它不会强制并行，也不会绕过规格充分性或批准门禁。',
+      '批准后的 `work-products/plan.md` 保持不可变，`work-products/todo.md` 是唯一原子执行状态账本。',
+      '部分完成波次重入不会重跑已完成任务；默认 `build` 只执行下一安全波次，只有 `build auto` 可跨波继续。',
+      '不存在 `build fast`。'
     ]
   },
   {
@@ -50,6 +56,12 @@ const definitions = [
       '`clean` 也嚴格只接受單行：無參數只做零寫入預覽，精確的 `apply` 才會在檢查後執行；兩者都不得附加多行任務正文。',
       '/uxu-code:audit inspect gates\n重點檢查狀態生命週期，\n不要修改檔案。',
       '@audit inspect gates\n重點檢查狀態生命週期，\n不要修改檔案。'
+    ],
+    planFastContracts: [
+      '`plan fast` 只有在 `fast` 是精確小寫首參數時啟用安全平行規劃；它不會強制平行，也不會繞過規格充分性或核准門禁。',
+      '核准後的 `work-products/plan.md` 保持不可變，`work-products/todo.md` 是唯一原子執行狀態帳本。',
+      '部分完成波次重入不會重跑已完成任務；預設 `build` 只執行下一安全波次，只有 `build auto` 可跨波繼續。',
+      '不存在 `build fast`。'
     ]
   },
   {
@@ -73,6 +85,12 @@ const definitions = [
       '`clean` also remains strictly single-line: no argument is a zero-write preview, while exact `apply` executes only after review; neither command accepts a multiline task body.',
       '/uxu-code:audit inspect gates\nFocus on state lifecycle,\nand do not modify files.',
       '@audit inspect gates\nFocus on state lifecycle,\nand do not modify files.'
+    ],
+    planFastContracts: [
+      '`plan fast` enables safe parallel planning only when `fast` is the exact lowercase first argument; it neither forces parallelism nor bypasses specification-sufficiency or approval gates.',
+      'After approval, `work-products/plan.md` stays immutable and `work-products/todo.md` is the only atomic execution-state ledger.',
+      'Partial-wave reentry never reruns completed tasks; default `build` executes only the next safe wave, while only `build auto` may continue across waves.',
+      'There is no `build fast`.'
     ]
   }
 ];
@@ -232,6 +250,11 @@ guides.forEach((guide, index) => {
       failures.push(file + ': multiline command contract is missing ' + contract);
     }
   }
+  for (const contract of definition.planFastContracts) {
+    if (!guide.includes(contract)) {
+      failures.push(file + ': plan fast contract is missing ' + contract);
+    }
+  }
   for (const match of guide.matchAll(/\/uxu-code:([A-Za-z][A-Za-z0-9_-]*(?:\.[A-Za-z0-9_-]+)*)/g)) {
     if (!commands.includes(match[1])) {
       failures.push(file + ': unknown Claude Code public command ' + match[1]);
@@ -368,8 +391,9 @@ guides.forEach((guide, index) => {
 
   for (const generatedPath of generatedPaths) {
     if (!generatedFiles.includes(generatedPath)) failures.push(file + ': generated-files table is missing ' + generatedPath);
-    if (generatedPath !== 'work-products/tests/' && count(guide, generatedPath) !== 1) {
-      failures.push(file + ': ' + generatedPath + ' must appear only in the generated-files section');
+    const expectedCount = ['work-products/plan.md', 'work-products/todo.md'].includes(generatedPath) ? 2 : 1;
+    if (generatedPath !== 'work-products/tests/' && count(guide, generatedPath) !== expectedCount) {
+      failures.push(file + ': ' + generatedPath + ' must appear exactly ' + expectedCount + ' time(s)');
     }
   }
   if (!commandReference.includes('work-products/tests/')) {

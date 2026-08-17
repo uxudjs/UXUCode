@@ -1,0 +1,45 @@
+{
+  "schemaVersion": 4,
+  "marketplaceKind": "local",
+  "acceptanceMode": "evidenceAuditNoModel",
+  "identityDimensions": [
+    "repositorySource",
+    "historicalCandidateRegistration",
+    "historicalInstalledCache",
+    "packageByteParity",
+    "packageValidator",
+    "staticBehaviorContract",
+    "restoration"
+  ],
+  "candidatePass": {
+    "requireRepositorySourceCandidate": true,
+    "requireHistoricalCandidateRegistrationReceipt": true,
+    "requireHistoricalInstalledCacheCandidate": true,
+    "requirePackageByteParity": true,
+    "requirePackageValidators": true,
+    "requireStaticBehaviorContracts": true,
+    "requireRestorationReceipt": true,
+    "requireObservedFreshLoadedRoot": false,
+    "requireLoadedPackageCandidate": false,
+    "requireCombinedClaudeLanes": false,
+    "requireCurrentHostInstallation": false
+  },
+  "modelValidationPolicy": {
+    "claude": "NOT_REQUIRED_NOT_EXECUTED",
+    "codex": "NOT_REQUIRED_NOT_EXECUTED",
+    "allowedModelCalls": 0,
+    "allowedModelCostUsd": 0
+  },
+  "auditEvidence": {
+    "candidateInstall": "audits/T8-20260817-no-model-audit-01/candidate-install.json",
+    "candidatePackages": "audits/T8-20260817-no-model-audit-01/candidate-packages",
+    "restoration": "audits/T8-20260817-no-model-audit-01/restoration-receipt.json",
+    "auditReceipt": "audits/T8-20260817-no-model-audit-01/audit.json"
+  },
+  "claimBoundary": {
+    "auditPassMeans": "LOCAL_CANDIDATE_EVIDENCE_ACCEPTED",
+    "currentHostInstalled": "NOT_REQUIRED_NOT_VERIFIED",
+    "freshRuntime": "NOT_REQUIRED_NOT_VERIFIED",
+    "production": "NOT AUTHORIZED / NOT EXECUTED / UNVERIFIED"
+  }
+}

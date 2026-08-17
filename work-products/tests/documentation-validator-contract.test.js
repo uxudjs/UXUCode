@@ -480,3 +480,38 @@ test('documentation validators reject organize commands but allow ordinary prose
     'expected the guide validator to reject a public organize alias'
   );
 });
+
+const planFastGuideContracts = [
+  [
+    '`plan fast` 只有在 `fast` 是精确小写首参数时启用安全并行规划；它不会强制并行，也不会绕过规格充分性或批准门禁。',
+    '批准后的 `work-products/plan.md` 保持不可变，`work-products/todo.md` 是唯一原子执行状态账本。',
+    '部分完成波次重入不会重跑已完成任务；默认 `build` 只执行下一安全波次，只有 `build auto` 可跨波继续。',
+    '不存在 `build fast`。'
+  ],
+  [
+    '`plan fast` 只有在 `fast` 是精確小寫首參數時啟用安全平行規劃；它不會強制平行，也不會繞過規格充分性或核准門禁。',
+    '核准後的 `work-products/plan.md` 保持不可變，`work-products/todo.md` 是唯一原子執行狀態帳本。',
+    '部分完成波次重入不會重跑已完成任務；預設 `build` 只執行下一安全波次，只有 `build auto` 可跨波繼續。',
+    '不存在 `build fast`。'
+  ],
+  [
+    '`plan fast` enables safe parallel planning only when `fast` is the exact lowercase first argument; it neither forces parallelism nor bypasses specification-sufficiency or approval gates.',
+    'After approval, `work-products/plan.md` stays immutable and `work-products/todo.md` is the only atomic execution-state ledger.',
+    'Partial-wave reentry never reruns completed tasks; default `build` executes only the next safe wave, while only `build auto` may continue across waves.',
+    'There is no `build fast`.'
+  ]
+];
+
+test('plan-fast docs contract: three guides and the validator preserve the exact user-facing boundary', () => {
+  guides.forEach((guide, index) => {
+    for (const token of planFastGuideContracts[index]) {
+      assert.ok(guide.includes(token), `${guideFiles[index]}: missing plan fast contract ${token}`);
+      const mutated = [...guides];
+      mutated[index] = guide.replace(token, 'weakened plan fast wording');
+      assert.ok(
+        validateGuides(mutated, readme).some((failure) => failure.includes('plan fast contract')),
+        `${guideFiles[index]}: validator accepted missing plan fast contract ${token}`
+      );
+    }
+  });
+});

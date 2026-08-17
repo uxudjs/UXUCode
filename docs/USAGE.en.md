@@ -145,6 +145,14 @@ The brackets describe an optional stage; they are not part of a command. Common 
 
 One `build` run completes only the next task by default, which keeps review and rollback manageable. Use `/uxu-code:build auto` or `@build auto` only when the plan is stable, acceptance criteria are clear, automated tests are reliable, the user explicitly allows continuous execution, and every task can be rolled back independently.
 
+`plan fast` enables safe parallel planning only when `fast` is the exact lowercase first argument; it neither forces parallelism nor bypasses specification-sufficiency or approval gates.
+
+After approval, `work-products/plan.md` stays immutable and `work-products/todo.md` is the only atomic execution-state ledger.
+
+Partial-wave reentry never reruns completed tasks; default `build` executes only the next safe wave, while only `build auto` may continue across waves.
+
+There is no `build fast`.
+
 ## 6. Command Reference
 
 ### 6.1 Core Workflow

@@ -320,6 +320,28 @@ for (const host of routerHosts) {
   });
 }
 
+test('plan-fast router contract: both hosts preserve exact fast arguments and leave interpretation to plan', () => {
+  for (const host of routerHosts) {
+    for (const [prompt, expectedArguments] of [
+      [`${host.prefix}plan`, ''],
+      [`${host.prefix}plan fast`, 'fast'],
+      [`${host.prefix}plan fast define the rollout`, 'fast define the rollout'],
+      [`${host.prefix}plan fast\ndefine the rollout\npreserve rollback`, 'fast\ndefine the rollout\npreserve rollback'],
+      [`${host.prefix}plan fast\r\ndefine the rollout\r\npreserve rollback`, 'fast\ndefine the rollout\npreserve rollback'],
+      [`${host.prefix}plan FAST`, 'FAST'],
+      [`${host.prefix}plan requirements fast`, 'requirements fast']
+    ]) {
+      const result = runPromptRouter(host, prompt);
+      const context = host.context(result.stdout).replace(/\r\n/g, '\n');
+      assert.ok(
+        context.startsWith(`Route this request to the "plan" skill with arguments "${expectedArguments}". `),
+        `unexpected ${host.name} plan route context: ${JSON.stringify(context)}`
+      );
+    }
+    assertRejectedWithoutWrites(host, `${host.prefix}plan-fast`, /unknown|invalid|format/i);
+  }
+});
+
 test('both hosts block invalid public commands instead of adding advisory context', () => {
   for (const host of routerHosts) {
     for (const prompt of [

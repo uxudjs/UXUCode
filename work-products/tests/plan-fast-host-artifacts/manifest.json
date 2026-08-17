@@ -1,0 +1,731 @@
+{
+  "schemaVersion": 1,
+  "version": "5.0.19",
+  "sourceGitSha": "52f3a6c87402a19e37026a70bd60ec89143613a9",
+  "packages": {
+    "Claude": {
+      "root": "5.0.19/Claude",
+      "fileCount": 71,
+      "treeSha256": "b55b43de9b11edbca063609dad0a6e19b0a5855195881f45bb6f7c866dd4d728",
+      "files": [
+        {
+          "path": ".claude-plugin/marketplace.json",
+          "sha256": "2d044412b9b23f61ce73dbde185564953af1a01d6b245464e8dda8d95a51092d",
+          "size": 456
+        },
+        {
+          "path": ".claude-plugin/plugin.json",
+          "sha256": "86f6ad67ac6d4d436b2749abbb791dc5f40859d7ff2b73b95cb045fbc91a11af",
+          "size": 481
+        },
+        {
+          "path": "CLAUDE.md",
+          "sha256": "93fbc339c4d77fa9f009ac82b680feec8ea5b07ccd862479ad9d3c826a0e8fde",
+          "size": 3805
+        },
+        {
+          "path": "agents/builder.md",
+          "sha256": "0ec2ff847c3eeef910a0d631149fa831c61f45f8c3c87d8dfb72dd8d43c60d33",
+          "size": 308
+        },
+        {
+          "path": "agents/investigator.md",
+          "sha256": "424e9cc55b2b9c0e6c718a112613e47ac55e5ff34ed510141cebc9dd1acc881f",
+          "size": 289
+        },
+        {
+          "path": "agents/reviewer.md",
+          "sha256": "9a7f40c860a25cccadfb5cd1d2c38f2412ad650380441aac7115de48ecfaf695",
+          "size": 311
+        },
+        {
+          "path": "agents/security-reviewer.md",
+          "sha256": "207124dbee2d0c44bd4827465f2d9623cbe11670dfc78ef2e03a1927581bfeec",
+          "size": 321
+        },
+        {
+          "path": "agents/test-reviewer.md",
+          "sha256": "aa670c8fcdf80f23561b9d4977b43c9f5ba53ffeca47839d15a242f2d4a54681",
+          "size": 264
+        },
+        {
+          "path": "hooks/hook-state.js",
+          "sha256": "34ed018b685d6c9ac4b921cd9986594461e81b44109f577934d28bdb52195330",
+          "size": 5430
+        },
+        {
+          "path": "hooks/hooks.json",
+          "sha256": "15ac8a0e1d01e354551ad81e74729c0ada22fd5fcd82cdf26a3c0026a2491deb",
+          "size": 1115
+        },
+        {
+          "path": "hooks/mode-policy.js",
+          "sha256": "39e4a386fd196cab3032eb68a0e73cc94830e1aa22581b0c2de47b50671ae049",
+          "size": 2370
+        },
+        {
+          "path": "hooks/uxu-prompt-router.js",
+          "sha256": "6ab9e85578a522661a6db90765fa17353d99715b1eb82c928e1cf0908693cd29",
+          "size": 2737
+        },
+        {
+          "path": "hooks/uxu-session-start.js",
+          "sha256": "ce2985b925d50fcea0353137b077af19d926280bfef4e7ca8ad2fc0bdbe11df2",
+          "size": 610
+        },
+        {
+          "path": "hooks/uxu-statusline.js",
+          "sha256": "6adc6ac4cea4fe572473d6107800ca575fe9527bdb596399b7bc48291a4f3a12",
+          "size": 894
+        },
+        {
+          "path": "hooks/uxu-subagent-start.js",
+          "sha256": "2d610f6c4683a3864ae01667b200ead3717171e299ff9d7616bc7ace8dcc3f0e",
+          "size": 388
+        },
+        {
+          "path": "references/accessibility-checklist.md",
+          "sha256": "61c759d94d52296231f5f310b92b401f56c44e4430dc3cc95ebac5d7b1d5ffac",
+          "size": 5206
+        },
+        {
+          "path": "references/definition-of-done.md",
+          "sha256": "d1c75d2ae65d2c7a9cd01f93fa8de63e00e75f2fe5d08be224d576157054dcee",
+          "size": 3798
+        },
+        {
+          "path": "references/observability-checklist.md",
+          "sha256": "28659e0a4b9625a434285fa9ede632802afa909f768d0f8d839dca227e53d8fe",
+          "size": 4931
+        },
+        {
+          "path": "references/orchestration-patterns.md",
+          "sha256": "9578a8c34c748dae469a6e8265a76226411e6d3abc58a36c99b7275603286be7",
+          "size": 2124
+        },
+        {
+          "path": "references/performance-checklist.md",
+          "sha256": "628539583b7f515f84d0b8e4f4210ccdc0449afd31901149a078209f0769e654",
+          "size": 7408
+        },
+        {
+          "path": "references/security-checklist.md",
+          "sha256": "61f47e44a1c0e8be404f6abec36053f639a2c897a1790e807959086c1ca60820",
+          "size": 11853
+        },
+        {
+          "path": "references/testing-patterns.md",
+          "sha256": "f0bf05acd0edcadc27297ad5b74f104c8103ccfedba1a05cd6d6ae4af8364c56",
+          "size": 7460
+        },
+        {
+          "path": "references/workflows/api-and-interface-design/SKILL.md",
+          "sha256": "2e736468850803b6236bc1a14bb30cd1297ad0b08aaf3cbb233a1c5f44d78c1b",
+          "size": 10677
+        },
+        {
+          "path": "references/workflows/browser-testing-with-devtools/SKILL.md",
+          "sha256": "422567c08d527a5be09b9e2e6a9755582fb5863c85f845cfc88b2a094d9e4d7c",
+          "size": 13786
+        },
+        {
+          "path": "references/workflows/ci-cd-and-automation/SKILL.md",
+          "sha256": "0d0b6d8f06e82520dd64074681cf22f935d480a137332823c0fe23bef0504caf",
+          "size": 12198
+        },
+        {
+          "path": "references/workflows/code-review-and-quality/SKILL.md",
+          "sha256": "9959c47831c6ef95032139c1bc464011bfa55b6d25f8d81bbb169eb7eacddece",
+          "size": 23060
+        },
+        {
+          "path": "references/workflows/code-simplification/SKILL.md",
+          "sha256": "83dcd52f32960842606190ff377bb6c4e0f50eea9f7dd953fd729e5679842eb5",
+          "size": 13532
+        },
+        {
+          "path": "references/workflows/context-engineering/SKILL.md",
+          "sha256": "202833732ba0a3deb72812a7fbfb6d33e940325afb88cfe8412ce9701a515d1e",
+          "size": 11029
+        },
+        {
+          "path": "references/workflows/debugging-and-error-recovery/SKILL.md",
+          "sha256": "faa9d887ff51c92ec2e00bd6a1526c251750573fe56945513561bcf35b67299b",
+          "size": 10788
+        },
+        {
+          "path": "references/workflows/deprecation-and-migration/SKILL.md",
+          "sha256": "0c0e5eedac149fe54d690295d716e6f9f68aeb1b7ac3ac1b6119bf29a3fde783",
+          "size": 13316
+        },
+        {
+          "path": "references/workflows/documentation-and-adrs/SKILL.md",
+          "sha256": "5a49c37230a9509c659c6153f74580fda7b852ed63ad6073d55ac0b4072549d9",
+          "size": 9728
+        },
+        {
+          "path": "references/workflows/doubt-driven-development/SKILL.md",
+          "sha256": "b1cc24d1e253ba31c7489ad9ced28db980793b1bc011037aac8ef9301315e421",
+          "size": 7547
+        },
+        {
+          "path": "references/workflows/frontend-ui-engineering/SKILL.md",
+          "sha256": "24221d8099ad989b9d540ec5f01d0d344bc775d9683ac98bb51fb9e887108d4f",
+          "size": 10672
+        },
+        {
+          "path": "references/workflows/git-workflow-and-versioning/SKILL.md",
+          "sha256": "af2b3072ee0b901c6c0442f4bf47e2f1c30d4520756aca8dd46560f180680602",
+          "size": 14851
+        },
+        {
+          "path": "references/workflows/idea-refine/SKILL.md",
+          "sha256": "4559d453a9fe24fc9fbc39eae81f327d1a8ed2c1ce92db88717a5d220c984d1a",
+          "size": 8327
+        },
+        {
+          "path": "references/workflows/idea-refine/examples.md",
+          "sha256": "563204bfbf2f80a444151695205af4cb759e722b3d1e5460e08f278a69c89ba1",
+          "size": 20284
+        },
+        {
+          "path": "references/workflows/idea-refine/frameworks.md",
+          "sha256": "161ebc18fdf2d996bc62a87a2d747cf1bf53548354f8925de25c732c27f00309",
+          "size": 5404
+        },
+        {
+          "path": "references/workflows/idea-refine/refinement-criteria.md",
+          "sha256": "1ca2973a4d01b5cb37ab7ddb2eff77fa4e792634a33d0ce44961c068fc88d51a",
+          "size": 5738
+        },
+        {
+          "path": "references/workflows/incremental-implementation/SKILL.md",
+          "sha256": "5a24149dda48626a3c48cfe38b8177df46db3874c343b9c1199d26d512db9894",
+          "size": 9477
+        },
+        {
+          "path": "references/workflows/interview-me/SKILL.md",
+          "sha256": "7b9635cfbd7fd4b1d63e3e56b83d9a3ff9f9484bce681e3fee4aaf17af500cb8",
+          "size": 14351
+        },
+        {
+          "path": "references/workflows/observability-and-instrumentation/SKILL.md",
+          "sha256": "946ddf7165e87970b19d8ca7cd77ee3133cb0ea7e20e5943933e8909b363be1e",
+          "size": 11462
+        },
+        {
+          "path": "references/workflows/performance-optimization/SKILL.md",
+          "sha256": "a32f233f8a0c3b203719720547b74ff988daefe3b3a88843a1ff1499148e470b",
+          "size": 12702
+        },
+        {
+          "path": "references/workflows/planning-and-task-breakdown/SKILL.md",
+          "sha256": "399d30927ea5e8f90ec39fc14791d3eb1af9add48c0ad1bc71c2b995dcb36d71",
+          "size": 8175
+        },
+        {
+          "path": "references/workflows/security-and-hardening/SKILL.md",
+          "sha256": "cdeafc8978d416e7b0a4fc3bd6e5822495761ef5c641a7015d13d3e3e5b34ad8",
+          "size": 20546
+        },
+        {
+          "path": "references/workflows/shipping-and-launch/SKILL.md",
+          "sha256": "f76f0c0971aa62551cf1079e91b4f732f8ad717c665488ddfc70f3f512e24c71",
+          "size": 11036
+        },
+        {
+          "path": "references/workflows/source-driven-development/SKILL.md",
+          "sha256": "bb3a11cc8f7da09d47596a824cc40861b67d941d0ecd4122a9fedb257a9b0d1f",
+          "size": 8361
+        },
+        {
+          "path": "references/workflows/spec-driven-development/SKILL.md",
+          "sha256": "e3151a9a8539f5d605805ebc9a69f968a1e78499da8885fa3018e36dc814c268",
+          "size": 9384
+        },
+        {
+          "path": "references/workflows/test-driven-development/SKILL.md",
+          "sha256": "8ee588f6561a3c3a2ac9150ec8c38c7512b46836c1e873fc088fa482b5d71c86",
+          "size": 17303
+        },
+        {
+          "path": "references/workflows/webperf/SKILL.md",
+          "sha256": "8aa807173f079ce4ec162019895d01c0d1748604da41d27a3d8a1424f0ae311c",
+          "size": 705
+        },
+        {
+          "path": "scripts/clean-work-products.js",
+          "sha256": "91a0e44310f8007fde4dd17173962f905cbd202be2ebea09ac3c57c485104404",
+          "size": 51636
+        },
+        {
+          "path": "scripts/validate-plugin.js",
+          "sha256": "9b05f152e9e9fb95d8c5bf9589d88672147d8ca02e2ce344e9564241d7ced74f",
+          "size": 4282
+        },
+        {
+          "path": "skills/audit/SKILL.md",
+          "sha256": "00c233d5831d252791a5715b65134d9585e61895141d0df283f7bde779271a5a",
+          "size": 583
+        },
+        {
+          "path": "skills/build/SKILL.md",
+          "sha256": "a4f378a6573d740f9e4dc137965f65671a3854b651ee255b4e2f9e9680a50279",
+          "size": 1659
+        },
+        {
+          "path": "skills/clean/SKILL.md",
+          "sha256": "3017d89530eac321302488210e8aade4092a02429296b64d1f9b70bdcb3eca00",
+          "size": 3234
+        },
+        {
+          "path": "skills/commit/SKILL.md",
+          "sha256": "9a0c7938f55b5351c613a828ca4b2a2087bad972da49bf2042ddf2919c6ae6a7",
+          "size": 553
+        },
+        {
+          "path": "skills/compress/SKILL.md",
+          "sha256": "957b1b9bc6e1f2f1b2940354f1defc8e5aa01caf51662f109a88edff9ef07d00",
+          "size": 746
+        },
+        {
+          "path": "skills/debt/SKILL.md",
+          "sha256": "e537f6998cbf8e9188a04dca7fa4a4f19259d9416ebd94a7959551e011f8a5e4",
+          "size": 524
+        },
+        {
+          "path": "skills/debug/SKILL.md",
+          "sha256": "d024faa2206dafa9ddd71dc59f062150cfafd8171528cf1de5df6450d50ecf4f",
+          "size": 1276
+        },
+        {
+          "path": "skills/help/SKILL.md",
+          "sha256": "a3c7b4bf55f6a2e9c531c0ece62a518cb13da7d17d4c105f6117064fdc3174ce",
+          "size": 1771
+        },
+        {
+          "path": "skills/implementation-policy/SKILL.md",
+          "sha256": "8505314f17ca796c36293a84ad9621ef038d1081347e9615fc1aebf0dcf77780",
+          "size": 2207
+        },
+        {
+          "path": "skills/mode/SKILL.md",
+          "sha256": "be305bbf28a6fbfbb4a6dfbcc0bf4f729477c5c68d7da9dae48dc8d7d64d5b9d",
+          "size": 1404
+        },
+        {
+          "path": "skills/output-policy/SKILL.md",
+          "sha256": "a2664aab90207cbaa16d27add27cd3249bd13ebadc09ab7f392e73ad711deb8b",
+          "size": 640
+        },
+        {
+          "path": "skills/plan/SKILL.md",
+          "sha256": "cc37eb285c37b8a38d70fae3ab4495f3dc507792e3cb66e9399820ee5e6bf484",
+          "size": 1232
+        },
+        {
+          "path": "skills/review/SKILL.md",
+          "sha256": "7642ce90ff6f5d0ba50e3d1d7fb655e93deda3863933824f6d0480b36bdbde96",
+          "size": 1829
+        },
+        {
+          "path": "skills/ship/SKILL.md",
+          "sha256": "d0314ffdd8f17b8a596fbcd05e0eb414eacc0265aeb4949b65c0606274662d8b",
+          "size": 2742
+        },
+        {
+          "path": "skills/simplify/SKILL.md",
+          "sha256": "fca33bf463cc7e6f02b9c9183c86df49851f78167d468f7c823490ff1a00f0ae",
+          "size": 955
+        },
+        {
+          "path": "skills/spec/SKILL.md",
+          "sha256": "dbcb211aaa27ac7851aa889bc0dc17d658f939b8082fe1eecc626c9e9fbf35bc",
+          "size": 1095
+        },
+        {
+          "path": "skills/stats/SKILL.md",
+          "sha256": "388c4a307cb0000b3c7c8deeb26fd287c9ccad44aeb5a6be7034373495f85997",
+          "size": 527
+        },
+        {
+          "path": "skills/status/SKILL.md",
+          "sha256": "8522491946a972e793673450c5aed5ee6b03de7757275afc63615d272fde0140",
+          "size": 1359
+        },
+        {
+          "path": "skills/test/SKILL.md",
+          "sha256": "549699b03d25b446f1a6e46f2aaf21993648b4d4a118e105758440e786e4e033",
+          "size": 1193
+        },
+        {
+          "path": "skills/using-uxucode/SKILL.md",
+          "sha256": "a6a16ea73762b1f1b0b2f9c65e5f08f0fdde08c6fd9eda86222d7da9594e5ba3",
+          "size": 1012
+        }
+      ]
+    },
+    "Codex": {
+      "root": "5.0.19/Codex",
+      "fileCount": 71,
+      "treeSha256": "f7823b2b5479c1b4009385c841579ad9350dfb31468a360f2da1973df295020f",
+      "files": [
+        {
+          "path": ".agents/plugins/marketplace.json",
+          "sha256": "67cf7c55d87fe917d209ac97b555041bda0044ae14d32480615e6beca400a86f",
+          "size": 351
+        },
+        {
+          "path": ".codex-plugin/plugin.json",
+          "sha256": "f1c6191e9b21258a603fbcd9a4d568d937a1511961e0b38ee1c25f8455811548",
+          "size": 1247
+        },
+        {
+          "path": "AGENTS.md",
+          "sha256": "8bf190bcef5b3951b9f758e5c0868d09db32a38c81694e215ef80651aaf06600",
+          "size": 3845
+        },
+        {
+          "path": "agents/builder.md",
+          "sha256": "0ec2ff847c3eeef910a0d631149fa831c61f45f8c3c87d8dfb72dd8d43c60d33",
+          "size": 308
+        },
+        {
+          "path": "agents/investigator.md",
+          "sha256": "424e9cc55b2b9c0e6c718a112613e47ac55e5ff34ed510141cebc9dd1acc881f",
+          "size": 289
+        },
+        {
+          "path": "agents/reviewer.md",
+          "sha256": "9a7f40c860a25cccadfb5cd1d2c38f2412ad650380441aac7115de48ecfaf695",
+          "size": 311
+        },
+        {
+          "path": "agents/security-reviewer.md",
+          "sha256": "207124dbee2d0c44bd4827465f2d9623cbe11670dfc78ef2e03a1927581bfeec",
+          "size": 321
+        },
+        {
+          "path": "agents/test-reviewer.md",
+          "sha256": "aa670c8fcdf80f23561b9d4977b43c9f5ba53ffeca47839d15a242f2d4a54681",
+          "size": 264
+        },
+        {
+          "path": "hooks/hook-state.js",
+          "sha256": "34ed018b685d6c9ac4b921cd9986594461e81b44109f577934d28bdb52195330",
+          "size": 5430
+        },
+        {
+          "path": "hooks/hooks.json",
+          "sha256": "ba7903fca80711074a2a788ae50f0208c621dbe02e710551feb0b30c36acffca",
+          "size": 1296
+        },
+        {
+          "path": "hooks/mode-policy.js",
+          "sha256": "39e4a386fd196cab3032eb68a0e73cc94830e1aa22581b0c2de47b50671ae049",
+          "size": 2370
+        },
+        {
+          "path": "hooks/uxu-prompt-router.js",
+          "sha256": "88601b182ede1f5828404cc5d47d0dacd3c6fe54abdcc5032265f984d864fba1",
+          "size": 2919
+        },
+        {
+          "path": "hooks/uxu-session-start.js",
+          "sha256": "fa84275b9ff226b26ab8e740560b4e950c498c3a067b665f430dded0638969c8",
+          "size": 747
+        },
+        {
+          "path": "hooks/uxu-statusline.js",
+          "sha256": "6adc6ac4cea4fe572473d6107800ca575fe9527bdb596399b7bc48291a4f3a12",
+          "size": 894
+        },
+        {
+          "path": "hooks/uxu-subagent-start.js",
+          "sha256": "026c7dd50c9ed560ebc1d883daed99d07f33226941fc11260a59431497ab7534",
+          "size": 378
+        },
+        {
+          "path": "references/accessibility-checklist.md",
+          "sha256": "61c759d94d52296231f5f310b92b401f56c44e4430dc3cc95ebac5d7b1d5ffac",
+          "size": 5206
+        },
+        {
+          "path": "references/definition-of-done.md",
+          "sha256": "d1c75d2ae65d2c7a9cd01f93fa8de63e00e75f2fe5d08be224d576157054dcee",
+          "size": 3798
+        },
+        {
+          "path": "references/observability-checklist.md",
+          "sha256": "28659e0a4b9625a434285fa9ede632802afa909f768d0f8d839dca227e53d8fe",
+          "size": 4931
+        },
+        {
+          "path": "references/orchestration-patterns.md",
+          "sha256": "e3aa5a1a17e4850f4cb3f5334b942cd134f3af691a393112aebb13da706c71e4",
+          "size": 2467
+        },
+        {
+          "path": "references/performance-checklist.md",
+          "sha256": "628539583b7f515f84d0b8e4f4210ccdc0449afd31901149a078209f0769e654",
+          "size": 7408
+        },
+        {
+          "path": "references/security-checklist.md",
+          "sha256": "61f47e44a1c0e8be404f6abec36053f639a2c897a1790e807959086c1ca60820",
+          "size": 11853
+        },
+        {
+          "path": "references/testing-patterns.md",
+          "sha256": "f0bf05acd0edcadc27297ad5b74f104c8103ccfedba1a05cd6d6ae4af8364c56",
+          "size": 7460
+        },
+        {
+          "path": "references/workflows/api-and-interface-design/SKILL.md",
+          "sha256": "2e736468850803b6236bc1a14bb30cd1297ad0b08aaf3cbb233a1c5f44d78c1b",
+          "size": 10677
+        },
+        {
+          "path": "references/workflows/browser-testing-with-devtools/SKILL.md",
+          "sha256": "422567c08d527a5be09b9e2e6a9755582fb5863c85f845cfc88b2a094d9e4d7c",
+          "size": 13786
+        },
+        {
+          "path": "references/workflows/ci-cd-and-automation/SKILL.md",
+          "sha256": "0d0b6d8f06e82520dd64074681cf22f935d480a137332823c0fe23bef0504caf",
+          "size": 12198
+        },
+        {
+          "path": "references/workflows/code-review-and-quality/SKILL.md",
+          "sha256": "d3104a9a13cc6ddb4be3223d04d7670e9cf6cea33623a54cecc3c09df4b8bce6",
+          "size": 23828
+        },
+        {
+          "path": "references/workflows/code-simplification/SKILL.md",
+          "sha256": "83dcd52f32960842606190ff377bb6c4e0f50eea9f7dd953fd729e5679842eb5",
+          "size": 13532
+        },
+        {
+          "path": "references/workflows/context-engineering/SKILL.md",
+          "sha256": "202833732ba0a3deb72812a7fbfb6d33e940325afb88cfe8412ce9701a515d1e",
+          "size": 11029
+        },
+        {
+          "path": "references/workflows/debugging-and-error-recovery/SKILL.md",
+          "sha256": "faa9d887ff51c92ec2e00bd6a1526c251750573fe56945513561bcf35b67299b",
+          "size": 10788
+        },
+        {
+          "path": "references/workflows/deprecation-and-migration/SKILL.md",
+          "sha256": "0c0e5eedac149fe54d690295d716e6f9f68aeb1b7ac3ac1b6119bf29a3fde783",
+          "size": 13316
+        },
+        {
+          "path": "references/workflows/documentation-and-adrs/SKILL.md",
+          "sha256": "5a49c37230a9509c659c6153f74580fda7b852ed63ad6073d55ac0b4072549d9",
+          "size": 9728
+        },
+        {
+          "path": "references/workflows/doubt-driven-development/SKILL.md",
+          "sha256": "2d9e15a4126290f98841178166f7e85dd52ccc8ceecc943fc4fb04c1b2d423c5",
+          "size": 8383
+        },
+        {
+          "path": "references/workflows/frontend-ui-engineering/SKILL.md",
+          "sha256": "24221d8099ad989b9d540ec5f01d0d344bc775d9683ac98bb51fb9e887108d4f",
+          "size": 10672
+        },
+        {
+          "path": "references/workflows/git-workflow-and-versioning/SKILL.md",
+          "sha256": "af2b3072ee0b901c6c0442f4bf47e2f1c30d4520756aca8dd46560f180680602",
+          "size": 14851
+        },
+        {
+          "path": "references/workflows/idea-refine/SKILL.md",
+          "sha256": "4559d453a9fe24fc9fbc39eae81f327d1a8ed2c1ce92db88717a5d220c984d1a",
+          "size": 8327
+        },
+        {
+          "path": "references/workflows/idea-refine/examples.md",
+          "sha256": "563204bfbf2f80a444151695205af4cb759e722b3d1e5460e08f278a69c89ba1",
+          "size": 20284
+        },
+        {
+          "path": "references/workflows/idea-refine/frameworks.md",
+          "sha256": "161ebc18fdf2d996bc62a87a2d747cf1bf53548354f8925de25c732c27f00309",
+          "size": 5404
+        },
+        {
+          "path": "references/workflows/idea-refine/refinement-criteria.md",
+          "sha256": "1ca2973a4d01b5cb37ab7ddb2eff77fa4e792634a33d0ce44961c068fc88d51a",
+          "size": 5738
+        },
+        {
+          "path": "references/workflows/incremental-implementation/SKILL.md",
+          "sha256": "5a24149dda48626a3c48cfe38b8177df46db3874c343b9c1199d26d512db9894",
+          "size": 9477
+        },
+        {
+          "path": "references/workflows/interview-me/SKILL.md",
+          "sha256": "7b9635cfbd7fd4b1d63e3e56b83d9a3ff9f9484bce681e3fee4aaf17af500cb8",
+          "size": 14351
+        },
+        {
+          "path": "references/workflows/observability-and-instrumentation/SKILL.md",
+          "sha256": "946ddf7165e87970b19d8ca7cd77ee3133cb0ea7e20e5943933e8909b363be1e",
+          "size": 11462
+        },
+        {
+          "path": "references/workflows/performance-optimization/SKILL.md",
+          "sha256": "a32f233f8a0c3b203719720547b74ff988daefe3b3a88843a1ff1499148e470b",
+          "size": 12702
+        },
+        {
+          "path": "references/workflows/planning-and-task-breakdown/SKILL.md",
+          "sha256": "fe616446ef295f4c220070c0e79a3c8221f20eab2a91674a8194f3eeb9d121dc",
+          "size": 8166
+        },
+        {
+          "path": "references/workflows/security-and-hardening/SKILL.md",
+          "sha256": "cdeafc8978d416e7b0a4fc3bd6e5822495761ef5c641a7015d13d3e3e5b34ad8",
+          "size": 20546
+        },
+        {
+          "path": "references/workflows/shipping-and-launch/SKILL.md",
+          "sha256": "f76f0c0971aa62551cf1079e91b4f732f8ad717c665488ddfc70f3f512e24c71",
+          "size": 11036
+        },
+        {
+          "path": "references/workflows/source-driven-development/SKILL.md",
+          "sha256": "bb3a11cc8f7da09d47596a824cc40861b67d941d0ecd4122a9fedb257a9b0d1f",
+          "size": 8361
+        },
+        {
+          "path": "references/workflows/spec-driven-development/SKILL.md",
+          "sha256": "f2a54dda37d8c2c8d72d4e6ff8f3b267c020dd72ea9ad369c42fa1ecd37aecf9",
+          "size": 9366
+        },
+        {
+          "path": "references/workflows/test-driven-development/SKILL.md",
+          "sha256": "8ee588f6561a3c3a2ac9150ec8c38c7512b46836c1e873fc088fa482b5d71c86",
+          "size": 17303
+        },
+        {
+          "path": "references/workflows/webperf/SKILL.md",
+          "sha256": "8aa807173f079ce4ec162019895d01c0d1748604da41d27a3d8a1424f0ae311c",
+          "size": 705
+        },
+        {
+          "path": "scripts/clean-work-products.js",
+          "sha256": "91a0e44310f8007fde4dd17173962f905cbd202be2ebea09ac3c57c485104404",
+          "size": 51636
+        },
+        {
+          "path": "scripts/validate-plugin.js",
+          "sha256": "5f2b61dced883f43a39a55ba72f2fc4a1a6b151f0819a8087ca0e6951f34aeaf",
+          "size": 4179
+        },
+        {
+          "path": "skills/audit/SKILL.md",
+          "sha256": "00c233d5831d252791a5715b65134d9585e61895141d0df283f7bde779271a5a",
+          "size": 583
+        },
+        {
+          "path": "skills/build/SKILL.md",
+          "sha256": "a4f378a6573d740f9e4dc137965f65671a3854b651ee255b4e2f9e9680a50279",
+          "size": 1659
+        },
+        {
+          "path": "skills/clean/SKILL.md",
+          "sha256": "3017d89530eac321302488210e8aade4092a02429296b64d1f9b70bdcb3eca00",
+          "size": 3234
+        },
+        {
+          "path": "skills/commit/SKILL.md",
+          "sha256": "9a0c7938f55b5351c613a828ca4b2a2087bad972da49bf2042ddf2919c6ae6a7",
+          "size": 553
+        },
+        {
+          "path": "skills/compress/SKILL.md",
+          "sha256": "957b1b9bc6e1f2f1b2940354f1defc8e5aa01caf51662f109a88edff9ef07d00",
+          "size": 746
+        },
+        {
+          "path": "skills/debt/SKILL.md",
+          "sha256": "e537f6998cbf8e9188a04dca7fa4a4f19259d9416ebd94a7959551e011f8a5e4",
+          "size": 524
+        },
+        {
+          "path": "skills/debug/SKILL.md",
+          "sha256": "d024faa2206dafa9ddd71dc59f062150cfafd8171528cf1de5df6450d50ecf4f",
+          "size": 1276
+        },
+        {
+          "path": "skills/help/SKILL.md",
+          "sha256": "a3c7b4bf55f6a2e9c531c0ece62a518cb13da7d17d4c105f6117064fdc3174ce",
+          "size": 1771
+        },
+        {
+          "path": "skills/implementation-policy/SKILL.md",
+          "sha256": "8505314f17ca796c36293a84ad9621ef038d1081347e9615fc1aebf0dcf77780",
+          "size": 2207
+        },
+        {
+          "path": "skills/mode/SKILL.md",
+          "sha256": "be305bbf28a6fbfbb4a6dfbcc0bf4f729477c5c68d7da9dae48dc8d7d64d5b9d",
+          "size": 1404
+        },
+        {
+          "path": "skills/output-policy/SKILL.md",
+          "sha256": "a2664aab90207cbaa16d27add27cd3249bd13ebadc09ab7f392e73ad711deb8b",
+          "size": 640
+        },
+        {
+          "path": "skills/plan/SKILL.md",
+          "sha256": "cc37eb285c37b8a38d70fae3ab4495f3dc507792e3cb66e9399820ee5e6bf484",
+          "size": 1232
+        },
+        {
+          "path": "skills/review/SKILL.md",
+          "sha256": "7642ce90ff6f5d0ba50e3d1d7fb655e93deda3863933824f6d0480b36bdbde96",
+          "size": 1829
+        },
+        {
+          "path": "skills/ship/SKILL.md",
+          "sha256": "d0314ffdd8f17b8a596fbcd05e0eb414eacc0265aeb4949b65c0606274662d8b",
+          "size": 2742
+        },
+        {
+          "path": "skills/simplify/SKILL.md",
+          "sha256": "fca33bf463cc7e6f02b9c9183c86df49851f78167d468f7c823490ff1a00f0ae",
+          "size": 955
+        },
+        {
+          "path": "skills/spec/SKILL.md",
+          "sha256": "dbcb211aaa27ac7851aa889bc0dc17d658f939b8082fe1eecc626c9e9fbf35bc",
+          "size": 1095
+        },
+        {
+          "path": "skills/stats/SKILL.md",
+          "sha256": "388c4a307cb0000b3c7c8deeb26fd287c9ccad44aeb5a6be7034373495f85997",
+          "size": 527
+        },
+        {
+          "path": "skills/status/SKILL.md",
+          "sha256": "8522491946a972e793673450c5aed5ee6b03de7757275afc63615d272fde0140",
+          "size": 1359
+        },
+        {
+          "path": "skills/test/SKILL.md",
+          "sha256": "549699b03d25b446f1a6e46f2aaf21993648b4d4a118e105758440e786e4e033",
+          "size": 1193
+        },
+        {
+          "path": "skills/using-uxucode/SKILL.md",
+          "sha256": "a6a16ea73762b1f1b0b2f9c65e5f08f0fdde08c6fd9eda86222d7da9594e5ba3",
+          "size": 1012
+        }
+      ]
+    }
+  }
+}

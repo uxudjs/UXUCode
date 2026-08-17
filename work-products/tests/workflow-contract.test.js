@@ -936,9 +936,8 @@ test('audit and performance guidance stays ecosystem-neutral and evidence-gated'
   assert.match(notices, /Excluded from adoption:/);
 });
 
-test('release metadata and maintenance workflows enforce the 5.0.19 version contract', () => {
-  const expectedVersion = '5.0.19';
-  const targetCandidateStatement = '当前目标候选版本为 `5.0.19`。';
+test('release metadata and maintenance workflows enforce the 5.0.23 version contract', () => {
+  const expectedVersion = '5.0.23';
   const codexRollbackPolicy =
     'Codex CLI 更新可能清理旧版本缓存；执行前必须把上一版本复制为可校验的独立回滚制品，不能把缓存保留作为默认事实。';
   const claudeManifest = JSON.parse(
@@ -955,15 +954,13 @@ test('release metadata and maintenance workflows enforce the 5.0.19 version cont
   assert.equal(claudeMarketplace.plugins[0].version, expectedVersion);
   assert.equal(codexManifest.version, expectedVersion);
 
-  for (const file of ['SPEC.md', 'plan.md', 'todo.md']) {
-    const factSource = fs.readFileSync(path.join(root, 'work-products', file), 'utf8');
-    assert.ok(
-      factSource.includes(targetCandidateStatement),
-      `work-products/${file}: current target candidate is not synchronized`
-    );
-  }
-
+  const spec = fs.readFileSync(path.join(root, 'work-products', 'SPEC.md'), 'utf8');
   const plan = fs.readFileSync(path.join(root, 'work-products', 'plan.md'), 'utf8');
+  const todo = fs.readFileSync(path.join(root, 'work-products', 'todo.md'), 'utf8');
+  assert.ok(spec.includes(`当前目标候选版本为 \`${expectedVersion}\``));
+  assert.ok(todo.includes(`当前产品候选版本为 \`${expectedVersion}\``));
+  assert.match(plan, /计划生成基线版本为 `5\.0\.19`/);
+  assert.match(plan, /批准实施目标候选版本为 `5\.0\.20`/);
   assert.ok(plan.includes(codexRollbackPolicy), 'plan: Codex rollback artifact policy is missing');
   assert.doesNotMatch(plan, /失败时保留旧 `5\.0\.18` 缓存/);
 
@@ -972,7 +969,7 @@ test('release metadata and maintenance workflows enforce the 5.0.19 version cont
       path.join(root, pkg, 'scripts', 'validate-plugin.js'),
       'utf8'
     );
-    assert.match(validator, /expected version 5\.0\.19/);
+    assert.ok(validator.includes(`expected version ${expectedVersion}`));
     for (const skill of ['build', 'debug', 'simplify']) {
       assert.match(readSkill(pkg, skill), maintenanceVersionPolicy);
     }
@@ -980,22 +977,417 @@ test('release metadata and maintenance workflows enforce the 5.0.19 version cont
 });
 
 test('host lifecycle records real LF and CRLF evidence before completing measured branch A', () => {
-  const plan = fs.readFileSync(path.join(root, 'work-products', 'plan.md'), 'utf8');
-  const todo = fs.readFileSync(path.join(root, 'work-products', 'todo.md'), 'utf8');
   const report = fs.readFileSync(
     path.join(root, 'work-products', 'tests', 'host-lifecycle-measurement.md'),
     'utf8'
   );
-  const task17 = plan.slice(plan.indexOf('### 任务 17：'), plan.indexOf('### 任务 18：'));
-  const task18 = plan.slice(plan.indexOf('### 任务 18：'), plan.indexOf('## 6. 完成检查点'));
+  const measuredHeading = '# 历史证据：UXUCode 5.0.12 真实宿主生命周期测量';
+  const nextHeading = '# 历史证据：UXUCode 5.0.11 真实宿主生命周期测量';
+  const measuredStart = report.indexOf(measuredHeading);
+  const measuredEnd = report.indexOf(nextHeading, measuredStart + measuredHeading.length);
+  assert.notEqual(measuredStart, -1, '5.0.12 lifecycle evidence is missing');
+  assert.notEqual(measuredEnd, -1, '5.0.12 lifecycle evidence boundary is missing');
+  const measured = report.slice(measuredStart, measuredEnd);
 
-  assert.match(report, /\| `mode` \+ LF \| codepoint `10` \|/);
-  assert.match(report, /\| `mode` \+ CRLF \| codepoint `13,10` \|/);
-  assert.match(report, /\| `clean` \+ LF \| codepoint `10` \|/);
-  assert.match(report, /\| `clean` \+ CRLF \| codepoint `13,10` \|/);
-  assert.match(report, /任务 18 选择分支 A/);
-  assert.match(task17, /\*\*状态：\*\* 已完成/);
-  assert.match(task18, /\*\*状态：\*\* 已完成（2026-08-16；分支 A/);
-  assert.match(todo, /- \[x\] 任务 17：/);
-  assert.match(todo, /- \[x\] 任务 18：/);
+  assert.match(measured, /结论：任务 17 已完成实际测量[^\r\n]*任务 18 选择分支 A/);
+  assert.match(measured, /\| `mode` \+ LF \| codepoint `10` \|/);
+  assert.match(measured, /\| `mode` \+ CRLF \| codepoint `13,10` \|/);
+  assert.match(measured, /\| `clean` \+ LF \| codepoint `10` \|/);
+  assert.match(measured, /\| `clean` \+ CRLF \| codepoint `13,10` \|/);
+  assert.match(measured, /因此任务 18 选择分支 A/);
+});
+
+function planningTaskSection(content, heading) {
+  const start = content.indexOf(heading);
+  assert.notEqual(start, -1, `${heading}: task is missing`);
+  const nextHeading = content.indexOf('\n### ', start + heading.length);
+  return content.slice(start, nextHeading === -1 ? content.length : nextHeading);
+}
+
+function todoTaskSection(content, taskId) {
+  const heading = new RegExp(`^- \\[([ x])\\] ${taskId}（`, 'm');
+  const match = heading.exec(content);
+  assert.ok(match, `${taskId}: todo task is missing`);
+  const nextHeading = content.slice(match.index + match[0].length).search(/^\- \[[ x]\] T\d+R?（/m);
+  const end = nextHeading === -1
+    ? content.length
+    : match.index + match[0].length + nextHeading;
+  return { checked: match[1] === 'x', content: content.slice(match.index, end) };
+}
+
+function dependencyIds(section) {
+  const match = section.match(/(?:\*\*依赖：\*\*|  - 依赖：)([^\r\n]+)/);
+  assert.ok(match, 'dependency field is missing');
+  const declaredDependencies = match[1].split(/[；。]/, 1)[0];
+  return declaredDependencies.match(/T\d+R?/g) || [];
+}
+
+test('serial bootstrap dependencies are structural and mirrored in plan and todo', () => {
+  const plan = fs.readFileSync(path.join(root, 'work-products', 'plan.md'), 'utf8');
+  const todo = fs.readFileSync(path.join(root, 'work-products', 'todo.md'), 'utf8');
+
+  for (const [taskId, requiredDependency] of [['T4', 'T3'], ['T5', 'T4']]) {
+    const planDependencies = dependencyIds(planningTaskSection(plan, `### ${taskId}：`));
+    const todoDependencies = dependencyIds(todoTaskSection(todo, taskId).content);
+    assert.ok(
+      planDependencies.includes(requiredDependency),
+      `${taskId}: plan dependency field must include ${requiredDependency}`
+    );
+    assert.deepEqual(todoDependencies, planDependencies, `${taskId}: todo dependencies must mirror plan`);
+  }
+});
+
+test('todo task checkboxes are an atomic derived mirror of explicit task state', () => {
+  const plan = fs.readFileSync(path.join(root, 'work-products', 'plan.md'), 'utf8');
+  const todo = fs.readFileSync(path.join(root, 'work-products', 'todo.md'), 'utf8');
+  const mirrorContract = '任务复选框是显式状态的派生镜像';
+
+  assert.ok(plan.includes(mirrorContract), 'plan: task state mirror contract is missing');
+  assert.ok(todo.includes(mirrorContract), 'todo: task state mirror contract is missing');
+  assert.match(plan, /仅 `completed` 使用 `\[x\]`/);
+  assert.match(todo, /仅 `completed` 使用 `\[x\]`/);
+  assert.match(plan, /当前 5\.0\.19 自举期间[^。]*不得仅按未勾选任务/);
+
+  for (const match of todo.matchAll(/^- \[([ x])\] (T\d+R?)（/gm)) {
+    const section = todoTaskSection(todo, match[2]);
+    const state = section.content.match(/^  - 状态：(pending|in_progress|completed|blocked)$/m);
+    assert.ok(state, `${match[2]}: explicit state is missing or invalid`);
+    assert.equal(section.checked, state[1] === 'completed', `${match[2]}: checkbox and state diverge`);
+  }
+});
+
+function readWorkflowReference(pkg, relativePath) {
+  return fs.readFileSync(path.join(root, pkg, 'references', ...relativePath.split('/')), 'utf8');
+}
+
+function assertContractTokens(content, tokens, label) {
+  for (const token of tokens) {
+    assert.ok(content.includes(token), `${label}: missing ${token}`);
+  }
+}
+
+function readPlanFastFixture(name) {
+  return fs.readFileSync(
+    path.join(root, 'work-products', 'tests', 'fixtures', 'plan-fast', name),
+    'utf8'
+  );
+}
+
+test('plan-fast plan contract: both hosts expose exact fast input and a complete immutable planning schema', () => {
+  for (const pkg of packages) {
+    const skill = readSkill(pkg, 'plan');
+    const planning = readWorkflowReference(
+      pkg,
+      'workflows/planning-and-task-breakdown/SKILL.md'
+    );
+    assert.match(skill, /^argument-hint: "\[fast\]"$/m, `${pkg}: exact fast argument hint is missing`);
+    assertContractTokens(`${skill}\n${planning}`, [
+      'Only the exact lowercase first argument `fast` enables fast planning.',
+      'Remove that first `fast` token before treating the remaining inline text and lines as the planning request.',
+      'Do not infer fast mode from `FAST`, `parallel`, `quick`, punctuation variants, a non-first `fast`, or natural-language requests for speed.',
+      'execution strategy',
+      'fast requested',
+      'safe concurrency limit',
+      'serial reason',
+      'stable unique task ID',
+      'objective and acceptance criteria',
+      'dependencies',
+      'read scope',
+      'write scope',
+      'shared mutable resources',
+      'focused validation command and whether it may run in parallel',
+      'failure retention and rollback',
+      'wave and start conditions',
+      'main-agent integration responsibility',
+      'An approved `work-products/plan.md` is immutable.',
+      '`work-products/todo.md` is the only mutable execution-state ledger',
+      'task checkboxes are an atomic derived mirror of explicit state',
+      'same file, ancestor/descendant paths, generated outputs, shared mutable resources, or logical dependencies',
+      'A fast request does not require parallel output.'
+    ], `${pkg} plan fast`);
+  }
+});
+
+test('plan-fast build contract: both hosts validate waves, state, reentry, barriers, and fail-closed fallback', () => {
+  for (const pkg of packages) {
+    const skill = readSkill(pkg, 'build');
+    const orchestration = readWorkflowReference(pkg, 'orchestration-patterns.md');
+    assertContractTokens(`${skill}\n${orchestration}`, [
+      'Validate the complete plan and todo before starting any worker.',
+      'missing required field',
+      'duplicate task ID',
+      'unknown dependency',
+      'dependency cycle',
+      'task assigned to multiple waves',
+      'checkbox/state mismatch',
+      'wave width above the declared limit',
+      'canonical paths',
+      'Windows case-insensitive aliases',
+      'ancestor/descendant overlap',
+      'symbolic-link and realpath aliases',
+      'generated-output aliases',
+      'shared lock, cache, or temporary directory',
+      'The main agent is the only writer of `work-products/todo.md`',
+      '`pending → in_progress → completed | blocked`',
+      'atomically record the attempt and write-set before-hash',
+      'A leftover `in_progress` state, interrupted todo replacement, plan/todo mismatch, before-hash drift, missing receipt, or unclear change ownership is `BLOCKED` with zero workers.',
+      'Never rerun a completed task during partial-wave reentry.',
+      'Revalidate unfinished tasks before scheduling them',
+      'do not unlock downstream work until the whole wave and its serial barrier pass',
+      'Runtime evidence may only lower concurrency.',
+      'Never launch a producer and its consumer together or start every ready task unconditionally.',
+      'Workers must not write the plan or todo, start nested workers, integrate shared files, or perform external mutations.',
+      'A valid fast plan makes default `build` execute the next safe wave; only `build auto` may continue across waves.',
+      'fall back to one uniquely safe next task with zero workers',
+      'otherwise return `BLOCKED` with zero workers'
+    ], `${pkg} build fast`);
+  }
+});
+
+test('plan-fast help contract: both hosts explain exact planning syntax and unchanged build authorization', () => {
+  for (const pkg of packages) {
+    const help = readSkill(pkg, 'help');
+    assertContractTokens(help, [
+      '`plan fast`',
+      'exact lowercase first argument',
+      'does not force parallel execution',
+      'does not add `build fast`',
+      'approved plan stays immutable',
+      'todo is the atomic execution-state ledger',
+      'partial-wave reentry does not rerun completed tasks',
+      'default `build` executes only the next safe wave',
+      '`build auto` may continue across waves'
+    ], `${pkg} help fast`);
+  }
+});
+
+test('plan-fast fixture contract: five fixtures cover parallel, serial, reentry, collision, and crash outcomes', () => {
+  const fixtures = new Map([
+    ['parallel.md', readPlanFastFixture('parallel.md')],
+    ['serial.md', readPlanFastFixture('serial.md')],
+    ['partial.md', readPlanFastFixture('partial.md')],
+    ['path-collisions.md', readPlanFastFixture('path-collisions.md')],
+    ['state-crash.md', readPlanFastFixture('state-crash.md')]
+  ]);
+  for (const [name, content] of fixtures) {
+    assert.doesNotMatch(content, /(?:[A-Za-z]:[\\/]|\/(?:Users|home|tmp)\/)/, `${name}: machine path`);
+  }
+  assertContractTokens(fixtures.get('parallel.md'), [
+    'Expected strategy: parallel',
+    'Safe concurrency limit: 2',
+    'Expected ready wave: P1 + P2',
+    'Write-set intersection: empty',
+    'Focused-read intersection: empty'
+  ], 'parallel fixture');
+  assertContractTokens(fixtures.get('serial.md'), [
+    'Expected strategy: serial',
+    'Safe concurrency limit: 1',
+    'ancestor/descendant write overlap',
+    'shared lock',
+    'Serial reason:'
+  ], 'serial fixture');
+  assertContractTokens(fixtures.get('partial.md'), [
+    'P1: completed',
+    'P2: pending',
+    'P3: pending and downstream-locked',
+    'Expected schedule: P2 only',
+    'P1 must not rerun',
+    'P3 remains locked until the wave barrier passes'
+  ], 'partial fixture');
+  assertContractTokens(fixtures.get('path-collisions.md'), [
+    'canonical normalization',
+    'Windows case alias',
+    'ancestor/descendant',
+    'symlink/realpath',
+    'generated-output alias',
+    'shared lock',
+    'shared cache',
+    'shared temporary directory',
+    'unparseable path',
+    '`conflict` or `serial`'
+  ], 'path collision fixture');
+  assertContractTokens(fixtures.get('state-crash.md'), [
+    'worker wrote files but completion transaction is missing',
+    'leftover `in_progress`',
+    'interrupted atomic todo replacement',
+    'plan/todo mismatch',
+    'before-hash drift',
+    'missing validation receipt',
+    'unclear change ownership',
+    'Expected workers: 0',
+    'Expected result: `BLOCKED`'
+  ], 'state crash fixture');
+});
+
+test('plan-fast release boundary keeps raw host state local while tracking sanitized evidence', () => {
+  const workspace = fs.mkdtempSync(path.join(os.tmpdir(), 'uxucode-plan-fast-ignore-'));
+  const isolatedGlobalConfig = path.join(workspace, 'isolated-global-config');
+  try {
+    fs.writeFileSync(path.join(workspace, '.gitignore'), fs.readFileSync(path.join(root, '.gitignore')));
+    fs.writeFileSync(isolatedGlobalConfig, '');
+    const init = childProcess.spawnSync('git', ['init', '--quiet'], {
+      cwd: workspace,
+      encoding: 'utf8'
+    });
+    assert.equal(init.status, 0, init.stderr);
+
+    const environment = {
+      ...process.env,
+      GIT_CONFIG_GLOBAL: isolatedGlobalConfig,
+      GIT_CONFIG_NOSYSTEM: '1'
+    };
+    for (const [probe, expectedStatus] of [
+      ['work-products/tests/.tmp/probe.json', 0],
+      ['work-products/tests/plan-fast-host-artifacts/prestate/probe.json', 0],
+      ['work-products/tests/plan-fast-host-artifacts/runs/probe.json', 0],
+      ['work-products/tests/verify-plan-fast-repository-prestate.js', 0],
+      ['work-products/tests/verify-plan-fast-host-artifacts.js', 1],
+      ['work-products/tests/plan-fast-host-artifacts/manifest.json', 1],
+      ['work-products/tests/plan-fast-host-artifacts/audits/probe.json', 1]
+    ]) {
+      const result = childProcess.spawnSync(
+        'git',
+        ['check-ignore', '--no-index', probe],
+        { cwd: workspace, encoding: 'utf8', env: environment }
+      );
+      assert.equal(result.status, expectedStatus, `${probe}: ${result.stderr}`);
+    }
+  } finally {
+    fs.rmSync(workspace, { recursive: true, force: true });
+  }
+});
+
+test('repository-visible test artifacts do not persist literal safe.directory roots', () => {
+  const listed = childProcess.spawnSync(
+    'git',
+    [
+      '-c',
+      `safe.directory=${root.replace(/\\/g, '/')}`,
+      'ls-files',
+      '--cached',
+      '--others',
+      '--exclude-standard',
+      '-z',
+      '--',
+      'work-products/tests'
+    ],
+    { cwd: root, encoding: null }
+  );
+  assert.equal(listed.status, 0, Buffer.from(listed.stderr || '').toString('utf8'));
+
+  const offenders = Buffer.from(listed.stdout || '')
+    .toString('utf8')
+    .split('\0')
+    .filter(Boolean)
+    .filter((relativePath) => {
+      const absolutePath = path.join(root, ...relativePath.split('/'));
+      return fs.statSync(absolutePath).isFile()
+        && /safe\.directory=[A-Za-z]:[\\/]/.test(fs.readFileSync(absolutePath, 'utf8'));
+    });
+
+  assert.deepEqual(
+    offenders,
+    [],
+    `test artifacts must not persist machine-specific Git safe.directory roots: ${offenders.join(', ')}`
+  );
+});
+
+test('plan-fast historical host audit stays pinned to its measured version after maintenance bumps', () => {
+  const verifier = fs.readFileSync(
+    path.join(root, 'work-products', 'tests', 'verify-plan-fast-host-artifacts.js'),
+    'utf8'
+  );
+  const start = verifier.indexOf('function validateT8NoModelAuditEvidence()');
+  const end = verifier.indexOf('\nfunction validateLiveIdentityAfterT8', start);
+  assert.notEqual(start, -1, 'historical audit validator is missing');
+  assert.notEqual(end, -1, 'historical audit validator boundary is missing');
+  const historicalAudit = verifier.slice(start, end);
+
+  assert.match(historicalAudit, /const historicalCandidateVersion = '5\.0\.20';/);
+  assert.match(historicalAudit, /assert\.equal\(candidateManifest\.version, historicalCandidateVersion/);
+  assert.doesNotMatch(
+    historicalAudit,
+    /describeFiles\(path\.join\(repoRoot, host\)\)/,
+    'historical audit must not compare its frozen candidate to a later repository version'
+  );
+});
+
+test('plan-fast tracked release evidence is clean-checkout self-contained and commit-stable', () => {
+  const verifier = fs.readFileSync(
+    path.join(root, 'work-products', 'tests', 'verify-plan-fast-host-artifacts.js'),
+    'utf8'
+  );
+  const trackedPackageStart = verifier.indexOf('function trackedPackage');
+  const staticManifestStart = verifier.indexOf('function expectedStaticManifest', trackedPackageStart);
+  const captureStart = verifier.indexOf('function captureStaticPackage', staticManifestStart);
+  const mainStart = verifier.indexOf('function main()');
+  assert.notEqual(trackedPackageStart, -1, 'tracked package reader is missing');
+  assert.notEqual(staticManifestStart, -1, 'static manifest builder is missing');
+  assert.notEqual(captureStart, -1, 'static capture boundary is missing');
+  assert.notEqual(mainStart, -1, 'host artifact verifier main is missing');
+
+  const rollbackSource = verifier.slice(trackedPackageStart, captureStart);
+  assert.match(rollbackSource, /function trackedPackage\(host, sourceGitSha\)/);
+  assert.match(rollbackSource, /trackedPackage\(host, sourceGitSha\)/);
+  assert.doesNotMatch(rollbackSource, /['"]HEAD['"]/, 'rollback source must not move with current HEAD');
+
+  const main = verifier.slice(mainStart);
+  const contractBoundary = main.indexOf('if (contractOnly)');
+  assert.notEqual(contractBoundary, -1, 'contract-only boundary is missing');
+  for (const rawValidator of [
+    'validateT8Attempt04ContractRepairEvidence();',
+    'validateT8Attempt03BlockedEvidence();',
+    'validateT8Attempt05BlockedEvidence();',
+    'validateT8BlockedEvidence();'
+  ]) {
+    assert.ok(
+      main.indexOf(rawValidator) > contractBoundary,
+      `${rawValidator} must run only after the contract-only return`
+    );
+  }
+
+  const auditRoot = path.join(
+    root,
+    'work-products',
+    'tests',
+    'plan-fast-host-artifacts',
+    'audits',
+    'T8-20260817-no-model-audit-01'
+  );
+  const countFiles = (directory) => fs.readdirSync(directory, { withFileTypes: true })
+    .reduce((count, entry) => count + (
+      entry.isDirectory() ? countFiles(path.join(directory, entry.name)) : Number(entry.isFile())
+    ), 0);
+  const audit = JSON.parse(fs.readFileSync(path.join(auditRoot, 'audit.json'), 'utf8'));
+  for (const relative of [audit.historicalCandidateInstall.receipt, audit.restoration.receipt]) {
+    const resolved = path.resolve(auditRoot, relative);
+    assert.ok(
+      resolved.startsWith(`${auditRoot}${path.sep}`),
+      `tracked audit receipt escapes its repository-visible root: ${relative}`
+    );
+    assert.ok(fs.existsSync(resolved), `tracked audit receipt is missing: ${relative}`);
+  }
+
+  const identityContract = JSON.parse(fs.readFileSync(
+    path.join(root, 'work-products', 'tests', 'plan-fast-host-artifacts', 'local-marketplace-identity-contract.json'),
+    'utf8'
+  ));
+  for (const relative of Object.values(identityContract.auditEvidence)) {
+    const resolved = path.resolve(root, 'work-products', 'tests', 'plan-fast-host-artifacts', relative);
+    assert.ok(
+      resolved.startsWith(`${auditRoot}${path.sep}`),
+      `release identity evidence escapes its repository-visible audit root: ${relative}`
+    );
+    assert.ok(fs.existsSync(resolved), `release identity evidence is missing: ${relative}`);
+  }
+
+  for (const host of packages) {
+    const candidateRoot = path.join(auditRoot, 'candidate-packages', host);
+    assert.ok(fs.existsSync(candidateRoot), `${host}: tracked historical candidate package is missing`);
+    assert.equal(
+      countFiles(candidateRoot),
+      71,
+      `${host}: tracked historical candidate package must contain 71 files`
+    );
+  }
 });

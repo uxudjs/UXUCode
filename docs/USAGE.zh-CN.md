@@ -145,6 +145,14 @@ node OpenClaw/scripts/install-profile.js --workspace "<请替换为OpenClaw工�
 
 一次 `build` 默认只完成下一个待办，便于检查和回滚。只有计划稳定、验收标准明确、自动化测试可靠、用户明确允许连续执行且任务可独立回滚时，才使用 `/uxu-code:build auto` 或 `@build auto`。
 
+`plan fast` 只有在 `fast` 是精确小写首参数时启用安全并行规划；它不会强制并行，也不会绕过规格充分性或批准门禁。
+
+批准后的 `work-products/plan.md` 保持不可变，`work-products/todo.md` 是唯一原子执行状态账本。
+
+部分完成波次重入不会重跑已完成任务；默认 `build` 只执行下一安全波次，只有 `build auto` 可跨波继续。
+
+不存在 `build fast`。
+
 ## 6. 命令参考
 
 ### 6.1 核心工作流

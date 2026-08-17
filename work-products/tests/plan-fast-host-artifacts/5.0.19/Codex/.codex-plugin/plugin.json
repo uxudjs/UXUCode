@@ -1,0 +1,29 @@
+{
+  "name": "uxu-code",
+  "version": "5.0.19",
+  "description": "Codex-native unified engineering workflows, minimal correct implementation, and concise technical output.",
+  "author": {
+    "name": "uxudjs",
+    "url": "https://github.com/uxudjs"
+  },
+  "homepage": "https://github.com/uxudjs/UXUCode",
+  "repository": "https://github.com/uxudjs/UXUCode",
+  "license": "MIT",
+  "keywords": ["coding", "engineering", "skills", "hooks", "workflow"],
+  "skills": "./skills/",
+  "hooks": "./hooks/hooks.json",
+  "interface": {
+    "displayName": "UXUCode",
+    "shortDescription": "Unified engineering workflows and release gates",
+    "longDescription": "Use Codex-native engineering workflows from specification through release with minimal correct implementations, concise evidence-backed output, and explicit safety gates.",
+    "developerName": "uxudjs",
+    "category": "Productivity",
+    "capabilities": ["Instructions", "Lifecycle hooks"],
+    "websiteURL": "https://github.com/uxudjs/UXUCode",
+    "defaultPrompt": [
+      "Use the appropriate engineering workflow skills to implement this task.",
+      "Review this change for correctness and over-engineering.",
+      "Find the smallest correct implementation and verify it."
+    ]
+  }
+}

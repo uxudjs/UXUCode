@@ -1,0 +1,17 @@
+{
+  "name": "uxu-code-claude",
+  "owner": {
+    "name": "uxudjs"
+  },
+  "description": "Claude Code-native unified engineering workflows and lifecycle hooks.",
+  "plugins": [
+    {
+      "name": "uxu-code",
+      "source": "./",
+      "description": "Unified engineering workflow skills with minimal correct implementation.",
+      "version": "5.0.19",
+      "category": "development",
+      "tags": ["coding", "workflow", "review", "release"]
+    }
+  ]
+}

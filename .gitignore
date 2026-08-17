@@ -6,3 +6,7 @@
 !/work-products/clean-migration.json
 !/work-products/tests/
 !/work-products/tests/**
+/work-products/tests/.tmp/
+/work-products/tests/verify-plan-fast-repository-prestate.js
+/work-products/tests/plan-fast-host-artifacts/prestate/
+/work-products/tests/plan-fast-host-artifacts/runs/

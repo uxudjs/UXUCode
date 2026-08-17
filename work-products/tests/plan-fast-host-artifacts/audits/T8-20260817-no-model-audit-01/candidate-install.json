@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "attempt": "T8-20260817-host-smoke-04",
+  "status": "PASS",
+  "claudeInstalledVersion": "5.0.20",
+  "codexInstalledVersion": "5.0.20",
+  "validation": {
+    "claude": "5.0.20_71_FILES_BYTE_IDENTICAL_VALIDATOR_PASS",
+    "codex": "5.0.20_71_FILES_BYTE_IDENTICAL_VALIDATOR_PASS"
+  },
+  "modelCalls": 0,
+  "modelCostUsd": 0,
+  "rawReceiptSha256": "b51811be3630e260dd9a83fff6edc9938ac8eecca36b63d0fb4683600ca2be66"
+}
