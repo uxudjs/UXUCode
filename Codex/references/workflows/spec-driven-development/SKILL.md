@@ -13,6 +13,12 @@ Size tasks by dependencies, risk, and verifiability; there is no universal file-
 
 Commit, tag, push, revert, and release operations require explicit user authorization for the exact action. Examples and checklists are conditional guidance only; do not execute or imply authorization from passing tests, a completed task, or this reference.
 
+## Specification Approval
+
+Treat specification approval as whole-sentence semantic intent for one clearly presented current candidate, never as a keyword or regex match. Record approval in work-products/SPEC.md metadata; a material edit returns it to pending approval. Ordinary specification approval never requires the user to provide, copy, or repeat a SHA. Specification approval does not invoke planning or implementation.
+
+Only the approved project specification may directly enumerate an action-scoped exact-set authorization and its complete safety boundary. A plan, todo, debug note, or receipt may reference that stable action identity but cannot create or widen it.
+
 ## When to Use
 
 - Requirements are ambiguous or incomplete

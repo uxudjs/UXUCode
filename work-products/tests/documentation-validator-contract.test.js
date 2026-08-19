@@ -483,22 +483,46 @@ test('documentation validators reject organize commands but allow ordinary prose
 
 const planFastGuideContracts = [
   [
+    '对于普通计划或执行策略为 `serial` 的计划，一次 `build` 默认只完成下一个待办，便于检查和回滚。',
     '`plan fast` 只有在 `fast` 是精确小写首参数时启用安全并行规划；它不会强制并行，也不会绕过规格充分性或批准门禁。',
     '批准后的 `work-products/plan.md` 保持不可变，`work-products/todo.md` 是唯一原子执行状态账本。',
     '部分完成波次重入不会重跑已完成任务；默认 `build` 只执行下一安全波次，只有 `build auto` 可跨波继续。',
     '不存在 `build fast`。'
   ],
   [
+    '對於一般計畫或執行策略為 `serial` 的計畫，一次 `build` 預設只完成下一個待辦，便於檢查和復原。',
     '`plan fast` 只有在 `fast` 是精確小寫首參數時啟用安全平行規劃；它不會強制平行，也不會繞過規格充分性或核准門禁。',
     '核准後的 `work-products/plan.md` 保持不可變，`work-products/todo.md` 是唯一原子執行狀態帳本。',
     '部分完成波次重入不會重跑已完成任務；預設 `build` 只執行下一安全波次，只有 `build auto` 可跨波繼續。',
     '不存在 `build fast`。'
   ],
   [
+    'For an ordinary plan or one with execution strategy `serial`, one `build` run completes only the next task by default, which keeps review and rollback manageable.',
     '`plan fast` enables safe parallel planning only when `fast` is the exact lowercase first argument; it neither forces parallelism nor bypasses specification-sufficiency or approval gates.',
     'After approval, `work-products/plan.md` stays immutable and `work-products/todo.md` is the only atomic execution-state ledger.',
     'Partial-wave reentry never reruns completed tasks; default `build` executes only the next safe wave, while only `build auto` may continue across waves.',
     'There is no `build fast`.'
+  ]
+];
+
+const ordinaryApprovalGuideContracts = [
+  [
+    '普通规格或计划只需对当前唯一、已展示的候选作出明确自然语言批准，例如“批准当前计划”；用户无需查看、复制或复述 SHA。',
+    '系统会从当前文件原始字节自行计算并重算 SHA-256；发生漂移、目标冲突或多候选时会展示可读差异并重新请求普通批准，而不是要求回复摘要。',
+    '普通批准不会自动运行下一个命令，也不授权 `build auto`、提交、推送、联网、付费、训练、外部写入、发布或部署。',
+    '只有已批准项目规格直接枚举的 action-scoped 高风险动作才可保留其 exact-set 授权；普通批准既不能替代它，也不能扩大其范围。'
+  ],
+  [
+    '一般規格或計畫只需對目前唯一、已展示的候選作出明確自然語言核准，例如「核准目前計畫」；使用者無需查看、複製或複述 SHA。',
+    '系統會從目前檔案原始位元組自行計算並重算 SHA-256；發生漂移、目標衝突或多候選時會展示可讀差異並重新請求一般核准，而不是要求回覆摘要。',
+    '一般核准不會自動執行下一個命令，也不授權 `build auto`、提交、推送、連網、付費、訓練、外部寫入、發布或部署。',
+    '只有已核准專案規格直接列舉的 action-scoped 高風險動作才可保留其 exact-set 授權；一般核准既不能取代它，也不能擴大其範圍。'
+  ],
+  [
+    'An ordinary specification or plan needs only clear natural-language approval of the one current, presented candidate, for example “approve the current plan”; the user does not need to view, copy, or repeat a SHA.',
+    'The system computes and recomputes SHA-256 from the current file raw bytes; on drift, target conflict, or multiple candidates it shows a human-readable difference and asks for ordinary approval again instead of requesting a digest reply.',
+    'Ordinary approval does not run the next command automatically or authorize `build auto`, commit, push, network access, payment, training, external writes, release, or deployment.',
+    'Only an action-scoped high-risk action directly enumerated by an approved project specification may retain its exact-set authorization; ordinary approval can neither replace it nor widen its scope.'
   ]
 ];
 
@@ -511,6 +535,21 @@ test('plan-fast docs contract: three guides and the validator preserve the exact
       assert.ok(
         validateGuides(mutated, readme).some((failure) => failure.includes('plan fast contract')),
         `${guideFiles[index]}: validator accepted missing plan fast contract ${token}`
+      );
+    }
+  });
+});
+
+test('ordinary approval documentation contract: three guides reject SHA challenge-response', () => {
+  guides.forEach((guide, index) => {
+    for (const token of ordinaryApprovalGuideContracts[index]) {
+      assert.ok(guide.includes(token), `${guideFiles[index]}: missing ordinary approval contract ${token}`);
+      const mutated = [...guides];
+      mutated[index] = guide.replace(token, 'weakened ordinary approval wording');
+      assert.ok(
+        validateGuides(mutated, readme)
+          .some((failure) => failure.includes('ordinary approval contract')),
+        `${guideFiles[index]}: validator accepted missing ordinary approval contract ${token}`
       );
     }
   });

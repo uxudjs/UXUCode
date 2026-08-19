@@ -143,7 +143,7 @@ The brackets describe an optional stage; they are not part of a command. Common 
 | Observed failure | `debug → review → ship` |
 | Independent check of existing changes | `review` or `test` |
 
-One `build` run completes only the next task by default, which keeps review and rollback manageable. Use `/uxu-code:build auto` or `@build auto` only when the plan is stable, acceptance criteria are clear, automated tests are reliable, the user explicitly allows continuous execution, and every task can be rolled back independently.
+For an ordinary plan or one with execution strategy `serial`, one `build` run completes only the next task by default, which keeps review and rollback manageable. Use `/uxu-code:build auto` or `@build auto` only when the plan is stable, acceptance criteria are clear, automated tests are reliable, the user explicitly allows continuous execution, and every task can be rolled back independently.
 
 `plan fast` enables safe parallel planning only when `fast` is the exact lowercase first argument; it neither forces parallelism nor bypasses specification-sufficiency or approval gates.
 
@@ -152,6 +152,14 @@ After approval, `work-products/plan.md` stays immutable and `work-products/todo.
 Partial-wave reentry never reruns completed tasks; default `build` executes only the next safe wave, while only `build auto` may continue across waves.
 
 There is no `build fast`.
+
+An ordinary specification or plan needs only clear natural-language approval of the one current, presented candidate, for example “approve the current plan”; the user does not need to view, copy, or repeat a SHA.
+
+The system computes and recomputes SHA-256 from the current file raw bytes; on drift, target conflict, or multiple candidates it shows a human-readable difference and asks for ordinary approval again instead of requesting a digest reply.
+
+Ordinary approval does not run the next command automatically or authorize `build auto`, commit, push, network access, payment, training, external writes, release, or deployment.
+
+Only an action-scoped high-risk action directly enumerated by an approved project specification may retain its exact-set authorization; ordinary approval can neither replace it nor widen its scope.
 
 ## 6. Command Reference
 

@@ -210,7 +210,15 @@ The planning basis, read-only analysis, approval, test placement, and authorizat
 
 At plan level record the execution strategy, fast requested value, safe concurrency limit, and serial reason. For every task use the complete task contract above. Assign each ready task to exactly one wave. Every wave records ready tasks, frozen tasks, the concurrency limit, whether editing and focused validation may run in parallel, its serial integration barrier, and the receipt conditions that unlock downstream work.
 
+Execution strategy is exactly `fast` or `serial`; every other value is invalid. For tasks A and B, any normalized overlap between A's write or generated-output scope and B's read, write, or generated-output scope is a conflict, and the same check applies from B to A. A write/read overlap is exempt only when the read bytes are frozen by SHA-256 before the wave and no wave task can write any alias of that frozen input.
+
 An approved `work-products/plan.md` is immutable. `work-products/todo.md` is the only mutable execution-state ledger. Todo mirrors task IDs, waves, and dependencies, initializes one explicit `pending` state per task, records the plan SHA-256, and declares the main agent as its only writer. Its task checkboxes are an atomic derived mirror of explicit state: only `completed` is checked.
+
+### Approval identity and receipt
+
+Compute the plan SHA-256 from the raw work-products/plan.md bytes and bind it as internal identity in pending work-products/todo.md before presentation. After clear whole-sentence approval, reread and recompute the raw plan identity, then atomically record approval state, identity, and receipt only in todo. The user never has to provide, copy, or repeat a SHA; a conflicting user-supplied digest is a candidate-target conflict, not proof.
+
+A fresh session reuses a valid persisted receipt when the current plan bytes still match, while drift recovery shows a human-readable difference and asks for ordinary approval again. Do not store approval in the immutable plan or treat hook freshness state as an approval ledger. Planning may reference but never create or widen a high-risk action_id enumerated by an approved project specification.
 
 Fast planning must not create a second state file, copy conflict logic into todo, invent a `build fast` interface, or treat more workers as evidence of success.
 

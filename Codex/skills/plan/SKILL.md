@@ -14,9 +14,17 @@ Only the exact lowercase first argument `fast` enables fast planning. Remove tha
 
 For fast planning, first establish the dependency graph, read and write boundaries, generated outputs, and shared mutable resources. Then form waves only from ready tasks proven independent. A fast request does not require parallel output. Use a serial strategy with a recorded reason whenever safety or coordination cost does not justify parallel work.
 
+Execution strategy is exactly `fast` or `serial`; every other value is invalid. For tasks A and B, any normalized overlap between A's write or generated-output scope and B's read, write, or generated-output scope is a conflict, and the same check applies from B to A. A write/read overlap is exempt only when the read bytes are frozen by SHA-256 before the wave and no wave task can write any alias of that frozen input.
+
 Record plan-level execution strategy, whether fast was requested, safe concurrency limit, and serial reason. Give every task a stable unique task ID, objective and acceptance criteria, dependencies, read scope, write scope, shared mutable resources, focused validation command and whether it may run in parallel, failure retention and rollback, wave and start conditions, and main-agent integration responsibility. Waves must list ready tasks, frozen tasks, barriers, and unlock conditions.
 
 An approved `work-products/plan.md` is immutable. `work-products/todo.md` is the only mutable execution-state ledger; initialize every task as `pending`, bind it to the plan SHA-256, and state that task checkboxes are an atomic derived mirror of explicit state. Do not duplicate conflict rules into todo.
+
+## Ordinary Approval Boundary
+
+Judge ordinary approval from the whole sentence and the current candidate context, never from a keyword or regular-expression match. Ordinary specification or plan approval never requires the user to provide, copy, or repeat a SHA. Negation, questions, quotations, conditions, requests to edit first, and requests to continue review are not approval. Ordinary approval does not invoke the next public command or authorize auto execution, commit, push, network access, payment, training, external writes, release, or deployment.
+
+Before presenting a plan candidate, read the raw bytes of work-products/plan.md, compute SHA-256, and bind that internal identity in the pending work-products/todo.md. On clear approval, reread the raw plan bytes, recompute SHA-256, require it to match todo, and atomically record approval state, identity, and receipt in todo. Never trust a user-supplied digest, write approval into .uxucode-state.json, or write the plan digest into the plan itself. A fresh session reuses a valid persisted receipt while its bound plan identity still matches; drift or a conflicting user-supplied digest requires a human-readable candidate difference and ordinary approval again, never a SHA reply. A plan may only reference a high-risk action_id already enumerated by an approved project specification; it cannot create or widen one.
 
 Write `work-products/plan.md` and `work-products/todo.md`. Put every planned test file under `work-products/tests/` and require test references to use paths relative to their final location. Do not modify business code. Surface unresolved decisions instead of hiding them.
 

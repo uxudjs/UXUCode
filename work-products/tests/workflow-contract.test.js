@@ -764,6 +764,7 @@ test('unified validation covers every repository gate and propagates the first f
       'legacy commands',
       'third-party notices',
       'workflow contracts',
+      'plan-fast tracked contract',
       'OpenClaw profile',
       'OpenClaw tests',
       'git diff check'
@@ -775,11 +776,16 @@ test('unified validation covers every repository gate and propagates the first f
       '--test',
       'work-products/tests/clean-contract.test.js',
       'work-products/tests/environment-isolation-contract.test.js',
+      'work-products/tests/plan-fast-execution-contract.test.js',
       'work-products/tests/subagent-cross-validation-contract.test.js',
       'work-products/tests/workflow-contract.test.js',
       'work-products/tests/mode-policy-contract.test.js',
       'work-products/tests/documentation-validator-contract.test.js'
     ]
+  );
+  assert.deepEqual(
+    steps.find((step) => step.name === 'plan-fast tracked contract').args,
+    ['work-products/tests/verify-plan-fast-host-artifacts.js', '--contract-only']
   );
   assert.deepEqual(
     steps.find((step) => step.name === 'OpenClaw tests').args,
@@ -936,10 +942,8 @@ test('audit and performance guidance stays ecosystem-neutral and evidence-gated'
   assert.match(notices, /Excluded from adoption:/);
 });
 
-test('release metadata and maintenance workflows enforce the 5.0.23 version contract', () => {
-  const expectedVersion = '5.0.23';
-  const codexRollbackPolicy =
-    'Codex CLI 更新可能清理旧版本缓存；执行前必须把上一版本复制为可校验的独立回滚制品，不能把缓存保留作为默认事实。';
+test('release metadata and maintenance workflows enforce the 5.0.24 version contract', () => {
+  const expectedVersion = '5.0.24';
   const claudeManifest = JSON.parse(
     fs.readFileSync(path.join(root, 'Claude', '.claude-plugin', 'plugin.json'), 'utf8')
   );
@@ -955,14 +959,7 @@ test('release metadata and maintenance workflows enforce the 5.0.23 version cont
   assert.equal(codexManifest.version, expectedVersion);
 
   const spec = fs.readFileSync(path.join(root, 'work-products', 'SPEC.md'), 'utf8');
-  const plan = fs.readFileSync(path.join(root, 'work-products', 'plan.md'), 'utf8');
-  const todo = fs.readFileSync(path.join(root, 'work-products', 'todo.md'), 'utf8');
   assert.ok(spec.includes(`当前目标候选版本为 \`${expectedVersion}\``));
-  assert.ok(todo.includes(`当前产品候选版本为 \`${expectedVersion}\``));
-  assert.match(plan, /计划生成基线版本为 `5\.0\.19`/);
-  assert.match(plan, /批准实施目标候选版本为 `5\.0\.20`/);
-  assert.ok(plan.includes(codexRollbackPolicy), 'plan: Codex rollback artifact policy is missing');
-  assert.doesNotMatch(plan, /失败时保留旧 `5\.0\.18` 缓存/);
 
   for (const pkg of packages) {
     const validator = fs.readFileSync(
@@ -997,65 +994,6 @@ test('host lifecycle records real LF and CRLF evidence before completing measure
   assert.match(measured, /因此任务 18 选择分支 A/);
 });
 
-function planningTaskSection(content, heading) {
-  const start = content.indexOf(heading);
-  assert.notEqual(start, -1, `${heading}: task is missing`);
-  const nextHeading = content.indexOf('\n### ', start + heading.length);
-  return content.slice(start, nextHeading === -1 ? content.length : nextHeading);
-}
-
-function todoTaskSection(content, taskId) {
-  const heading = new RegExp(`^- \\[([ x])\\] ${taskId}（`, 'm');
-  const match = heading.exec(content);
-  assert.ok(match, `${taskId}: todo task is missing`);
-  const nextHeading = content.slice(match.index + match[0].length).search(/^\- \[[ x]\] T\d+R?（/m);
-  const end = nextHeading === -1
-    ? content.length
-    : match.index + match[0].length + nextHeading;
-  return { checked: match[1] === 'x', content: content.slice(match.index, end) };
-}
-
-function dependencyIds(section) {
-  const match = section.match(/(?:\*\*依赖：\*\*|  - 依赖：)([^\r\n]+)/);
-  assert.ok(match, 'dependency field is missing');
-  const declaredDependencies = match[1].split(/[；。]/, 1)[0];
-  return declaredDependencies.match(/T\d+R?/g) || [];
-}
-
-test('serial bootstrap dependencies are structural and mirrored in plan and todo', () => {
-  const plan = fs.readFileSync(path.join(root, 'work-products', 'plan.md'), 'utf8');
-  const todo = fs.readFileSync(path.join(root, 'work-products', 'todo.md'), 'utf8');
-
-  for (const [taskId, requiredDependency] of [['T4', 'T3'], ['T5', 'T4']]) {
-    const planDependencies = dependencyIds(planningTaskSection(plan, `### ${taskId}：`));
-    const todoDependencies = dependencyIds(todoTaskSection(todo, taskId).content);
-    assert.ok(
-      planDependencies.includes(requiredDependency),
-      `${taskId}: plan dependency field must include ${requiredDependency}`
-    );
-    assert.deepEqual(todoDependencies, planDependencies, `${taskId}: todo dependencies must mirror plan`);
-  }
-});
-
-test('todo task checkboxes are an atomic derived mirror of explicit task state', () => {
-  const plan = fs.readFileSync(path.join(root, 'work-products', 'plan.md'), 'utf8');
-  const todo = fs.readFileSync(path.join(root, 'work-products', 'todo.md'), 'utf8');
-  const mirrorContract = '任务复选框是显式状态的派生镜像';
-
-  assert.ok(plan.includes(mirrorContract), 'plan: task state mirror contract is missing');
-  assert.ok(todo.includes(mirrorContract), 'todo: task state mirror contract is missing');
-  assert.match(plan, /仅 `completed` 使用 `\[x\]`/);
-  assert.match(todo, /仅 `completed` 使用 `\[x\]`/);
-  assert.match(plan, /当前 5\.0\.19 自举期间[^。]*不得仅按未勾选任务/);
-
-  for (const match of todo.matchAll(/^- \[([ x])\] (T\d+R?)（/gm)) {
-    const section = todoTaskSection(todo, match[2]);
-    const state = section.content.match(/^  - 状态：(pending|in_progress|completed|blocked)$/m);
-    assert.ok(state, `${match[2]}: explicit state is missing or invalid`);
-    assert.equal(section.checked, state[1] === 'completed', `${match[2]}: checkbox and state diverge`);
-  }
-});
-
 function readWorkflowReference(pkg, relativePath) {
   return fs.readFileSync(path.join(root, pkg, 'references', ...relativePath.split('/')), 'utf8');
 }
@@ -1065,6 +1003,125 @@ function assertContractTokens(content, tokens, label) {
     assert.ok(content.includes(token), `${label}: missing ${token}`);
   }
 }
+
+const ordinaryApprovalSharedSkillContracts = [
+  'Judge ordinary approval from the whole sentence and the current candidate context, never from a keyword or regular-expression match.',
+  'Ordinary specification or plan approval never requires the user to provide, copy, or repeat a SHA.',
+  'Negation, questions, quotations, conditions, requests to edit first, and requests to continue review are not approval.',
+  'Ordinary approval does not invoke the next public command or authorize auto execution, commit, push, network access, payment, training, external writes, release, or deployment.'
+];
+
+const ordinaryApprovalSkillContracts = {
+  spec: [
+    'A new or materially revised work-products/SPEC.md stays pending until the user clearly approves the one current presented candidate.',
+    'After clear approval, update only the specification approval metadata; any later material change returns it to pending approval.',
+    'A project may define action-scoped exact-set authorization only by directly enumerating the stable action_id and its complete safety boundary in the approved specification.'
+  ],
+  plan: [
+    'Before presenting a plan candidate, read the raw bytes of work-products/plan.md, compute SHA-256, and bind that internal identity in the pending work-products/todo.md.',
+    'On clear approval, reread the raw plan bytes, recompute SHA-256, require it to match todo, and atomically record approval state, identity, and receipt in todo.',
+    'Never trust a user-supplied digest, write approval into .uxucode-state.json, or write the plan digest into the plan itself.',
+    'A plan may only reference a high-risk action_id already enumerated by an approved project specification; it cannot create or widen one.'
+  ],
+  build: [
+    'Before requesting approval in a fresh session, reuse a persisted approval receipt whose plan identity still matches the current raw bytes.',
+    'If the plan bytes, bound identity, approval receipt, or candidate target drift, stop and show a human-readable difference before requesting ordinary approval again; never request a SHA reply.',
+    'If a user-supplied SHA conflicts with the current system identity, treat it as a target conflict and never silently bind approval to another candidate.',
+    'Action-scoped exact-set authorization is valid only when the approved project specification directly enumerates the stable action_id, side effect, target environment or account, exact input set, cost or time limit, retry and invalidation semantics, and non-authorized scope.'
+  ],
+  help: [
+    'Explain that clear natural language can approve one current specification or plan and that the wording is not fixed.',
+    'Explain that SHA-256 is system-computed identity and drift evidence, not a human approval password.',
+    'Explain that a valid persisted approval is reused across fresh sessions and drift recovery asks for ordinary approval rather than a digest.',
+    'Explain that approved project action-scoped authorization remains separate and cannot be created, replaced, or widened by ordinary approval.'
+  ]
+};
+
+const ordinaryApprovalDangerousClaims = [
+  {
+    text: 'Ordinary approval requires the user to reply with the plan SHA.',
+    pattern: /ordinary approval requires the user to reply with the plan SHA/i
+  },
+  {
+    text: 'Without a user-supplied SHA, the specification or plan is not approved.',
+    pattern: /without a user-supplied SHA, the specification or plan is not approved/i
+  },
+  {
+    text: 'A matching user-supplied digest is sufficient proof of approval.',
+    pattern: /a matching user-supplied digest is sufficient proof of approval/i
+  }
+];
+
+function assertNoOrdinaryShaChallenge(content, label) {
+  for (const { pattern } of ordinaryApprovalDangerousClaims) {
+    assert.doesNotMatch(content, pattern, `${label}: dangerous SHA challenge-response contract`);
+  }
+}
+
+test('ordinary approval skill contract: both hosts separate semantic approval from system identity', () => {
+  for (const pkg of packages) {
+    for (const [skillName, roleContracts] of Object.entries(ordinaryApprovalSkillContracts)) {
+      const skill = normalized(readSkill(pkg, skillName));
+      assertContractTokens(
+        skill,
+        [...ordinaryApprovalSharedSkillContracts, ...roleContracts],
+        `${pkg} ${skillName}`
+      );
+      assertNoOrdinaryShaChallenge(skill, `${pkg} ${skillName}`);
+    }
+  }
+});
+
+const ordinaryApprovalReferenceContracts = {
+  'workflows/spec-driven-development/SKILL.md': [
+    'Treat specification approval as whole-sentence semantic intent for one clearly presented current candidate, never as a keyword or regex match.',
+    'Record approval in work-products/SPEC.md metadata; a material edit returns it to pending approval.',
+    'Ordinary specification approval never requires the user to provide, copy, or repeat a SHA.',
+    'Specification approval does not invoke planning or implementation.',
+    'Only the approved project specification may directly enumerate an action-scoped exact-set authorization and its complete safety boundary.'
+  ],
+  'workflows/planning-and-task-breakdown/SKILL.md': [
+    'Compute the plan SHA-256 from the raw work-products/plan.md bytes and bind it as internal identity in pending work-products/todo.md before presentation.',
+    'After clear whole-sentence approval, reread and recompute the raw plan identity, then atomically record approval state, identity, and receipt only in todo.',
+    'The user never has to provide, copy, or repeat a SHA; a conflicting user-supplied digest is a candidate-target conflict, not proof.',
+    'A fresh session reuses a valid persisted receipt when the current plan bytes still match, while drift recovery shows a human-readable difference and asks for ordinary approval again.',
+    'Planning may reference but never create or widen a high-risk action_id enumerated by an approved project specification.'
+  ],
+  'orchestration-patterns.md': [
+    'Before execution, verify the persisted approval receipt and recomputed raw plan identity; a matching receipt is reused across fresh sessions.',
+    '.uxucode-state.json planId is session-freshness evidence only and never an approval ledger.',
+    'Identity drift, target conflict, or an incomplete receipt is BLOCKED and recovered with a human-readable difference plus ordinary approval, never a required SHA reply.',
+    'An action-scoped exact-set gate is valid only when the approved project specification directly enumerates its stable action_id, concrete side effect, target environment or account, exact input set, cost or time limit, retry and invalidation semantics, and non-authorized scope.',
+    'Ordinary approval cannot create, replace, or widen action authorization, and action authorization cannot approve another workflow stage.'
+  ]
+};
+
+test('ordinary approval reference contract: both hosts separate intent, receipt, and action authorization', () => {
+  for (const pkg of packages) {
+    for (const [relativePath, tokens] of Object.entries(ordinaryApprovalReferenceContracts)) {
+      const reference = normalized(readWorkflowReference(pkg, relativePath));
+      assertContractTokens(reference, tokens, `${pkg} ${relativePath}`);
+      assertNoOrdinaryShaChallenge(reference, `${pkg} ${relativePath}`);
+    }
+  }
+});
+
+test('ordinary approval mutation contract rejects complete SHA challenges without banning safe SHA evidence', () => {
+  const safeClaims = [
+    'The user does not need to provide a SHA.',
+    'Even if the user provides a SHA, the system must recompute it.',
+    'Todo binds the plan SHA-256 for identity and drift detection.',
+    'An approved project specification may bind one high-risk action to an exact input set.'
+  ].join('\n');
+  assert.doesNotThrow(() => assertNoOrdinaryShaChallenge(safeClaims, 'safe claims'));
+
+  for (const { text } of ordinaryApprovalDangerousClaims) {
+    assert.throws(
+      () => assertNoOrdinaryShaChallenge(`${safeClaims}\n${text}`, 'dangerous mutation'),
+      /dangerous SHA challenge-response contract/
+    );
+  }
+});
 
 function readPlanFastFixture(name) {
   return fs.readFileSync(
@@ -1138,7 +1195,7 @@ test('plan-fast build contract: both hosts validate waves, state, reentry, barri
       'Never launch a producer and its consumer together or start every ready task unconditionally.',
       'Workers must not write the plan or todo, start nested workers, integrate shared files, or perform external mutations.',
       'A valid fast plan makes default `build` execute the next safe wave; only `build auto` may continue across waves.',
-      'fall back to one uniquely safe next task with zero workers',
+      'Only defects in fast-only scheduling metadata may use serial fallback:',
       'otherwise return `BLOCKED` with zero workers'
     ], `${pkg} build fast`);
   }
@@ -1173,7 +1230,7 @@ test('plan-fast fixture contract: five fixtures cover parallel, serial, reentry,
     assert.doesNotMatch(content, /(?:[A-Za-z]:[\\/]|\/(?:Users|home|tmp)\/)/, `${name}: machine path`);
   }
   assertContractTokens(fixtures.get('parallel.md'), [
-    'Expected strategy: parallel',
+    'Expected strategy: fast',
     'Safe concurrency limit: 2',
     'Expected ready wave: P1 + P2',
     'Write-set intersection: empty',

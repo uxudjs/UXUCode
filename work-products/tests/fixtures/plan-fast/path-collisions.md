@@ -9,7 +9,11 @@ Every case below must be classified as `conflict` or `serial` before any worker 
 | ancestor/descendant | `../../../../docs/` | `../../../../docs/USAGE.en.md` | conflict |
 | symlink/realpath | `fixture-link/plan.md` | `fixture-real/plan.md` | conflict when realpaths match |
 | generated-output alias | `generated/guide.md` | `../../../../docs/USAGE.en.md` | conflict when the generated target resolves right |
+| write/read cross-scope | write `../../../../docs/USAGE.en.md` | read the same non-frozen path | conflict |
+| generated/read cross-scope | generate `../../../../docs/USAGE.zh-CN.md` | read the same non-frozen target | conflict |
 | shared lock | `lock:guide-parity` | `lock:guide-parity` | serial |
 | shared cache | `cache:plugin-package` | `cache:plugin-package` | serial |
 | shared temporary directory | `temp:host-smoke` | `temp:host-smoke` | serial |
 | unparseable path | `dynamic:${unknown}` | `../../../../README.md` | serial |
+
+Control case: two tasks that only read the same immutable path, have no shared mutable resource, and use isolated validation are file-scope independent.

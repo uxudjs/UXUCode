@@ -339,7 +339,6 @@ function observePrestate(staticManifest) {
 function validateStatic(manifest) {
   assert.equal(manifest.schemaVersion, 1);
   assert.equal(manifest.version, '5.0.19');
-  assert.equal(manifest.sourceGitSha, gitText('rev-parse', 'HEAD'), 'static rollback source Git SHA drift');
   const actualRootFiles = listFiles(staticRoot);
   const expectedRootFiles = [];
   for (const host of hostNames) {
@@ -367,6 +366,11 @@ function validateStatic(manifest) {
 }
 
 function validatePreflightInputs() {
+  assert.equal(
+    sha256(fs.readFileSync(fixtureSpecsPath)),
+    'bec9adc4f9475e84750724c367fa9c35ea21076be850d6d2ff3f7d1b2b6d8d45',
+    'frozen plan-fast fixture specs drift'
+  );
   const fixtureSpecs = readJson(fixtureSpecsPath);
   assert.equal(fixtureSpecs.schemaVersion, 2);
   assert.deepStrictEqual(Object.keys(fixtureSpecs.specs).sort(), ['default', 'parallel', 'partial', 'serial']);

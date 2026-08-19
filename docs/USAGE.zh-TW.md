@@ -143,7 +143,7 @@ node OpenClaw/scripts/install-profile.js --workspace "<請替換為OpenClaw工�
 | 已觀察到錯誤 | `debug → review → ship` |
 | 只需獨立檢查現有改動 | `review` 或 `test` |
 
-一次 `build` 預設只完成下一個待辦，便於檢查和復原。只有計畫穩定、驗收標準明確、自動化測試可靠、使用者明確允許連續執行且任務可獨立復原時，才使用 `/uxu-code:build auto` 或 `@build auto`。
+對於一般計畫或執行策略為 `serial` 的計畫，一次 `build` 預設只完成下一個待辦，便於檢查和復原。只有計畫穩定、驗收標準明確、自動化測試可靠、使用者明確允許連續執行且任務可獨立復原時，才使用 `/uxu-code:build auto` 或 `@build auto`。
 
 `plan fast` 只有在 `fast` 是精確小寫首參數時啟用安全平行規劃；它不會強制平行，也不會繞過規格充分性或核准門禁。
 
@@ -152,6 +152,14 @@ node OpenClaw/scripts/install-profile.js --workspace "<請替換為OpenClaw工�
 部分完成波次重入不會重跑已完成任務；預設 `build` 只執行下一安全波次，只有 `build auto` 可跨波繼續。
 
 不存在 `build fast`。
+
+一般規格或計畫只需對目前唯一、已展示的候選作出明確自然語言核准，例如「核准目前計畫」；使用者無需查看、複製或複述 SHA。
+
+系統會從目前檔案原始位元組自行計算並重算 SHA-256；發生漂移、目標衝突或多候選時會展示可讀差異並重新請求一般核准，而不是要求回覆摘要。
+
+一般核准不會自動執行下一個命令，也不授權 `build auto`、提交、推送、連網、付費、訓練、外部寫入、發布或部署。
+
+只有已核准專案規格直接列舉的 action-scoped 高風險動作才可保留其 exact-set 授權；一般核准既不能取代它，也不能擴大其範圍。
 
 ## 6. 命令參考
 

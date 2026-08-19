@@ -13,6 +13,12 @@ Recommend this workflow: run `spec` when requirements or material risks are unre
 
 Explain that `plan fast` uses `fast` only as the exact lowercase first argument, does not force parallel execution, and does not add `build fast`. The approved plan stays immutable; todo is the atomic execution-state ledger; partial-wave reentry does not rerun completed tasks. For a valid fast plan, default `build` executes only the next safe wave, while `build auto` may continue across waves within its existing authorization boundaries.
 
+## Ordinary Approval Boundary
+
+Judge ordinary approval from the whole sentence and the current candidate context, never from a keyword or regular-expression match. Ordinary specification or plan approval never requires the user to provide, copy, or repeat a SHA. Negation, questions, quotations, conditions, requests to edit first, and requests to continue review are not approval. Ordinary approval does not invoke the next public command or authorize auto execution, commit, push, network access, payment, training, external writes, release, or deployment.
+
+Explain that clear natural language can approve one current specification or plan and that the wording is not fixed. Explain that SHA-256 is system-computed identity and drift evidence, not a human approval password. Explain that a valid persisted approval is reused across fresh sessions and drift recovery asks for ordinary approval rather than a digest. Explain that approved project action-scoped authorization remains separate and cannot be created, replaced, or widened by ordinary approval.
+
 Explain that every newly created UXUCode process, plan, task, review, ship, and test file belongs under `work-products/`, with tests specifically under `work-products/tests/`. Test artifacts must reference repository files with relative paths from their final location, never machine-specific absolute paths; product source and deliverables keep their project-native locations.
 
 Explain that `clean` is not a delete command. No argument is a zero-write report v2 preview, while the exact `apply` argument executes one atomic validated plan. Test-like names are discovery only; fixed legacy mappings or exact `work-products/clean-migration.json` entries authorize moves. The manifest controls tracked/local targets and reference/preserve-content/mutable-patch policy; incomplete `tasks/`, unsafe targets, ambiguous references, or checksum coupling return `BLOCKED` without writes.

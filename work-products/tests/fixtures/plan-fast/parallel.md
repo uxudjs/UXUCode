@@ -1,6 +1,6 @@
 # Parallel fast-plan fixture
 
-Expected strategy: parallel
+Expected strategy: fast
 Fast requested: yes
 Safe concurrency limit: 2
 Expected ready wave: P1 + P2

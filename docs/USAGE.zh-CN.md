@@ -143,7 +143,7 @@ node OpenClaw/scripts/install-profile.js --workspace "<请替换为OpenClaw工�
 | 已观察到错误 | `debug → review → ship` |
 | 只需独立检查现有改动 | `review` 或 `test` |
 
-一次 `build` 默认只完成下一个待办，便于检查和回滚。只有计划稳定、验收标准明确、自动化测试可靠、用户明确允许连续执行且任务可独立回滚时，才使用 `/uxu-code:build auto` 或 `@build auto`。
+对于普通计划或执行策略为 `serial` 的计划，一次 `build` 默认只完成下一个待办，便于检查和回滚。只有计划稳定、验收标准明确、自动化测试可靠、用户明确允许连续执行且任务可独立回滚时，才使用 `/uxu-code:build auto` 或 `@build auto`。
 
 `plan fast` 只有在 `fast` 是精确小写首参数时启用安全并行规划；它不会强制并行，也不会绕过规格充分性或批准门禁。
 
@@ -152,6 +152,14 @@ node OpenClaw/scripts/install-profile.js --workspace "<请替换为OpenClaw工�
 部分完成波次重入不会重跑已完成任务；默认 `build` 只执行下一安全波次，只有 `build auto` 可跨波继续。
 
 不存在 `build fast`。
+
+普通规格或计划只需对当前唯一、已展示的候选作出明确自然语言批准，例如“批准当前计划”；用户无需查看、复制或复述 SHA。
+
+系统会从当前文件原始字节自行计算并重算 SHA-256；发生漂移、目标冲突或多候选时会展示可读差异并重新请求普通批准，而不是要求回复摘要。
+
+普通批准不会自动运行下一个命令，也不授权 `build auto`、提交、推送、联网、付费、训练、外部写入、发布或部署。
+
+只有已批准项目规格直接枚举的 action-scoped 高风险动作才可保留其 exact-set 授权；普通批准既不能替代它，也不能扩大其范围。
 
 ## 6. 命令参考
 
