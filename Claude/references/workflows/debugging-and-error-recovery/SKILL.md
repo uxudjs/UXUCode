@@ -103,7 +103,7 @@ Which layer is failing?
 # Find which commit introduced the bug
 git bisect start
 git bisect bad                    # Current commit is broken
-git bisect good <known-good-sha> # This commit worked
+git bisect good <known-good-commit> # This commit worked
 # Git will checkout midpoint commits; run your test at each
 git bisect run npm test -- --grep "failing test" # substitute the repository's focused-test command
 ```

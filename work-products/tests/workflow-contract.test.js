@@ -942,8 +942,8 @@ test('audit and performance guidance stays ecosystem-neutral and evidence-gated'
   assert.match(notices, /Excluded from adoption:/);
 });
 
-test('release metadata and maintenance workflows enforce the 5.0.24 version contract', () => {
-  const expectedVersion = '5.0.24';
+test('release metadata and maintenance workflows enforce the 5.0.26 version contract', () => {
+  const expectedVersion = '5.0.26';
   const claudeManifest = JSON.parse(
     fs.readFileSync(path.join(root, 'Claude', '.claude-plugin', 'plugin.json'), 'utf8')
   );
@@ -958,8 +958,8 @@ test('release metadata and maintenance workflows enforce the 5.0.24 version cont
   assert.equal(claudeMarketplace.plugins[0].version, expectedVersion);
   assert.equal(codexManifest.version, expectedVersion);
 
-  const spec = fs.readFileSync(path.join(root, 'work-products', 'SPEC.md'), 'utf8');
-  assert.ok(spec.includes(`当前目标候选版本为 \`${expectedVersion}\``));
+  const todo = fs.readFileSync(path.join(root, 'work-products', 'todo.md'), 'utf8');
+  assert.ok(todo.includes(`当前候选版本：\`${expectedVersion}\``));
 
   for (const pkg of packages) {
     const validator = fs.readFileSync(
@@ -1006,7 +1006,7 @@ function assertContractTokens(content, tokens, label) {
 
 const ordinaryApprovalSharedSkillContracts = [
   'Judge ordinary approval from the whole sentence and the current candidate context, never from a keyword or regular-expression match.',
-  'Ordinary specification or plan approval never requires the user to provide, copy, or repeat a SHA.',
+  'Ordinary specification or plan approval never requires the user to provide, copy, or repeat an internal identifier.',
   'Negation, questions, quotations, conditions, requests to edit first, and requests to continue review are not approval.',
   'Ordinary approval does not invoke the next public command or authorize auto execution, commit, push, network access, payment, training, external writes, release, or deployment.'
 ];
@@ -1018,33 +1018,34 @@ const ordinaryApprovalSkillContracts = {
     'A project may define action-scoped exact-set authorization only by directly enumerating the stable action_id and its complete safety boundary in the approved specification.'
   ],
   plan: [
-    'Before presenting a plan candidate, read the raw bytes of work-products/plan.md, compute SHA-256, and bind that internal identity in the pending work-products/todo.md.',
-    'On clear approval, reread the raw plan bytes, recompute SHA-256, require it to match todo, and atomically record approval state, identity, and receipt in todo.',
-    'Never trust a user-supplied digest, write approval into .uxucode-state.json, or write the plan digest into the plan itself.',
+    'Before presenting a plan candidate, create the candidate-owned raw-byte approval snapshot under `work-products/debug/approval-baselines/<candidate-id>/` with create-new/no-replace semantics, preserve the exact `work-products/plan.md` bytes, and record the candidate ID, snapshot reference, and pending state in `work-products/todo.md`.',
+    'On clear approval, stream-compare the current plan bytes with that snapshot and atomically record approval state and receipt only in todo.',
+    'Do not add a selectable execution-baseline mode, trust a user-supplied internal identifier, or write approval into .uxucode-state.json.',
     'A plan may only reference a high-risk action_id already enumerated by an approved project specification; it cannot create or widen one.'
   ],
   build: [
-    'Before requesting approval in a fresh session, reuse a persisted approval receipt whose plan identity still matches the current raw bytes.',
-    'If the plan bytes, bound identity, approval receipt, or candidate target drift, stop and show a human-readable difference before requesting ordinary approval again; never request a SHA reply.',
-    'If a user-supplied SHA conflicts with the current system identity, treat it as a target conflict and never silently bind approval to another candidate.',
+    'Run legacy approval preflight before any general approval-snapshot check.',
+    'Only after an approval has a verified raw-byte snapshot, whether original or created by legacy preflight, may a fresh session reuse its persisted receipt by stream-comparing the current plan with that snapshot.',
+    'If the plan bytes, snapshot reference, approval receipt, or candidate target drift, stop and show a human-readable difference before requesting ordinary approval again; never request an internal identifier.',
+    'If a user-supplied identifier conflicts with the current candidate, treat it as a target conflict and never silently bind approval to another candidate.',
     'Action-scoped exact-set authorization is valid only when the approved project specification directly enumerates the stable action_id, side effect, target environment or account, exact input set, cost or time limit, retry and invalidation semantics, and non-authorized scope.'
   ],
   help: [
     'Explain that clear natural language can approve one current specification or plan and that the wording is not fixed.',
-    'Explain that SHA-256 is system-computed identity and drift evidence, not a human approval password.',
-    'Explain that a valid persisted approval is reused across fresh sessions and drift recovery asks for ordinary approval rather than a digest.',
+    'Explain that the system preserves and stream-compares exact raw bytes; the user never has to reproduce an internal identifier.',
+    'Explain that a valid persisted approval is reused across fresh sessions and drift recovery asks for ordinary approval after a human-readable difference.',
     'Explain that approved project action-scoped authorization remains separate and cannot be created, replaced, or widened by ordinary approval.'
   ]
 };
 
 const ordinaryApprovalDangerousClaims = [
   {
-    text: 'Ordinary approval requires the user to reply with the plan SHA.',
-    pattern: /ordinary approval requires the user to reply with the plan SHA/i
+    text: 'Ordinary approval requires the user to copy the exact internal identifier.',
+    pattern: /ordinary approval requires the user to copy the exact internal identifier/i
   },
   {
-    text: 'Without a user-supplied SHA, the specification or plan is not approved.',
-    pattern: /without a user-supplied SHA, the specification or plan is not approved/i
+    text: 'Without a user-supplied internal identifier, the specification or plan is not approved.',
+    pattern: /without a user-supplied internal identifier, the specification or plan is not approved/i
   },
   {
     text: 'A matching user-supplied digest is sufficient proof of approval.',
@@ -1052,9 +1053,9 @@ const ordinaryApprovalDangerousClaims = [
   }
 ];
 
-function assertNoOrdinaryShaChallenge(content, label) {
+function assertNoOrdinaryIdentifierChallenge(content, label) {
   for (const { pattern } of ordinaryApprovalDangerousClaims) {
-    assert.doesNotMatch(content, pattern, `${label}: dangerous SHA challenge-response contract`);
+    assert.doesNotMatch(content, pattern, `${label}: dangerous identifier challenge-response contract`);
   }
 }
 
@@ -1067,7 +1068,7 @@ test('ordinary approval skill contract: both hosts separate semantic approval fr
         [...ordinaryApprovalSharedSkillContracts, ...roleContracts],
         `${pkg} ${skillName}`
       );
-      assertNoOrdinaryShaChallenge(skill, `${pkg} ${skillName}`);
+      assertNoOrdinaryIdentifierChallenge(skill, `${pkg} ${skillName}`);
     }
   }
 });
@@ -1076,21 +1077,23 @@ const ordinaryApprovalReferenceContracts = {
   'workflows/spec-driven-development/SKILL.md': [
     'Treat specification approval as whole-sentence semantic intent for one clearly presented current candidate, never as a keyword or regex match.',
     'Record approval in work-products/SPEC.md metadata; a material edit returns it to pending approval.',
-    'Ordinary specification approval never requires the user to provide, copy, or repeat a SHA.',
+    'Ordinary specification approval never requires the user to provide, copy, or repeat an internal identifier.',
     'Specification approval does not invoke planning or implementation.',
     'Only the approved project specification may directly enumerate an action-scoped exact-set authorization and its complete safety boundary.'
   ],
   'workflows/planning-and-task-breakdown/SKILL.md': [
-    'Compute the plan SHA-256 from the raw work-products/plan.md bytes and bind it as internal identity in pending work-products/todo.md before presentation.',
-    'After clear whole-sentence approval, reread and recompute the raw plan identity, then atomically record approval state, identity, and receipt only in todo.',
-    'The user never has to provide, copy, or repeat a SHA; a conflicting user-supplied digest is a candidate-target conflict, not proof.',
-    'A fresh session reuses a valid persisted receipt when the current plan bytes still match, while drift recovery shows a human-readable difference and asks for ordinary approval again.',
+    'Create the candidate-owned raw-byte approval snapshot under `work-products/debug/approval-baselines/<candidate-id>/` with create-new/no-replace semantics, preserve the exact `work-products/plan.md` bytes, and record the candidate ID, snapshot reference, and pending state only in `work-products/todo.md` before presentation.',
+    'After clear whole-sentence approval, stream-compare the current plan bytes with that snapshot, then atomically record approval state and receipt only in todo.',
+    'The user never has to provide, copy, or repeat an internal identifier; a conflicting user-supplied identifier is a candidate-target conflict, not proof.',
+    'Run legacy approval preflight before any general approval-snapshot check.',
+    'Only after an approval has a verified raw-byte snapshot, whether original or created by legacy preflight, may a fresh session reuse its persisted receipt by stream-comparing the current plan with that snapshot.',
     'Planning may reference but never create or widen a high-risk action_id enumerated by an approved project specification.'
   ],
   'orchestration-patterns.md': [
-    'Before execution, verify the persisted approval receipt and recomputed raw plan identity; a matching receipt is reused across fresh sessions.',
+    'Run legacy approval preflight before any general approval-snapshot check.',
+    'Only after an approval has a verified raw-byte snapshot, whether original or created by legacy preflight, may a fresh session reuse its persisted receipt by stream-comparing the current plan with that snapshot.',
     '.uxucode-state.json planId is session-freshness evidence only and never an approval ledger.',
-    'Identity drift, target conflict, or an incomplete receipt is BLOCKED and recovered with a human-readable difference plus ordinary approval, never a required SHA reply.',
+    'Byte drift, target conflict, or an incomplete receipt is BLOCKED and recovered with a human-readable difference plus ordinary approval, never a required identifier reply.',
     'An action-scoped exact-set gate is valid only when the approved project specification directly enumerates its stable action_id, concrete side effect, target environment or account, exact input set, cost or time limit, retry and invalidation semantics, and non-authorized scope.',
     'Ordinary approval cannot create, replace, or widen action authorization, and action authorization cannot approve another workflow stage.'
   ]
@@ -1101,24 +1104,24 @@ test('ordinary approval reference contract: both hosts separate intent, receipt,
     for (const [relativePath, tokens] of Object.entries(ordinaryApprovalReferenceContracts)) {
       const reference = normalized(readWorkflowReference(pkg, relativePath));
       assertContractTokens(reference, tokens, `${pkg} ${relativePath}`);
-      assertNoOrdinaryShaChallenge(reference, `${pkg} ${relativePath}`);
+      assertNoOrdinaryIdentifierChallenge(reference, `${pkg} ${relativePath}`);
     }
   }
 });
 
-test('ordinary approval mutation contract rejects complete SHA challenges without banning safe SHA evidence', () => {
+test('ordinary approval mutation contract rejects identifier challenges without weakening byte evidence', () => {
   const safeClaims = [
-    'The user does not need to provide a SHA.',
-    'Even if the user provides a SHA, the system must recompute it.',
-    'Todo binds the plan SHA-256 for identity and drift detection.',
+    'The user does not need to provide an internal identifier.',
+    'The system stream-compares current raw bytes with a candidate-owned no-replace approval snapshot.',
+    'Todo records the candidate ID, snapshot reference, approval state, and receipt.',
     'An approved project specification may bind one high-risk action to an exact input set.'
   ].join('\n');
-  assert.doesNotThrow(() => assertNoOrdinaryShaChallenge(safeClaims, 'safe claims'));
+  assert.doesNotThrow(() => assertNoOrdinaryIdentifierChallenge(safeClaims, 'safe claims'));
 
   for (const { text } of ordinaryApprovalDangerousClaims) {
     assert.throws(
-      () => assertNoOrdinaryShaChallenge(`${safeClaims}\n${text}`, 'dangerous mutation'),
-      /dangerous SHA challenge-response contract/
+      () => assertNoOrdinaryIdentifierChallenge(`${safeClaims}\n${text}`, 'dangerous mutation'),
+      /dangerous identifier challenge-response contract/
     );
   }
 });
@@ -1186,8 +1189,8 @@ test('plan-fast build contract: both hosts validate waves, state, reentry, barri
       'shared lock, cache, or temporary directory',
       'The main agent is the only writer of `work-products/todo.md`',
       '`pending → in_progress → completed | blocked`',
-      'atomically record the attempt and write-set before-hash',
-      'A leftover `in_progress` state, interrupted todo replacement, plan/todo mismatch, before-hash drift, missing receipt, or unclear change ownership is `BLOCKED` with zero workers.',
+      'atomically record the attempt ID, owner, sorted canonical path set, per-path state, snapshot root, and `no_replace: true`',
+      'A leftover `in_progress` state, interrupted todo replacement, plan/snapshot mismatch, raw-byte drift, missing snapshot or receipt, snapshot replacement, or unclear change ownership is `BLOCKED` with zero workers.',
       'Never rerun a completed task during partial-wave reentry.',
       'Revalidate unfinished tasks before scheduling them',
       'do not unlock downstream work until the whole wave and its serial barrier pass',
@@ -1244,11 +1247,13 @@ test('plan-fast fixture contract: five fixtures cover parallel, serial, reentry,
     'Serial reason:'
   ], 'serial fixture');
   assertContractTokens(fixtures.get('partial.md'), [
+    'Plan raw-byte snapshot: stream-compares equal',
     'P1: completed',
     'P2: pending',
     'P3: pending and downstream-locked',
     'Expected schedule: P2 only',
     'P1 must not rerun',
+    'fresh attempt-owned no-replace raw-byte snapshot',
     'P3 remains locked until the wave barrier passes'
   ], 'partial fixture');
   assertContractTokens(fixtures.get('path-collisions.md'), [
@@ -1267,8 +1272,11 @@ test('plan-fast fixture contract: five fixtures cover parallel, serial, reentry,
     'worker wrote files but completion transaction is missing',
     'leftover `in_progress`',
     'interrupted atomic todo replacement',
-    'plan/todo mismatch',
-    'before-hash drift',
+    'plan/snapshot mismatch',
+    'current plan does not stream-compare equal to the approval snapshot',
+    'raw-byte drift',
+    'missing baseline snapshot',
+    'baseline snapshot replacement',
     'missing validation receipt',
     'unclear change ownership',
     'Expected workers: 0',

@@ -153,13 +153,13 @@ Partial-wave reentry never reruns completed tasks; default `build` executes only
 
 There is no `build fast`.
 
-An ordinary specification or plan needs only clear natural-language approval of the one current, presented candidate, for example “approve the current plan”; the user does not need to view, copy, or repeat a SHA.
+An ordinary specification or plan needs only clear natural-language approval of the one current, presented candidate, for example “approve the current plan”; the user does not need to view, copy, or repeat any internal identifier.
 
-The system computes and recomputes SHA-256 from the current file raw bytes; on drift, target conflict, or multiple candidates it shows a human-readable difference and asks for ordinary approval again instead of requesting a digest reply.
+The system stores the current file's exact raw bytes and stream-compares them byte for byte; on drift, target conflict, or multiple candidates it shows a human-readable difference and asks for ordinary natural-language approval again.
 
 Ordinary approval does not run the next command automatically or authorize `build auto`, commit, push, network access, payment, training, external writes, release, or deployment.
 
-Only an action-scoped high-risk action directly enumerated by an approved project specification may retain its exact-set authorization; ordinary approval can neither replace it nor widen its scope.
+Only a high-risk `action_id` directly enumerated by an approved project specification may retain its exact-set authorization; ordinary approval can neither replace it nor widen its scope.
 
 ## 6. Command Reference
 
@@ -193,7 +193,7 @@ Only an action-scoped high-risk action directly enumerated by an approved projec
 `clean` is not a delete command. Calling it without arguments produces only a zero-write preview; after reviewing the complete mapping, references, and repository `.gitignore` changes, only `/uxu-code:clean apply` or `@clean apply` executes them. Test naming is only for cross-language candidate discovery and does not prove ownership; project-native tests without a fixed legacy mapping or an exact entry in `work-products/clean-migration.json` remain in place. Every entry in this version 1 manifest must explicitly declare `source`, `target`, `tracking`, and `rewritePolicy`.
 Scanning skips dependency, version-control, and `__pycache__` directories at any depth.
 
-The `tracked` or `local` value of `tracking` controls whether the target remains trackable or locally ignored. The `references`, `preserve-content`, and `mutable-patch` values of `rewritePolicy` respectively permit safe reference rewriting, require byte-for-byte content preservation, or permit unified-diff path rewriting only for an explicitly authorized `.patch` or `.diff`. Recognized checksums such as `SHA256SUMS` protect bound content and stop incompatible policies or mismatches. Nested `<prefix>/work-products/tests/<rest>` paths are normalized to root-level `work-products/tests/<prefix>/<rest>`, and only non-root ignore-rule families exactly matching the root contract are removed; adjacent comments, partial matches, and other rules remain unchanged.
+The `tracked` or `local` value of `tracking` controls whether the target remains trackable or locally ignored. The `references`, `preserve-content`, and `mutable-patch` values of `rewritePolicy` respectively permit safe reference rewriting, require byte-for-byte content preservation, or permit unified-diff path rewriting only for an explicitly authorized `.patch` or `.diff`. Recognized checksum manifests protect bound content and stop incompatible policies or mismatches. Nested `<prefix>/work-products/tests/<rest>` paths are normalized to root-level `work-products/tests/<prefix>/<rest>`, and only non-root ignore-rule families exactly matching the root contract are removed; adjacent comments, partial matches, and other rules remain unchanged.
 
 Root `tasks/` is fully reconciled first; any unmapped entry returns `BLOCKED` and preserves the directory. Duplicate targets, linked or escaping target ancestors, bare strings without path-structure evidence, or unsafe rewrites also return `BLOCKED` before any write. The `version: 2` report distinguishes preserved, unclassified, integrity-protected, and satisfied or inactive manifest entries through `preservedProductFiles`, `unclassifiedLegacyFiles`, `integrityProtectedFiles`, and `inactiveManifestEntries`; a compliant workspace returns `NO_CHANGES`.
 

@@ -19,6 +19,7 @@ const definitions = [
     evidenceBoundary: '不证明真实 Marketplace 安装',
     nestedCleanContract: '其他层级的 `<prefix>/work-products/tests/<rest>` 会归一到根级 `work-products/tests/<prefix>/<rest>`',
     cleanDiscoveryContract: '只用于跨语言发现候选，不证明归属',
+    cleanChecksumContract: '已识别校验清单会保护绑定内容',
     permissionRetryContract: '仅在结构化权限错误且宿主提供审批机制时',
     multilineCommandContracts: [
       '除 `mode` 和 `clean` 外，一般公开命令把命令入口和可选内联参数写在首行；后续行属于同一命令的任务正文。',
@@ -36,10 +37,10 @@ const definitions = [
       '不存在 `build fast`。'
     ],
     ordinaryApprovalContracts: [
-      '普通规格或计划只需对当前唯一、已展示的候选作出明确自然语言批准，例如“批准当前计划”；用户无需查看、复制或复述 SHA。',
-      '系统会从当前文件原始字节自行计算并重算 SHA-256；发生漂移、目标冲突或多候选时会展示可读差异并重新请求普通批准，而不是要求回复摘要。',
+      '普通规格或计划只需对当前唯一、已展示的候选作出明确自然语言批准，例如“批准当前计划”；用户无需查看、复制或复述任何内部标识。',
+      '系统会保存当前文件的精确原始字节并进行流式逐字节比较；发生漂移、目标冲突或多候选时会展示可读差异并重新请求普通自然语言批准。',
       '普通批准不会自动运行下一个命令，也不授权 `build auto`、提交、推送、联网、付费、训练、外部写入、发布或部署。',
-      '只有已批准项目规格直接枚举的 action-scoped 高风险动作才可保留其 exact-set 授权；普通批准既不能替代它，也不能扩大其范围。'
+      '只有已批准项目规格直接枚举的高风险 `action_id` 才可保留其 exact-set 授权；普通批准既不能替代它，也不能扩大其范围。'
     ]
   },
   {
@@ -55,6 +56,7 @@ const definitions = [
     evidenceBoundary: '不證明真實 Marketplace 安裝',
     nestedCleanContract: '其他層級的 `<prefix>/work-products/tests/<rest>` 會正規化到根層級 `work-products/tests/<prefix>/<rest>`',
     cleanDiscoveryContract: '只用於跨語言發現候選，不證明歸屬',
+    cleanChecksumContract: '已識別校驗清單會保護綁定內容',
     permissionRetryContract: '僅在結構化權限錯誤且宿主提供核准機制時',
     multilineCommandContracts: [
       '除 `mode` 和 `clean` 外，一般公開命令把命令入口和可選行內參數寫在首行；後續行屬於同一命令的任務正文。',
@@ -72,10 +74,10 @@ const definitions = [
       '不存在 `build fast`。'
     ],
     ordinaryApprovalContracts: [
-      '一般規格或計畫只需對目前唯一、已展示的候選作出明確自然語言核准，例如「核准目前計畫」；使用者無需查看、複製或複述 SHA。',
-      '系統會從目前檔案原始位元組自行計算並重算 SHA-256；發生漂移、目標衝突或多候選時會展示可讀差異並重新請求一般核准，而不是要求回覆摘要。',
+      '一般規格或計畫只需對目前唯一、已展示的候選作出明確自然語言核准，例如「核准目前計畫」；使用者無需查看、複製或複述任何內部識別碼。',
+      '系統會儲存目前檔案的精確原始位元組並進行串流逐位元組比較；發生漂移、目標衝突或多候選時會展示可讀差異並重新請求一般自然語言核准。',
       '一般核准不會自動執行下一個命令，也不授權 `build auto`、提交、推送、連網、付費、訓練、外部寫入、發布或部署。',
-      '只有已核准專案規格直接列舉的 action-scoped 高風險動作才可保留其 exact-set 授權；一般核准既不能取代它，也不能擴大其範圍。'
+      '只有已核准專案規格直接列舉的高風險 `action_id` 才可保留其 exact-set 授權；一般核准既不能取代它，也不能擴大其範圍。'
     ]
   },
   {
@@ -91,6 +93,7 @@ const definitions = [
     evidenceBoundary: 'does not prove a live Marketplace installation',
     nestedCleanContract: 'Nested `<prefix>/work-products/tests/<rest>` paths are normalized to root-level `work-products/tests/<prefix>/<rest>`',
     cleanDiscoveryContract: 'only for cross-language candidate discovery and does not prove ownership',
+    cleanChecksumContract: 'Recognized checksum manifests protect bound content',
     permissionRetryContract: 'only for a structured permission error when the host offers approval',
     multilineCommandContracts: [
       'Except for `mode` and `clean`, put a public command entry and any optional inline arguments on the first line; every following line is the same command\'s task body.',
@@ -108,10 +111,10 @@ const definitions = [
       'There is no `build fast`.'
     ],
     ordinaryApprovalContracts: [
-      'An ordinary specification or plan needs only clear natural-language approval of the one current, presented candidate, for example “approve the current plan”; the user does not need to view, copy, or repeat a SHA.',
-      'The system computes and recomputes SHA-256 from the current file raw bytes; on drift, target conflict, or multiple candidates it shows a human-readable difference and asks for ordinary approval again instead of requesting a digest reply.',
+      'An ordinary specification or plan needs only clear natural-language approval of the one current, presented candidate, for example “approve the current plan”; the user does not need to view, copy, or repeat any internal identifier.',
+      'The system stores the current file\'s exact raw bytes and stream-compares them byte for byte; on drift, target conflict, or multiple candidates it shows a human-readable difference and asks for ordinary natural-language approval again.',
       'Ordinary approval does not run the next command automatically or authorize `build auto`, commit, push, network access, payment, training, external writes, release, or deployment.',
-      'Only an action-scoped high-risk action directly enumerated by an approved project specification may retain its exact-set authorization; ordinary approval can neither replace it nor widen its scope.'
+      'Only a high-risk `action_id` directly enumerated by an approved project specification may retain its exact-set authorization; ordinary approval can neither replace it nor widen its scope.'
     ]
   }
 ];
@@ -150,6 +153,11 @@ const expectedStructure = [
   '2:12', '3:12.1', '3:12.2'
 ];
 const tick = String.fromCharCode(96);
+const digestAlgorithmStem = String.fromCharCode(115, 104, 97);
+const forbiddenDigestAlgorithm = new RegExp(
+  '(?:^|[^A-Za-z])' + digestAlgorithmStem + '(?:[-_]?\\d+)?(?:sums)?(?:$|[^A-Za-z])',
+  'i'
+);
 
 function count(value, search) {
   return value.split(search).length - 1;
@@ -281,6 +289,9 @@ guides.forEach((guide, index) => {
       failures.push(file + ': ordinary approval contract is missing ' + contract);
     }
   }
+  if (forbiddenDigestAlgorithm.test(guide)) {
+    failures.push(file + ': digest algorithm terminology is forbidden in active user guidance');
+  }
   for (const match of guide.matchAll(/\/uxu-code:([A-Za-z][A-Za-z0-9_-]*(?:\.[A-Za-z0-9_-]+)*)/g)) {
     if (!commands.includes(match[1])) {
       failures.push(file + ': unknown Claude Code public command ' + match[1]);
@@ -390,7 +401,6 @@ guides.forEach((guide, index) => {
     '`references`',
     '`preserve-content`',
     '`mutable-patch`',
-    '`SHA256SUMS`',
     '`version: 2`',
     '`preservedProductFiles`',
     '`unclassifiedLegacyFiles`',
@@ -403,6 +413,9 @@ guides.forEach((guide, index) => {
   }
   if (!commandReference.includes(definition.cleanDiscoveryContract)) {
     failures.push(file + ': Clean v2 contract is missing the discovery-versus-ownership boundary');
+  }
+  if (!commandReference.includes(definition.cleanChecksumContract)) {
+    failures.push(file + ': Clean v2 contract is missing the neutral checksum-manifest boundary');
   }
 
   if (!commandReference.includes(definition.nestedCleanContract)) {

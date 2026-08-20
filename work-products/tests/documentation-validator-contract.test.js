@@ -390,6 +390,10 @@ test('documentation validators require the Clean v2 ownership and integrity cont
     '`preservedProductFiles`',
     '`preservedFiles`'
   );
+  const missingNeutralChecksumWording = guides[2].replace(
+    'Recognized checksum manifests protect bound content',
+    'Integrity metadata protects bound content'
+  );
   const missingReadmePolicy = readme.replace('`preserve-content`', '`preserve`');
 
   assert.ok(
@@ -401,6 +405,11 @@ test('documentation validators require the Clean v2 ownership and integrity cont
     validateGuides([guides[0], guides[1], missingGuideClassification], readme)
       .some((failure) => failure.includes('Clean v2 contract')),
     'expected the guide validator to require report v2 ownership classifications'
+  );
+  assert.ok(
+    validateGuides([guides[0], guides[1], missingNeutralChecksumWording], readme)
+      .some((failure) => failure.includes('neutral checksum-manifest boundary')),
+    'expected the guide validator to require neutral checksum-manifest wording'
   );
   assert.ok(
     validateReadme(missingReadmePolicy)
@@ -507,22 +516,22 @@ const planFastGuideContracts = [
 
 const ordinaryApprovalGuideContracts = [
   [
-    '普通规格或计划只需对当前唯一、已展示的候选作出明确自然语言批准，例如“批准当前计划”；用户无需查看、复制或复述 SHA。',
-    '系统会从当前文件原始字节自行计算并重算 SHA-256；发生漂移、目标冲突或多候选时会展示可读差异并重新请求普通批准，而不是要求回复摘要。',
+    '普通规格或计划只需对当前唯一、已展示的候选作出明确自然语言批准，例如“批准当前计划”；用户无需查看、复制或复述任何内部标识。',
+    '系统会保存当前文件的精确原始字节并进行流式逐字节比较；发生漂移、目标冲突或多候选时会展示可读差异并重新请求普通自然语言批准。',
     '普通批准不会自动运行下一个命令，也不授权 `build auto`、提交、推送、联网、付费、训练、外部写入、发布或部署。',
-    '只有已批准项目规格直接枚举的 action-scoped 高风险动作才可保留其 exact-set 授权；普通批准既不能替代它，也不能扩大其范围。'
+    '只有已批准项目规格直接枚举的高风险 `action_id` 才可保留其 exact-set 授权；普通批准既不能替代它，也不能扩大其范围。'
   ],
   [
-    '一般規格或計畫只需對目前唯一、已展示的候選作出明確自然語言核准，例如「核准目前計畫」；使用者無需查看、複製或複述 SHA。',
-    '系統會從目前檔案原始位元組自行計算並重算 SHA-256；發生漂移、目標衝突或多候選時會展示可讀差異並重新請求一般核准，而不是要求回覆摘要。',
+    '一般規格或計畫只需對目前唯一、已展示的候選作出明確自然語言核准，例如「核准目前計畫」；使用者無需查看、複製或複述任何內部識別碼。',
+    '系統會儲存目前檔案的精確原始位元組並進行串流逐位元組比較；發生漂移、目標衝突或多候選時會展示可讀差異並重新請求一般自然語言核准。',
     '一般核准不會自動執行下一個命令，也不授權 `build auto`、提交、推送、連網、付費、訓練、外部寫入、發布或部署。',
-    '只有已核准專案規格直接列舉的 action-scoped 高風險動作才可保留其 exact-set 授權；一般核准既不能取代它，也不能擴大其範圍。'
+    '只有已核准專案規格直接列舉的高風險 `action_id` 才可保留其 exact-set 授權；一般核准既不能取代它，也不能擴大其範圍。'
   ],
   [
-    'An ordinary specification or plan needs only clear natural-language approval of the one current, presented candidate, for example “approve the current plan”; the user does not need to view, copy, or repeat a SHA.',
-    'The system computes and recomputes SHA-256 from the current file raw bytes; on drift, target conflict, or multiple candidates it shows a human-readable difference and asks for ordinary approval again instead of requesting a digest reply.',
+    'An ordinary specification or plan needs only clear natural-language approval of the one current, presented candidate, for example “approve the current plan”; the user does not need to view, copy, or repeat any internal identifier.',
+    'The system stores the current file\'s exact raw bytes and stream-compares them byte for byte; on drift, target conflict, or multiple candidates it shows a human-readable difference and asks for ordinary natural-language approval again.',
     'Ordinary approval does not run the next command automatically or authorize `build auto`, commit, push, network access, payment, training, external writes, release, or deployment.',
-    'Only an action-scoped high-risk action directly enumerated by an approved project specification may retain its exact-set authorization; ordinary approval can neither replace it nor widen its scope.'
+    'Only a high-risk `action_id` directly enumerated by an approved project specification may retain its exact-set authorization; ordinary approval can neither replace it nor widen its scope.'
   ]
 ];
 
@@ -540,8 +549,26 @@ test('plan-fast docs contract: three guides and the validator preserve the exact
   });
 });
 
-test('ordinary approval documentation contract: three guides reject SHA challenge-response', () => {
+test('ordinary approval documentation contract: three guides use raw-byte approval', () => {
+  const algorithmStem = String.fromCharCode(115, 104, 97);
+  const forbiddenAlgorithm = new RegExp(
+    '(?:^|[^A-Za-z])' + algorithmStem + '(?:[-_]?\\d+)?(?:sums)?(?:$|[^A-Za-z])',
+    'i'
+  );
+
   guides.forEach((guide, index) => {
+    assert.equal(
+      forbiddenAlgorithm.test(guide),
+      false,
+      `${guideFiles[index]}: active guide contains forbidden digest-algorithm terminology`
+    );
+    const forbiddenMutation = [...guides];
+    forbiddenMutation[index] = `${guide}\n${algorithmStem.toUpperCase()}-256\n`;
+    assert.ok(
+      validateGuides(forbiddenMutation, readme)
+        .some((failure) => failure.includes('digest algorithm terminology')),
+      `${guideFiles[index]}: validator accepted forbidden digest-algorithm terminology`
+    );
     for (const token of ordinaryApprovalGuideContracts[index]) {
       assert.ok(guide.includes(token), `${guideFiles[index]}: missing ordinary approval contract ${token}`);
       const mutated = [...guides];

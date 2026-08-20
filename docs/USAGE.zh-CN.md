@@ -153,13 +153,13 @@ node OpenClaw/scripts/install-profile.js --workspace "<请替换为OpenClaw工�
 
 不存在 `build fast`。
 
-普通规格或计划只需对当前唯一、已展示的候选作出明确自然语言批准，例如“批准当前计划”；用户无需查看、复制或复述 SHA。
+普通规格或计划只需对当前唯一、已展示的候选作出明确自然语言批准，例如“批准当前计划”；用户无需查看、复制或复述任何内部标识。
 
-系统会从当前文件原始字节自行计算并重算 SHA-256；发生漂移、目标冲突或多候选时会展示可读差异并重新请求普通批准，而不是要求回复摘要。
+系统会保存当前文件的精确原始字节并进行流式逐字节比较；发生漂移、目标冲突或多候选时会展示可读差异并重新请求普通自然语言批准。
 
 普通批准不会自动运行下一个命令，也不授权 `build auto`、提交、推送、联网、付费、训练、外部写入、发布或部署。
 
-只有已批准项目规格直接枚举的 action-scoped 高风险动作才可保留其 exact-set 授权；普通批准既不能替代它，也不能扩大其范围。
+只有已批准项目规格直接枚举的高风险 `action_id` 才可保留其 exact-set 授权；普通批准既不能替代它，也不能扩大其范围。
 
 ## 6. 命令参考
 
@@ -193,7 +193,7 @@ node OpenClaw/scripts/install-profile.js --workspace "<请替换为OpenClaw工�
 `clean` 不是删除命令。无参数调用只生成零写入预览；检查完整映射、引用和仓库 `.gitignore` 变化后，只有 `/uxu-code:clean apply` 或 `@clean apply` 才会执行。测试命名只用于跨语言发现候选，不证明归属；未获固定历史映射或 `work-products/clean-migration.json` 中精确条目授权的产品原生测试保留原位。该版本 1 清单的每项必须显式声明 `source`、`target`、`tracking` 和 `rewritePolicy`。
 扫描会跳过任意层级的依赖、版本控制与 `__pycache__` 目录。
 
-`tracking` 的 `tracked`／`local` 决定目标应保持可跟踪还是本地忽略；`rewritePolicy` 的 `references`、`preserve-content` 和 `mutable-patch` 分别允许安全引用改写、要求逐字节保持内容、或仅允许改写显式授权的 `.patch`／`.diff` 统一 diff 路径。`SHA256SUMS` 等已识别校验和会保护绑定内容，策略不兼容或校验失败时停止。其他层级的 `<prefix>/work-products/tests/<rest>` 会归一到根级 `work-products/tests/<prefix>/<rest>`，且只移除与根级规范精确同构的非根级 ignore 规则族；相邻注释、部分匹配和其他规则保持不变。
+`tracking` 的 `tracked`／`local` 决定目标应保持可跟踪还是本地忽略；`rewritePolicy` 的 `references`、`preserve-content` 和 `mutable-patch` 分别允许安全引用改写、要求逐字节保持内容、或仅允许改写显式授权的 `.patch`／`.diff` 统一 diff 路径。已识别校验清单会保护绑定内容，策略不兼容或校验失败时停止。其他层级的 `<prefix>/work-products/tests/<rest>` 会归一到根级 `work-products/tests/<prefix>/<rest>`，且只移除与根级规范精确同构的非根级 ignore 规则族；相邻注释、部分匹配和其他规则保持不变。
 
 根级 `tasks/` 会先完整核对；存在未映射条目时返回 `BLOCKED` 并保留该目录。重复目标、目标祖先链接／逃逸、缺少路径结构证据的裸字符串或无法安全改写也会在任何写入前返回 `BLOCKED`。`version: 2` 报告以 `preservedProductFiles`、`unclassifiedLegacyFiles`、`integrityProtectedFiles` 和 `inactiveManifestEntries` 区分保留、未分类、完整性保护及已满足／非活动清单项；无需整理时返回 `NO_CHANGES`。
 

@@ -1,12 +1,12 @@
-# UXUCode 工作流规格：`plan fast` 与批准身份
+# UXUCode 工作流规格：`plan fast` 与原始字节安全
 
-状态：第 1—13 节已批准（2026-08-16 至 2026-08-17）；第 14 节“批准与 SHA 解耦”已批准并完成实现（2026-08-19）
+状态：第 1—13 节已批准（2026-08-16 至 2026-08-17）；第 14 节“原始字节批准与执行基线”已按用户当前明确要求修订并批准（2026-08-20）
 
-当前目标候选版本为 `5.0.24`。
+当前目标候选版本为 `5.0.25`。
 
-第 14 节获批实施目标候选版本为 `5.0.24`；完成状态由第 14.9 节验收清单和 `work-products/todo.md` 记录。
+第 14 节修订目标候选版本为 `5.0.25`；完成状态由第 14.8 节验收清单记录。
 
-本规格定义 `plan` 的可选 `fast` 参数，以及 fast 计划被后续 `build` 消费时的并行执行合同。上一份“门禁设计缺陷修复”规格已经完成，其实现与验证证据保留在 Git 历史和当前已完成的 `work-products/plan.md`、`work-products/todo.md` 中；这两个旧计划文件不属于本功能，批准本规格后应由新的 `@plan` 重新生成，不得继续执行旧待办。
+本规格定义 `plan` 的可选 `fast` 参数，以及 fast 计划被后续 `build` 消费时的并行执行合同。已完成工作的历史证据保留在 Git 历史；当前 `work-products/plan.md` 与 `work-products/todo.md` 不得继续向模型暴露过时任务或旧完整性字段。
 
 2026-08-19 的 `@spec` 调用只更新规格，未修改 Claude／Codex 产品 Skill、Hook、reference、测试、文档、版本清单、安装缓存或宿主配置；用户随后另行调用 `@plan`，只授权生成新计划，仍不授权构建、提交、推送、发布或部署。
 
@@ -146,9 +146,11 @@ fast 请求：是
 主 Agent 在启动任何 worker 前，必须先把本次 attempt 持久写入 todo：
 
 - 唯一 attempt ID、任务 ID、波次 ID 与状态 `in_progress`；
-- 每个允许写入目标的仓库相对路径、是否存在、原始字节 SHA-256，以及计划启动时该路径的 Git diff／未跟踪归属摘要；目录边界必须展开为可复核文件集合；
-- 任务开始前的 plan 摘要、依赖完成状态和共享资源检查结果；
-- 完成后写入实际修改路径、结果 SHA-256、focused validation 命令、退出码与输出摘要，再原子转换为 `completed`；失败则转为 `blocked` 或保留可识别的 `in_progress` 崩溃现场。
+- 每个允许写入目标的规范仓库相对路径、`present-file | present-directory | missing` 状态、排序去重后的路径集合、attempt 独占且不可替换的原始字节快照引用，以及计划启动时该路径的 Git diff／未跟踪归属摘要；目录边界必须展开为完整后代集合；
+- 任务开始前的候选 ID、依赖完成状态和共享资源检查结果；
+- 完成后写入实际修改规范路径及其存在状态、focused validation 命令、退出码与输出摘要，再原子转换为 `completed`；失败则转为 `blocked` 或保留可识别的 `in_progress` 崩溃现场。
+
+首次写入前必须流式逐字节复核现存文件，重新枚举目录完整后代集合，并确认计划为缺失的路径仍缺失且只能排他创建。任何字节、路径集合、类型、链接、别名、所有权或快照漂移均启动零个 worker 并返回 `BLOCKED`；不得用当前内容重建或替换既有基线。
 
 若进程退出后遗留 `in_progress`、未完成任务的允许写集偏离其记录基线、收据缺失或改动无法归因，后续 `build` 必须启动零个 worker并返回 `BLOCKED`；不得自动重跑、把改动冒领为完成、或降为串行执行。只有明确的恢复／debug 流程重新建立可验证状态后才能继续。
 
@@ -389,7 +391,7 @@ T8 仅在下列证据全部可复算时通过：
 | 宿主并发槽位少于计划宽度 | 低 | 运行时取较小值，只降级不扩张 |
 | `build` 波次语义被误解为自动连续执行 | 中 | 普通 `build` 只做下一波；只有 `build auto` 跨波连续 |
 | 无模型审计被误报为当前宿主或真实并行能力 | 高 | 报告明确限定为候选证据 PASS，当前宿主／fresh runtime 保持未验证 |
-| worker 写完但状态提交前退出 | 高 | plan 不可变、todo 单文件原子账本、attempt／before-hash 收据；不确定即零 worker BLOCKED |
+| worker 写完但状态提交前退出 | 高 | plan 不可变、todo 单文件原子账本、attempt 独占原始字节 snapshot 与终态收据；不确定即零 worker BLOCKED |
 
 ## 12. 回滚与阶段边界（`plan fast` 历史合同）
 
@@ -412,156 +414,88 @@ T8 仅在下列证据全部可复算时通过：
 
 用户已于 2026-08-16 批准上述六项决定。如需调整任一决定，应先修订本文件。当时随后调用的是 5.0.19 的普通 `@plan`，只生成实施计划，不直接实现，也未把尚未交付的 fast 能力冒充为当时会话能力。这里的版本与动作均为第 1—13 节历史事实；当前候选和待批准修订以文件顶部及第 14 节为准。
 
-## 14. 普通批准与 SHA 完整性身份解耦（已批准）
+## 14. 普通批准与原始字节完整性（已批准并修订）
 
 ### 14.1 问题、目标与适用用户
 
-当前 plan／todo 合同要求批准后的 plan 不可变，并以 SHA-256 绑定 todo。这个内部完整性要求本身正确，但公共 Skill 没有明确区分“用户表达批准”与“系统记录候选身份”，使部分下游会话把 SHA 误当作人类审批凭据，要求用户复制或逐字回复完整摘要。
+旧合同把摘要字段写进计划批准、任务启动、worker 提示和终态收据。部分项目已明确以规范路径与原始字节为唯一执行基线，这些附加字段会在零写入时阻断首个任务，也会诱导模型把内部标识误作人类口令。
 
-本节的目标是：保留 plan／todo 漂移检测、收据和候选制品身份，同时消除普通 `@spec`、`@plan` 和本地 `@build` 流程中的 SHA 口令式审批。适用用户包括 Claude Code 与 Codex 的交互用户，以及维护依赖 UXUCode 工作流的项目团队。
+本节按用户 2026-08-20 的当前明确要求修订：UXUCode 的活动模型指引只使用一种原始字节协议，不提供可选基线模式，不要求用户或下游任务复制内部标识，也不在任务、attempt、before／after 证据、目录身份或 worker 收据中引入摘要字段。
 
-成功时，用户只需用自然语言明确批准唯一、当前、已展示的候选。SPEC 以文件内明确状态记录批准，plan 由系统读取当前字节、计算 SHA 并在 todo 中持久绑定；用户提供、复制或复述 SHA 不得成为普通阶段转换的前置条件。
+目标不是降低漂移检测。系统必须用规范路径集合、存在状态、attempt 独占且不可替换的原始字节快照、流式逐字节比较、所有权和排他创建保持 fail closed。
 
-本节获批后，只覆盖第 1—13 节中可能把“已批准的不可变 plan”误解为“用户必须回复 SHA”的空间；不改变 plan 不可变、todo 原子账本、漂移即阻塞、写集收据或外部动作另行授权等既有决定。
+### 14.2 单一协议与事实源
 
-### 14.2 两类身份不得混同
-
-| 身份 | 产生者 | 用途 | 用户是否必须复述 |
-|---|---|---|---|
-| 语义批准 | 用户以当前上下文中的明确肯定表达产生 | 表达“认可这个候选／允许进入下一阶段”的意图 | 否 |
-| 制品身份 SHA-256 | 系统从当前文件或冻结候选的原始字节计算 | plan／todo 一致性、漂移检测、收据、审计和回滚定位 | 否 |
-
-SHA 是系统证据，不是人类口令。即使用户主动提供了摘要，系统仍必须自行重算并核对，不得把“用户复述了相同字符串”当作候选未漂移或身份真实的证明。批准收据只能写入既定事实源：SPEC 批准状态写在 `work-products/SPEC.md`，plan 批准状态和内部 plan SHA 写在 `work-products/todo.md`；`.uxucode-state.json` 的 planId 只判断 session freshness／漂移，绝不代表批准。
+- `work-products/SPEC.md` 记录规格批准状态；`work-products/plan.md` 是批准后不可变的结构事实源；`work-products/todo.md` 是唯一可变执行账本。
+- 不新增执行基线选择器、兼容别名、双读或从 prose 猜测协议；所有新计划和任务一律使用本节的原始字节合同。
+- `.uxucode-state.json` 的 planId 只表示 session freshness，不是批准账本，也不得进入 task／attempt／worker receipt。
+- plan／todo 结构镜像、候选、状态、snapshot 引用或所有权不一致时，必须 `BLOCKED` 并启动零个 worker；不得用串行 fallback 绕过。
 
 ### 14.3 普通批准的公共接口
 
 当且仅当上下文中只有一个当前候选、候选已向用户展示或清楚概述、且此后没有发生字节变化时，`批准`、`批准当前规格`、`同意当前计划` 等整句语义明确的肯定表达均可完成语义批准；不得要求固定句式，也不得按单个关键词或正则命中直接判定。
 
-Claude／Codex 的 spec、plan、build、help 和公共文档必须一致遵守：
-
-1. 不得要求或诱导用户回复 `批准计划 SHA <digest>`、`确认 SHA <digest>`、粘贴完整摘要，或任何等价的 challenge-response 文本；
-2. 不得因任务规模、plan 已哈希、todo 记录摘要或发生过一次漂移，就把普通批准升级为人类 exact-SHA 审批；
-3. 可以在诊断、收据或审计输出中展示摘要，但必须明确其为系统计算的证据，且用户无需复制；
-4. 用户的条件式、否定式、疑问式、引用／转述、要求先修改、要求继续审查或无法确定指向哪个候选的表达不构成批准；
-5. 存在多个候选时，先用人类可读的名称、版本、路径和差异摘要消除歧义，再接受普通自然语言批准；不得用摘要充当候选选择器；
-6. 用户主动附带的 SHA 与系统当前绑定身份冲突时，不得忽略冲突后把同一句“批准”改绑到另一个候选；必须说明目标冲突、重新展示候选，再请求普通语义批准；
-7. fresh session 必须先读取持久批准事实：SPEC 的已批准状态，或 todo 中状态为已批准且内部 plan SHA 与当前字节一致的收据，均不得无故重复索批；只有事实缺失、失效或冲突时才重新展示候选并请求自然语言批准，且不得改问 SHA。
+用户的条件式、否定式、疑问式、引用／转述、要求先修改、要求继续审查或无法确定指向哪个候选的表达不构成批准。存在多个候选时，先用名称、版本、路径和可读差异消除歧义；用户主动附带的冲突标识只能视为目标冲突，不能静默改绑。
 
 批准本身不隐式调用下一公开命令。`@spec` 批准仍只允许后续明确调用 `@plan`；`@plan` 批准仍只允许后续明确请求的 `@build` 范围。自然语言批准不会隐式授权 `@build auto`、提交、推送、联网、付费、训练、外部写入、发布或部署。
 
-### 14.4 系统自动绑定合同
+### 14.4 计划批准的原始字节合同
 
-SPEC 与 plan 复用现有事实源，不新增批准解析器、sidecar 或第二状态文件：
+既有批准收据缺少 raw-byte approval snapshot 时，必须先执行第 14.6 节的一次性 legacy approval preflight；以下通用 snapshot 校验只适用于原本已有 snapshot 或已完成该预检迁移的批准。
 
-- `@spec` 生成或实质修订规格时，将 `work-products/SPEC.md` 状态置为待批准；识别到明确语义批准后，只把该文件的批准元数据更新为已批准并记录日期。任何后续实质内容变化都必须先恢复待批准状态。此流程不创建 SPEC SHA 口令或要求用户输入摘要；
-- `@plan` 展示候选前，由系统从 `work-products/plan.md` 原始字节计算完整 SHA-256，并把它作为内部候选身份写入状态仍为待批准的 `work-products/todo.md`；不得写入 `.uxucode-state.json`；
-- 识别到明确语义批准后，系统再次读取 plan 原始字节并重算 SHA-256。当前值必须与 todo 已绑定的候选身份一致，且仍只有这一个明确候选；
-- 若 plan schema 含批准元数据，只允许在批准事务中改变该元数据；系统随后从最终 plan 字节重算 SHA，并把 todo 的批准状态、最终内部 plan SHA 和批准收据作为一个原子更新。该事务完成后 plan 才进入不可变状态；
-- 后续 `@build` 和 fresh session 先核对 todo 的批准状态、plan SHA 与当前字节；三者一致即复用有效批准，不再次索批。
+- `@spec` 生成或实质修订规格时，将规格状态置为待批准；明确批准只更新既定批准元数据，后续实质变化恢复待批准。
+- `@plan` 展示候选前，在 `work-products/debug/approval-baselines/<candidate-id>/` 以 create-new／no-replace 语义创建候选原始字节快照；todo 只记录 candidate ID、snapshot 引用、待批准状态与后续批准收据。
+- 收到明确批准时，系统重新读取 plan 并与 snapshot 流式逐字节比较；相等且候选唯一时，原子更新 todo 的批准状态与收据，plan 随即不可变。
+- fresh session 只有在当前 plan 与不可替换 snapshot 逐字节相等且收据完整时复用批准。任何字节、候选、snapshot 引用或收据漂移都必须展示可读差异，再请求普通自然语言批准。
+- snapshot 已存在、缺失、被替换、归属不明或不可读取时，必须 fail closed；不得从当前 plan 重建既有候选的基线。
 
-如果 SPEC 实质变化后仍声称已批准，或 plan 在展示后变化、plan／todo 不匹配、批准目标不唯一、批准收据不完整，必须 `BLOCKED`。恢复方式是说明人类可读差异、重新展示当前候选并请求普通语义批准；不得要求用户复述新的或旧的 SHA 来解除阻塞。
+### 14.5 任务执行的原始字节合同
 
-现有 Hook 的 planId、todo 镜像、attempt／before-hash、收据和其他机器一致性校验继续保留。Hook planId 只用于 session freshness，保持当前 fail-closed 行为且不新增批准语义。实现不得通过删除摘要、跳过重算、接受用户提供值或降低漂移检测来消除交互门禁，也不得把 SHA 写回其所标识的同一制品形成自引用。
+主 Agent 在任何本地执行或 worker 启动前，必须在 todo 的原子事务中记录 attempt ID、owner、排序去重后的规范路径集合、每路径 `present-file | present-directory | missing` 状态、snapshot root 与 `no_replace: true`。
 
-### 14.5 高风险动作的窄例外
+snapshot root 必须优先使用已批准 plan 明列的 exact attempt／snapshot／baseline root，并保持在该任务 write scope 内。只有 plan 未声明 root 且既有批准 write scope 已明确允许标准位置时，才可使用 `work-products/debug/execution-baselines/<attempt-id>/`；不得为兼容计划新增 scope 外目录。root 必须以 create-new／no-replace 语义建立且由该 attempt 独占。现存普通文件保存精确原始字节；目录保存完整排序后的规范后代集合，并对每个普通文件保存精确原始字节；缺失路径只记录缺失状态。
 
-项目可以为实质性高风险动作保留独立的 exact-set 或 exact-artifact 授权，但必须同时满足：
+每个目标首次写入前必须流式逐字节比较并重新枚举目录。任何同尺寸单字节变化、换行变化、空字节、增删改名、类型变化、链接或大小写别名、未计划后代、snapshot 丢失或替换、attempt／owner 不匹配、遗留 `in_progress` 都必须 `BLOCKED` 并启动零个 worker。缺失路径写入前仍须缺失，且只能排他 no-replace 创建。
 
-- 已批准的项目 `SPEC.md` 直接枚举稳定 `action_id`、具体副作用、目标环境／账户、完整 exact input set、费用／时限、单次与重试语义、失效条件及明确不授权范围；
-- 该动作直接保护联网／云端／付费执行、训练、受保护数据读取、outer 访问、协议账本写入、发布／部署、破坏性变更，或规格明确列出的本地 no-retry replay 等具体安全边界，而不是只保护“进入下一工作流阶段”；
-- plan、todo、debug 和 receipt 只能引用已批准的 `action_id`，不得自行新增动作、扩大副作用、改变 exact set 或把普通任务重新命名为高风险；
-- 它与 spec／plan 的普通批准相互独立，普通批准不能替代动作授权，动作授权也不能泛化为后续动作或未列范围；
-- 授权表达、是否要求人工输入身份以及验证方式完全遵循该项目已批准规格；通用 UXUCode 既不得降低已有动作级 exact-SHA 合同，也不得为项目自行发明一套；
-- 一旦候选、动作、目标环境／账户、费用、时限、前置状态或重试边界变化，授权失效并 fail closed。
+worker 只接收一个任务、attempt、父级记录的原始字节基线、读写范围、验收标准与 focused validation。终态收据只包含 task ID、attempt ID、`completed | blocked`、实际变更规范路径及 present／missing 状态、验证命令与退出码、输出摘要、范围例外、blocker 或剩余工作。worker 不得写 plan、todo 或 baseline snapshot。
 
-普通阶段转换、本地代码编辑、本地测试、todo 修复永远不能仅凭 plan 自述升级为该例外。仅有 SHA、任务复杂、项目重要、存在历史审批文本或希望“更谨慎”，均不足以启用此例外。
+### 14.6 既有批准计划与高风险动作边界
 
-### 14.6 实施范围与宿主对等
+- todo 的批准状态与批准收据是既有计划的批准事实源；不可变 plan 顶部遗留的旧待批准标签不得反向阻断。
+- todo 顶层旧候选身份与旧批准收据可以只读保留。若批准收据尚无原始字节 approval snapshot，批准预检可以且只能一次读取旧顶层身份核对当前 plan，在 plan 已声明且 write scope 允许的 root 内原子创建 snapshot，并在任何任务启动前把引用写入 todo；旧身份绝不复制到 task、attempt、worker prompt、execution baseline 或 terminal receipt。
+- 若既有已批准 plan 已完整声明原始字节与规范路径 capture／verify，且全部任务仍为 `pending`，则无需新增模式字段、修改 plan 或重新批准即可执行；缺少 approval snapshot 时只执行上述一次 todo-and-snapshot 写入。
+- 旧身份缺失或冲突、收据不完整、无获批 root、snapshot 建立失败、核对后 plan 字节漂移，或缺少规范路径集合、存在状态、逐字节复核、owner／attempt、no-replace 中任一执行事实时，必须 fail closed 并启动零个 worker；不得从模糊 prose 推断。
+- 已批准项目 `SPEC.md` 可以直接枚举独立的高风险 `action_id`、具体副作用、目标环境／账户、完整 exact input set、费用／时限、单次与重试语义、失效条件及明确不授权范围。普通批准不能替代或扩大该动作授权，plan／todo 也不得自行新增或扩宽动作。
 
-获批后的 `@plan` 必须生成新的依赖有序实施计划，至少覆盖：
+### 14.7 实施范围与测试策略
 
-- Claude／Codex 的 `spec`、`plan`、`build`、`help` 公共 Skill，使批准语义、漂移恢复和高风险例外对等；
-- 两宿主的 `spec-driven-development`、`planning-and-task-breakdown` 与 `orchestration-patterns` 六个 reference，明确“批准意图”“持久批准收据”和“系统身份绑定”的职责分离；
-- `docs/USAGE.zh-CN.md`、`docs/USAGE.zh-TW.md`、`docs/USAGE.en.md`，给出无需 SHA 的普通批准示例及高风险动作不被顺带授权的说明；README 当前没有该详细合同，不为凑表面强制修改；
-- `work-products/tests/workflow-contract.test.js` 中独立的普通批准合同、`work-products/tests/documentation-validator-contract.test.js` 和 `scripts/validate-guide-parity.js` 的三语言合同，以及 `work-products/tests/mode-policy-contract.test.js` 的既有 Hook planId 漂移回归；静态允许／禁止语义样例可以内联，除非计划证明必要，不新增 fixture 或运行时批准解析器；
-- Claude／Codex manifest、Claude marketplace、两宿主版本断言及 `work-products/tests/workflow-contract.test.js` 的 expectedVersion 这六个当前发布版本事实面原子同步到 `5.0.24`。
+实施必须同步 Claude／Codex 的 `spec`、`plan`、`build`、`help`、builder agent、`spec-driven-development`、`planning-and-task-breakdown`、`orchestration-patterns` 与直接相关 debugging 示例；同步简中、繁中、英文指南及其 validator；把当前发布候选的六个版本事实面原子更新为 `5.0.25`。
 
-Claude／Codex 的 Hook planId 已满足 session freshness／漂移合同，明确排除产品逻辑修改；只运行既有回归。`scripts/validate-skill-parity.js`、`scripts/validate-all.js` 和两个 plugin validator 除必要版本字面量外也不预设逻辑修改。
+先建立可归因 RED，再完成最小 GREEN。持久回归至少覆盖：
 
-实现只修改当前 UXUCode 仓库。现有下游仓库中的 SPEC、plan、todo、会话记录、收据和训练／部署安全协议不自动改写；如需调整，必须在各项目中依据其上位规格单独规划。不得增加旧审批文本兼容、SHA 别名、双读或回退路径。
+1. 活动模型指引不含摘要算法术语或任务级摘要字段；
+2. 普通批准只接受唯一候选的整句明确语义，不要求固定文本或内部标识；
+3. plan 批准以 no-replace snapshot 与流式逐字节比较复用 fresh-session 收据；
+4. task／attempt／worker 使用规范路径、存在状态、原始字节 snapshot、owner 与 no-replace，任一漂移零 worker；
+5. 既有已批准 raw-byte plan 即使顶部残留旧待批准标签也以 todo 收据为准；旧顶层候选身份只读保留且不进入执行门；
+6. 已完整声明 capture／verify 且全部任务 pending 的既有计划无需 plan 文件迁移、模式字段或重批；缺 approval snapshot 时只允许一次受 scope 约束的 todo-and-snapshot 写入；
+7. 普通批准不扩权，高风险 `action_id` 仍只由已批准项目规格直接枚举；
+8. Claude／Codex、三语言、版本事实面和统一静态门禁全部一致。
 
-升级不得使已完成且当前身份一致的普通批准失效，也不得改写历史收据。活动流程若仍含“普通阶段必须由用户回复 SHA”条款，必须报告 `legacy contract conflict`，在该项目内修订上位规格／活动计划后再继续；合法的 action-scoped 高风险收据保持有效。
+实现只修改当前 UXUCode 仓库，不读取或修改下游仓库，不改安装缓存、宿主配置或生产状态。Hook 内部 freshness 实现和冻结历史证据不是活动模型指引，本次不改其行为。
 
-### 14.7 非目标
+### 14.8 可衡量验收、风险与回滚
 
-- 不取消 plan 不可变或 plan／todo SHA-256 一致性；
-- 不把普通自然语言批准扩张为自动 `@build auto`、提交、推送、联网、发布或部署；
-- 不新增按关键词／正则判定用户意图的运行时批准解析器，也不把 Hook state 变成批准账本；
-- 不统一重写所有项目的高风险动作授权协议；
-- 不以用户复述 SHA 代替认证、签名、权限校验、服务器收据或实际制品验证；
-- 本次 `@spec` 不修改产品 Skill、Hook、reference、测试、文档、版本清单、安装缓存或下游仓库，也不授权 `@plan`、实现、提交、推送、发布或部署。
+- [x] 普通 spec／plan 批准只需明确自然语言，不要求用户查看、复制或复述内部标识。
+- [x] 活动 Skill、agent、reference、三语言指南、SPEC、plan 与 todo 不出现摘要算法术语。
+- [x] plan 批准、fresh-session 复用与 task execution 都用不可替换 snapshot 和原始字节流式比较，漂移继续 fail closed。
+- [x] task、attempt、worker prompt 与终态收据不记录或比较 plan、before、after 或目录摘要字段。
+- [x] todo 旧顶层候选身份与批准收据可只读保留但不参与执行；既有完整 raw-byte 计划无需 plan 修改、模式字段或重批，缺失 approval snapshot 时仅做一次受 scope 约束的 todo-and-snapshot 迁移。
+- [x] 普通批准不扩权；合法 action-scoped 高风险授权不被替代或泛化。
+- [x] Claude／Codex 与三语言合同对等，六个当前发布版本事实面同步为 `5.0.25`。
+- [x] `node scripts/validate-all.js` 与 `git -c safe.directory=C:/Code/UXUCode diff --check` 全绿。
+- [x] 未提交、推送、安装、刷新缓存、联网、发布、部署或修改下游仓库。
 
-### 14.8 测试策略
+主要风险是把删除摘要门禁误做成降低漂移检测。回归必须同时证明同尺寸字节变化、换行变化、空字节、路径增删改名、类型／链接／别名漂移、snapshot 替换、owner／attempt 不一致与 missing path 被抢占全部阻塞。若需回滚，必须成对恢复两宿主 Skill、agent、reference、三语言文档、测试和版本事实面，不得保留半宿主行为。
 
-实施时先增加 RED 合同，再做最小 GREEN 修改。至少覆盖：
-
-1. 唯一待批准 SPEC + 用户明确批准 → 只更新 SPEC 批准元数据，不要求或创建用户 SHA 回复；实质修改后状态恢复待批准；
-2. 唯一未漂移 plan + 用户回复“批准当前计划” → 系统重算并原子记录 todo 批准收据，不再追问 SHA；
-3. 同一候选的另一种整句明确批准 → 同样通过，证明没有固定句式要求；
-4. `不要批准`、`你是要我回复“批准”吗？`、`批准前先改 X`、`如果 X 通过就批准`、`按计划继续审查` → 均不构成批准；
-5. 用户主动提供的 SHA 与系统身份冲突 → `BLOCKED` 并重新展示候选，不静默改绑，也不要求复述；
-6. 展示后文件变化或 plan／todo 身份不一致 → `BLOCKED`，报告可读差异并请求重新语义批准，输出不得含必填摘要回复模板；
-7. fresh session 中有效 SPEC 状态或 todo 批准收据仍匹配 → 复用批准；事实缺失、失效或冲突才重新索批；
-8. 普通 plan 获批 → 仍不授权 `@build auto`、提交、推送、联网、费用、训练、外部写入、发布或部署；
-9. 无已批准项目 SPEC 支持的普通流程 → 出现 exact-SHA 人工门禁即失败；
-10. 已批准项目 SPEC 枚举的高风险 action 样例 → `action_id`、副作用与 exact set 全部匹配才保留其项目协议，变更任一字段即阻塞，且不扩权到其他动作；
-11. Claude／Codex、六个 reference 和三语言文档 → 关键语义对等；Hook planId／todo 漂移回归继续 fail closed；
-12. 六个当前发布版本事实面与发布校验 → 全部精确为 `5.0.24`。
-
-合同测试不得简单禁用 `SHA` 字样，也不得用宽泛的 `用户提供.*SHA` 一类正则误伤合规否定句。禁止 mutation 应表达完整危险语义，例如“缺少用户提供的 SHA 即不批准”“要求用户回复 SHA 才继续”或“用户给出的摘要一致即视为批准”；允许样例至少覆盖“用户无需提供 SHA”“即使用户提供也必须由系统重算”、todo 绑定、receipt identity 和已批准项目 SPEC 明确的高风险 exact set。自然语言句子只作为静态语义合同样例，不新增通用意图解析器。
-
-目标实现完成后运行项目统一静态门禁：
-
-```powershell
-node scripts/validate-all.js
-git -c safe.directory=C:/Code/UXUCode diff --check
-```
-
-这些结果只证明仓库候选的静态／自动化合同；未重装缓存或开启 fresh host session 时，不得声称已安装插件或当前会话行为已经更新。
-
-### 14.9 可衡量验收标准
-
-- [x] 普通 spec／plan 批准只需明确自然语言，不要求用户查看、复制或复述 SHA；
-- [x] SPEC 批准只更新既定状态元数据；系统在 plan 批准边界自行重读、重算并把当前身份／批准收据原子写入 todo；
-- [x] 漂移、身份不一致、多候选和批准歧义继续 fail closed，但恢复请求不使用 SHA challenge-response；
-- [x] fresh session 复用仍有效的持久批准事实，不因丢失对话上下文重复索批；
-- [x] plan／todo、Hook、attempt、收据和回滚定位所需的内部摘要全部保留，Hook state 不承载批准；
-- [x] 高风险例外必须由已批准项目 SPEC 直接枚举，并严格绑定一个 `action_id`、具体副作用与 exact set；
-- [x] 普通批准和高风险动作授权双向不扩权；
-- [x] Claude／Codex Skill 与 reference 语义对等，简中／繁中／英文文档对等；
-- [x] 持久测试能同时拒绝人类 SHA 门禁并允许机器完整性 SHA；
-- [x] 六个当前发布版本事实面同步为 `5.0.24`，统一验证与 `git diff --check` 通过；
-- [x] 报告区分仓库候选、安装缓存、fresh host session 和下游项目状态。
-
-### 14.10 风险、回滚与批准决定
-
-| 风险 | 缓解 |
-|---|---|
-| 把移除人类 SHA 门误做成删除完整性校验 | 测试同时要求系统重算、plan／todo 一致和漂移阻塞 |
-| 关键词命中把否定、疑问或继续审查误判为批准 | 按整句语义和唯一候选判断；负向样例固定覆盖条件、引用与先修改请求 |
-| 普通批准意外授权外部副作用 | 阶段授权矩阵保持独立，针对提交／推送／联网／训练／发布／部署做负向测试 |
-| plan 自称高风险后发明 SHA 门 | 只有已批准项目 SPEC 可枚举 `action_id`；下游制品只能引用不能扩宽 |
-| 通用规则误伤项目安全协议 | 保留已批准规格明确、动作级、候选级、fail-closed 的窄例外和历史收据 |
-| 两宿主或三语言出现语义漂移 | 对等静态 mutation、文档断言和统一校验作为同一发布门禁 |
-
-若实现需要回滚，必须成对恢复 Claude／Codex Skill、reference、三语言文档、测试和版本事实面；不得保留半宿主行为，也不得以恢复“用户复述 SHA”作为完整性校验替代品。内部 plan identity 与 fail-closed 漂移检测在回滚前后都必须有效。
-
-批准第 14 节表示接受以下五项决定：
-
-1. 普通 spec／plan 批准使用整句自然语言语义，不要求固定文本；
-2. 人类复述 SHA 不再是普通工作流的批准凭据或解除漂移阻塞的方法；
-3. SPEC 在自身既定状态元数据记录批准；plan SHA 与批准收据只由系统写入 todo，Hook state 不成为第二批准事实源；
-4. 机器完整性 SHA、不可变 plan、todo 原子账本和收据身份全部保留，fresh session 复用仍有效的批准；
-5. 只有已批准项目 SPEC 直接枚举 `action_id` 和具体高风险副作用时，才保留独立、窄作用域的 exact-set／人工身份协议。
-
-第 14 节已于 2026-08-19 获批：用户在唯一规格候选之后直接调用 `@plan`，明确授权进入规划阶段。该授权无需、也未提供 SHA；它仍不授权实现、提交、推送、发布或部署。
+第 14 节修订由用户于 2026-08-20 明确要求并授权实施。该授权只覆盖当前 UXUCode 仓库的源码、测试、规格、活动工作流产物和版本同步，不授权提交、推送、安装、缓存刷新、发布、部署或下游项目修改。
