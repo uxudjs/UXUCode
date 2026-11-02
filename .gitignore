@@ -1,4 +1,5 @@
 # Local UXUCode workflow artifacts
+/.venv/
 /work-products/*
 !/work-products/SPEC.md
 !/work-products/plan.md

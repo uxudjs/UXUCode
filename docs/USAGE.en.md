@@ -102,6 +102,22 @@ Start a new OpenClaw session after installation so it reloads the workspace file
 
 ## 4. First Use
 
+**GPUBackfill (Codex / Claude Code)**
+
+The plugins bundle a local stdio MCP without adding a public command. The client uses existing Node.js 20+ and OpenSSH. Tasks execute on Linux with NVIDIA GPUs through an existing absolute Python 3.8+ interpreter specified by the user; only the standard library is used, with no dependency installation. Each call takes `target: {host?, root, python}`: `host` is a configured SSH target, or omit it for local Linux; `root` is an existing absolute project directory and `python` is the absolute interpreter path. SSH host-key verification stays enabled. This MCP is not integrated with OpenClaw.
+
+Have the AI call the read-only `gpu_probe` to show every GPU's index, UUID, model, total/free memory, utilization, and processes, then ask you to select some or all cards. The AI must not select by default; all cards means the exact UUIDs you saw. Only after confirmation may it call `gpu_create_queue` with `gpu_uuids`, `inventory_id`, and `selection_confirmed: true`. Hardware inventory changes require a new selection. Busy cards may be selected; admission waits for capacity. Queues sharing GPUs must use the same server coordination root.
+
+Creating a queue, submitting a job, or explicitly calling `gpu_prepare` prepares `.gpubackfill/` under that project root, uploads and verifies a fixed script set, and updates through separate release directories and an atomic switch. `gpu_probe` and `gpu_status` write nothing; cancellation and pausing do not install scripts. Plugin updates deliver the MCP; tools become discoverable after the host reloads and permits enablement, without starting tasks. Running workers remain pinned to their original release. Existing FedLoRA jobs are not migrated or adopted automatically.
+
+Use `gpu_submit` with `queue_id` and a job containing `job_id`, the `command` argument array, `cwd`, peak `memory_mib` for all task processes, and `max_runtime_seconds` (a positive number or explicit `null`). An additional 1024 MiB is reserved by default. Sharing cards with external jobs is enabled by default; set `allow_external: false` when creating a queue to disable it. Jobs without a complete checkpoint protocol wait for empty cards and run exclusively. A temporarily busy single card means waiting. Multi-GPU admission applies only when requirements exceed every selected card's safe capacity and the task already supports memory sharding, with a declared card count, per-card budgets, and compatible models. It does not sum memory blindly or rewrite training scripts.
+
+Resumable jobs cooperate through a STOP file, checkpoint directory, request/attempt identity, and resume path, then exit with code 75 after a complete save to yield capacity. Multi-GPU tasks must save all ranks consistently; content integrity does not establish semantic completeness of training state. Use `gpu_status` to inspect state, `gpu_cancel` to cancel only a specified owned job, and `gpu_queue_control` to pause/resume admission. Pausing prevents new launches; external jobs are never stopped. Queues, logs, and checkpoints persist, and execution continues after closing the chat or losing SSH. A hard-killed worker or server reboot requires verification, without silently retraining from scratch.
+
+`command[0]` must be an existing executable's absolute path; Python tasks use their existing project interpreter. Multi-GPU requests must include a nonempty, duplicate-free `multi_gpu.compatible_models` list using full model names from the probe inventory; allocation is restricted to those models. Recovery defaults to disabled. Set `resume: {enabled: true}` only after integrating complete save/restore, with optional `grace_seconds` (1–600) and `max_restarts`. A Python adapter loads `checkpoint.py` from the `GPU_BACKFILL_HELPER_DIR` environment variable and calls `Checkpoint.from_environment()`. `load_bytes()` returns state bytes and progress; `save_bytes(payload, {"step": n})` commits complete state; `exit_if_requested(save_callback)` saves on STOP and exits with code 75. The task owns serialization and restoration of all model, optimizer, data-cursor, and other state.
+
+Report repository static contracts, isolated Linux tests, real host loading, and real GPU behavior separately. Passing the first two does not verify the last two.
+
 ### 4.1 Claude Code
 
 Inside the Claude Code session, run:

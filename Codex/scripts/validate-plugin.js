@@ -23,18 +23,34 @@ function requirePath(relativePath, label = relativePath) {
 const manifest = readJson('.codex-plugin/plugin.json');
 const marketplace = readJson('.agents/plugins/marketplace.json');
 const hooks = readJson('hooks/hooks.json');
+const mcp = readJson('.mcp.json');
 
 if (manifest) {
   if (manifest.name !== 'uxu-code') fail('manifest: unexpected plugin name');
-  if (manifest.version !== '5.0.26') fail('manifest: expected version 5.0.26');
+  if (manifest.version !== '5.1.1') fail('manifest: expected version 5.1.1');
   if (manifest.skills !== './skills/') fail('manifest: skills must be ./skills/');
   if (manifest.hooks !== './hooks/hooks.json') fail('manifest: hooks must be ./hooks/hooks.json');
+  if (manifest.mcpServers !== './.mcp.json') fail('manifest: mcpServers must be ./.mcp.json');
 }
 if (marketplace?.name !== 'uxu-code-codex') fail('marketplace: unexpected name');
 if (marketplace?.plugins?.[0]?.source?.path !== './') fail('marketplace: local plugin path must be ./');
 const serializedHooks = JSON.stringify(hooks);
 if (!serializedHooks.includes('PLUGIN_ROOT') || serializedHooks.includes('CLAUDE_PLUGIN_ROOT')) {
   fail('hooks: Codex hooks must use PLUGIN_ROOT only');
+}
+
+if (JSON.stringify(Object.keys(mcp?.mcpServers || {})) !== '["GPUBackfill"]') fail('MCP: expected GPUBackfill only');
+const gpuBackfill = mcp?.mcpServers?.GPUBackfill;
+if (gpuBackfill?.type !== 'stdio' || gpuBackfill.command !== 'node' ||
+    JSON.stringify(gpuBackfill.args) !== '["${PLUGIN_ROOT}/mcp/GPUBackfill/server.js"]' ||
+    gpuBackfill.cwd !== '${PLUGIN_ROOT}') fail('MCP: GPUBackfill must start from the Codex plugin root');
+for (const file of ['server.js', 'transport.js', 'bootstrap.py', 'worker.py', 'checkpoint.py']) {
+  const relativePath = path.join('mcp', 'GPUBackfill', file);
+  requirePath(relativePath);
+  if (fs.existsSync(path.join(root, relativePath))) {
+    const stat = fs.lstatSync(path.join(root, relativePath));
+    if (!stat.isFile() || stat.isSymbolicLink()) fail(`MCP: ${relativePath} must be a regular file`);
+  }
 }
 
 for (const file of ['AGENTS.md', 'hooks/hooks.json', 'hooks/hook-state.js', 'hooks/uxu-session-start.js', 'hooks/uxu-prompt-router.js', 'hooks/uxu-subagent-start.js', 'hooks/uxu-statusline.js']) requirePath(file);
@@ -79,4 +95,4 @@ if (failures.length) {
   failures.forEach((failure) => console.error(`- ${failure}`));
   process.exit(1);
 }
-console.log(`Codex validation passed: ${skillDirs.length} skills, native manifest, marketplace, and hooks.`);
+console.log(`Codex validation passed: ${skillDirs.length} skills, native manifest, marketplace, hooks, and GPUBackfill MCP.`);

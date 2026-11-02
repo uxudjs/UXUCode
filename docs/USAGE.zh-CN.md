@@ -102,6 +102,22 @@ node OpenClaw/scripts/install-profile.js --workspace "<请替换为OpenClaw工�
 
 ## 4. 第一次使用
 
+**GPUBackfill（Codex / Claude Code）**
+
+插件内置本地 stdio MCP，不新增公开命令。客户端使用已有 Node.js 20+ 和 OpenSSH；执行端为 Linux + NVIDIA，使用用户指定的现存绝对 Python 3.8+ 解释器，仅用标准库，不安装依赖。每次调用传入 `target: {host?, root, python}`：`host` 是已配置的 SSH 目标，省略时为 Linux 本机；`root` 是现存绝对项目目录，`python` 是解释器绝对路径。保留 SSH 主机密钥校验。OpenClaw 不接入此 MCP。
+
+先让 AI 调用 `gpu_probe` 只读列出全部 GPU 的序号、UUID、型号、总/空闲显存、利用率和进程，再询问你选择若干卡或全选。AI 不能默选；全选固定为你看到的 UUID 集合。确认后才用 `gpu_create_queue` 提交所选 `gpu_uuids`、`inventory_id` 和 `selection_confirmed: true`；硬件清单变化需重新选择，忙卡可选但资源不足时等待。相同 GPU 的队列使用同一服务器协调根。
+
+创建队列、提交任务或显式 `gpu_prepare` 会在该项目根内准备 `.gpubackfill/`，上传并校验固定脚本，以独立版本目录和原子切换更新。`gpu_probe`、`gpu_status` 零写入；取消和暂停操作不安装脚本。插件更新只交付 MCP，宿主重载且允许启用后才可发现工具，不启动任务。已运行 worker 固定使用原版本，原 FedLoRA 任务不自动迁移或接管。
+
+用 `gpu_submit` 提交 `queue_id` 与任务：`job_id`、命令参数数组 `command`、`cwd`、全部进程的峰值 `memory_mib` 和 `max_runtime_seconds`（正数或明确 `null`）。默认额外保留 1024 MiB，允许外部任务共卡；可在创建队列时设置 `allow_external: false`。没有完整断点协议的任务只在空卡上独占执行。单卡暂忙时等待；仅需求超过任一所选单卡安全容量且任务已有显存切分适配时，才按声明的卡数、逐卡显存预算和兼容型号组合申请同机多卡，不把显存简单相加或自动改写训练脚本。
+
+支持恢复的任务需通过 STOP 文件、checkpoint 目录、请求/attempt 身份及 resume 路径协作；完整保存后以退出码 75 让路。多卡任务自行保证全部 rank 一致保存，内容完整性校验不证明训练状态语义完整。`gpu_status` 查询状态，`gpu_cancel` 只取消自己的指定任务，`gpu_queue_control` 暂停/恢复队列；暂停阻止新启动，外部任务不被停止。队列、日志和断点持久化，关闭聊天或 SSH 断连后继续后台执行；worker 被硬杀或服务器重启后需核验，不静默从零重训。
+
+`command[0]` 必须是现存可执行文件的绝对路径，Python 任务使用项目既有解释器。多卡请求必须填写非空、无重复的 `multi_gpu.compatible_models`，使用探测清单的完整型号名，实际分配仅限这些型号。恢复默认关闭；仅在任务接好完整保存/恢复后设置 `resume: {enabled: true}`，可声明 `grace_seconds`（1—600）和 `max_restarts`。Python 适配器从环境 `GPU_BACKFILL_HELPER_DIR` 加载 `checkpoint.py`，调用 `Checkpoint.from_environment()`；`load_bytes()` 返回状态字节与进度，`save_bytes(payload, {"step": n})` 提交完整状态，`exit_if_requested(save_callback)` 在 STOP 时保存并以 75 退出。任务自行序列化并恢复模型、优化器、数据游标等全部状态。
+
+验证证据须区分仓库静态合同、隔离 Linux 测试、真实宿主加载和真实 GPU 行为；前两层通过不代表后两层已验证。
+
 ### 4.1 Claude Code
 
 在 Claude Code 会话内运行：

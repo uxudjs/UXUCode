@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "GPUBackfill": {
+      "type": "stdio",
+      "command": "node",
+      "args": ["${CLAUDE_PLUGIN_ROOT}/mcp/GPUBackfill/server.js"],
+      "cwd": "${CLAUDE_PLUGIN_ROOT}"
+    }
+  }
+}

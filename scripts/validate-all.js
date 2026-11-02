@@ -15,6 +15,11 @@ const steps = [
   { name: 'legacy commands', command: node, args: ['scripts/validate-no-legacy-commands.js'] },
   { name: 'third-party notices', command: node, args: ['scripts/validate-third-party-notices.js'] },
   {
+    name: 'GPUBackfill contracts',
+    command: node,
+    args: ['--test', 'work-products/tests/gpu-backfill-protocol.test.js', 'work-products/tests/gpu-backfill-deploy.test.js', 'work-products/tests/gpu-backfill-package.test.js']
+  },
+  {
     name: 'workflow contracts',
     command: node,
     args: [

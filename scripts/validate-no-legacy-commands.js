@@ -23,7 +23,7 @@ const failures = [];
 
 function walk(directory) {
   for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
-    if (entry.name === '.git' || entry.name === 'work-products') continue;
+    if (['.git', '.codegraph', '.venv', 'work-products'].includes(entry.name)) continue;
     const absolute = path.join(directory, entry.name);
     if (entry.isDirectory()) walk(absolute);
     else {

@@ -18,6 +18,8 @@
 
 UXUCode 把需求澄清、计划、实现、调试、测试、评审、简化和发布门禁串成一套可验证的工作流，帮助你在 Claude Code 或 Codex 中持续完成软件工程任务。
 
+Codex 和 Claude Code 插件同时内置 `GPUBackfill` MCP：自动探测指定 Linux 机器上的 NVIDIA GPU，由 AI 询问你选择哪些卡或全选，再利用空闲容量调度任务。客户端需要已有 Node.js 20+；远程使用已配置的 SSH。更新后重载宿主即可发现工具，遵循启用和信任设置，不会自动开始训练。OpenClaw 不接入此 MCP。
+
 当任务需要先明确范围时，可以从 `spec` 开始；需求已经清楚时，也可以直接进入 `plan`。推荐流程：
 
 ```text
@@ -163,6 +165,8 @@ git pull --ff-only
 
 UXUCode 把需求釐清、計畫、實作、除錯、測試、評審、簡化和發佈門禁串成一套可驗證的工作流程，協助你在 Claude Code 或 Codex 中持續完成軟體工程任務。
 
+Codex 和 Claude Code 外掛同時內建 `GPUBackfill` MCP：自動探測指定 Linux 機器上的 NVIDIA GPU，由 AI 詢問你選擇哪些卡或全選，再利用閒置容量排程任務。用戶端需要既有 Node.js 20+；遠端使用已設定的 SSH。更新後重新載入宿主即可發現工具，遵循啟用和信任設定，不會自動開始訓練。OpenClaw 不接入此 MCP。
+
 當任務需要先明確範圍時，可以從 `spec` 開始；需求已經清楚時，也可以直接進入 `plan`。推薦流程：
 
 ```text
@@ -307,6 +311,8 @@ git pull --ff-only
 ## What It Does
 
 UXUCode connects requirement clarification, planning, implementation, debugging, testing, review, simplification, and release gates into one verifiable workflow for ongoing software-engineering work in Claude Code or Codex.
+
+The Codex and Claude Code plugins include the `GPUBackfill` MCP: it discovers NVIDIA GPUs on a specified Linux machine, lets the AI ask you to select some or all cards, and schedules tasks into available capacity. The client requires an existing Node.js 20+ installation and configured SSH for remote use. Reload the host after updating to discover the tools, subject to enablement and trust settings; updating does not start training. This MCP is not integrated with OpenClaw.
 
 Start with `spec` when the scope still needs definition; when the request is already clear, you can go directly to `plan`. Recommended flow:
 
