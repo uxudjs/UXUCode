@@ -20,7 +20,7 @@ test('stdio exposes GPUBackfill tools with explicit GPU selection and error resu
   const replies = result.stdout.trim().split('\n').map(JSON.parse);
   const byId = new Map(replies.map((reply) => [reply.id, reply]));
   assert.equal(byId.get(1).result.serverInfo.name, 'GPUBackfill');
-  assert.equal(byId.get(1).result.serverInfo.version, '5.1.1');
+  assert.equal(byId.get(1).result.serverInfo.version, '5.1.2');
   assert.match(byId.get(1).result.instructions, /ask.*user/i);
   assert.deepEqual(byId.get(2).result.tools.map((tool) => tool.name).sort(), ['gpu_probe', 'gpu_prepare', 'gpu_create_queue', 'gpu_submit', 'gpu_status', 'gpu_cancel', 'gpu_queue_control'].sort());
   assert.equal(byId.get(3).error.code, -32602);

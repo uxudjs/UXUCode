@@ -773,7 +773,7 @@ test('unified validation covers every repository gate and propagates the first f
   );
   assert.deepEqual(
     steps.find((step) => step.name === 'GPUBackfill contracts').args,
-    ['--test', 'work-products/tests/gpu-backfill-protocol.test.js', 'work-products/tests/gpu-backfill-deploy.test.js', 'work-products/tests/gpu-backfill-package.test.js']
+    ['--test', 'work-products/tests/gpu-backfill-protocol.test.js', 'work-products/tests/gpu-backfill-deploy.test.js', 'work-products/tests/gpu-backfill-package.test.js', 'work-products/tests/gpu-backfill-host-startup.test.js']
   );
   assert.deepEqual(
     steps.find((step) => step.name === 'workflow contracts').args,
@@ -947,8 +947,8 @@ test('audit and performance guidance stays ecosystem-neutral and evidence-gated'
   assert.match(notices, /Excluded from adoption:/);
 });
 
-test('release metadata and maintenance workflows enforce the 5.1.1 version contract', () => {
-  const expectedVersion = '5.1.1';
+test('release metadata and maintenance workflows enforce the 5.1.2 version contract', () => {
+  const expectedVersion = '5.1.2';
   const claudeManifest = JSON.parse(
     fs.readFileSync(path.join(root, 'Claude', '.claude-plugin', 'plugin.json'), 'utf8')
   );

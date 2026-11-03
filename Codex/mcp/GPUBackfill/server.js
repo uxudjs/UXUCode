@@ -3,7 +3,7 @@
 
 const { invoke } = require('./transport');
 
-const VERSION = '5.1.1';
+const VERSION = '5.1.2';
 const PROTOCOL_VERSION = '2025-11-25';
 const MAX_FRAME = 1024 * 1024;
 const instructions = 'GPUBackfill runs authorized jobs on Linux NVIDIA GPUs via local execution or SSH. First call gpu_probe, show the GPU inventory, and ask the user to choose specific cards or all listed cards. Never select cards for the user. Only after their answer call gpu_create_queue with explicit UUIDs, inventory_id and selection_confirmed=true. Default external sharing is enabled. Non-checkpoint jobs require an idle exclusive GPU. Multi-GPU requires existing memory-sharding support and explicit compatible GPU models. Updates never authorize training. Use one coordination root per server. Obtain the server, project root, existing absolute Python interpreter, task command and budgets from the user or their authorized project contract. A successful checkpoint integrity check does not prove training-state completeness. Closing a chat leaves submitted jobs running; worker crashes or server reboots require manual review.';

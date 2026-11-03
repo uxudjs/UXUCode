@@ -1,6 +1,6 @@
 # GPUBackfill 执行账本
 
-当前候选版本：`5.1.1`。
+当前候选版本：`5.1.2`。
 实施授权：用户 2026-11-02 完成原始请求中“确认后制作”的设计确认；不授权提交、推送、缓存安装、实际服务器部署或训练。
 
 | 任务 | 波次 | 依赖 | 状态 | 派生完成标记 |
@@ -54,3 +54,18 @@
 - 四项问题及部署标记/单卡型号边界均已建立RED→GREEN证据；Linux修复回归28/28、原回归20/20、Node GPUBackfill26/26及统一14步骤通过。
 - 两宿主源码逐字节一致；结果与证据：`work-products/debug/gpu-backfill-review-fixes/result.md`、`verification.json`、`validate-all.log`。
 - 实际变更限MCP worker/bootstrap/schema、两宿主分发、版本/合同/文档、回归及本增量证据；无提交、推送、缓存刷新、远端部署或训练。
+
+## 本机插件启动修复（当前活动增量）
+
+- 用户 2026-11-03 明确要求修复本机 GPUBackfill 启动/打包问题，沿用本对话已授予的 Codex／Claude 插件更新授权；不扩展到服务器、任务或 Git 发布。
+- owner：/root；attempt：host-startup-01；候选：5.1.2；状态：completed。
+- 原始字节基线：`work-products/debug/gpu-backfill-host-startup/baseline/`；已有 14 个文件逐字节保存，新 native 回归创建前为 missing，no_replace：true。
+- 真实桌面原生宿主已复现旧版本 Windows 267；仅删除 cwd 仍无法握手，子进程审计确认 args 也保留字面占位符。相对入口及相对 cwd 的原生 A/B、持久 RED→GREEN 已通过。
+
+### 本机插件启动修复终态收据
+
+- 统一门禁 14 步退出 0；GPUBackfill 27/27（包含实际原生宿主回归，无跳过），工作流168/168、OpenClaw34/34；独立审查无阻断。
+- 本机 Codex／Claude 插件均原生更新至 5.1.2，各 77 个安装文件与源码逐字节一致。Codex 用户配置及 Claude 非目标登记、设置和凭据保持原始字节不变；旧包与配置已在当前 debug 目录备份。
+- 同版桌面 Codex 原生宿主从真实安装位置初始化并列出 7 个工具，toolsError=null；Claude 仅缓存校验和直接握手通过，真实 Claude 宿主加载未验证。
+- 当前聊天仍缓存旧的启动失败状态，尚未重载；须重启 Codex 后使用。未连接服务器、调用 GPU 工具、修改远端任务或进行 Git 提交／推送。
+- 证据：`work-products/debug/gpu-backfill-host-startup/` 中的 `validate-all.log`、`codex-verification.json`、`claude-verification.json`、`native-installed-5.1.2.json` 及 `result.md`。

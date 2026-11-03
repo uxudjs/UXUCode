@@ -9,8 +9,8 @@ const childProcess = require('node:child_process');
 const root = path.resolve(__dirname, '../..');
 const files = ['server.js', 'transport.js', 'bootstrap.py', 'worker.py', 'checkpoint.py'];
 const hosts = [
-  { name: 'Codex', manifest: '.codex-plugin/plugin.json', variable: '${PLUGIN_ROOT}' },
-  { name: 'Claude', manifest: '.claude-plugin/plugin.json', variable: '${CLAUDE_PLUGIN_ROOT}' }
+  { name: 'Codex', manifest: '.codex-plugin/plugin.json', entry: './mcp/GPUBackfill/server.js', cwd: './' },
+  { name: 'Claude', manifest: '.claude-plugin/plugin.json', entry: '${CLAUDE_PLUGIN_ROOT}/mcp/GPUBackfill/server.js', cwd: '${CLAUDE_PLUGIN_ROOT}' }
 ];
 const readJson = (file) => JSON.parse(fs.readFileSync(file, 'utf8'));
 
@@ -18,16 +18,16 @@ for (const host of hosts) {
   test(`${host.name} distributes GPUBackfill inside its own plugin root`, () => {
     const pluginRoot = path.join(root, host.name);
     const manifest = readJson(path.join(pluginRoot, host.manifest));
-    assert.equal(manifest.version, '5.1.1');
+    assert.equal(manifest.version, '5.1.2');
     assert.equal(manifest.mcpServers, './.mcp.json');
     const configuration = readJson(path.join(pluginRoot, '.mcp.json'));
     assert.deepEqual(Object.keys(configuration.mcpServers), ['GPUBackfill']);
     const server = configuration.mcpServers.GPUBackfill;
     assert.equal(server.type, 'stdio');
     assert.equal(server.command, 'node');
-    assert.deepEqual(server.args, [`${host.variable}/mcp/GPUBackfill/server.js`]);
-    assert.equal(server.cwd, host.variable);
-    const entry = path.resolve(server.args[0].replace(host.variable, pluginRoot));
+    assert.deepEqual(server.args, [host.entry]);
+    assert.equal(server.cwd, host.cwd);
+    const entry = path.resolve(pluginRoot, server.args[0].replace('${CLAUDE_PLUGIN_ROOT}', pluginRoot));
     assert.equal(entry, path.join(pluginRoot, 'mcp/GPUBackfill/server.js'));
     for (const file of files) {
       const stat = fs.lstatSync(path.join(pluginRoot, 'mcp/GPUBackfill', file));
@@ -45,7 +45,7 @@ test('both hosts distribute the same complete GPUBackfill runtime', () => {
       fs.readFileSync(path.join(root, 'Claude/mcp/GPUBackfill', file))
     ), `${file} differs between host packages`);
   }
-  assert.equal(readJson(path.join(root, 'Claude/.claude-plugin/marketplace.json')).plugins[0].version, '5.1.1');
+  assert.equal(readJson(path.join(root, 'Claude/.claude-plugin/marketplace.json')).plugins[0].version, '5.1.2');
 });
 
 test('source validation ignores generated runtimes while still rejecting forbidden product entries', () => {

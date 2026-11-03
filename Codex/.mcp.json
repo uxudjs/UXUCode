@@ -3,8 +3,8 @@
     "GPUBackfill": {
       "type": "stdio",
       "command": "node",
-      "args": ["${PLUGIN_ROOT}/mcp/GPUBackfill/server.js"],
-      "cwd": "${PLUGIN_ROOT}"
+      "args": ["./mcp/GPUBackfill/server.js"],
+      "cwd": "./"
     }
   }
 }

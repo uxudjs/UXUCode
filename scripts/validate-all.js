@@ -17,7 +17,7 @@ const steps = [
   {
     name: 'GPUBackfill contracts',
     command: node,
-    args: ['--test', 'work-products/tests/gpu-backfill-protocol.test.js', 'work-products/tests/gpu-backfill-deploy.test.js', 'work-products/tests/gpu-backfill-package.test.js']
+    args: ['--test', 'work-products/tests/gpu-backfill-protocol.test.js', 'work-products/tests/gpu-backfill-deploy.test.js', 'work-products/tests/gpu-backfill-package.test.js', 'work-products/tests/gpu-backfill-host-startup.test.js']
   },
   {
     name: 'workflow contracts',
