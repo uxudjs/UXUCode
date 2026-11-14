@@ -33,8 +33,8 @@ test('SSH launch keeps user data out of the command and enforces known host keys
   assert.throws(() => transport.buildLaunch({ root: '/srv/project', python: '/usr/bin/python3' }, '', 'win32'), /Linux|SSH/);
 });
 
-test('bundle identity binds both fixed runtime files, in stable filename order', () => {
-  const files = { 'worker.py': 'def dispatch(request, release_dir=None): return {}\n', 'checkpoint.py': '# checkpoint\n' };
+test('bundle identity binds all fixed runtime files, in stable filename order', () => {
+  const files = { 'worker.py': 'def dispatch(request, release_dir=None): return {}\n', 'checkpoint.py': '# checkpoint\n', 'disk.py': '# disk\n' };
   const result = transport.bundleIdentity(files);
   const expected = crypto.createHash('sha256');
   for (const name of Object.keys(files).sort()) expected.update(name + '\0').update(files[name]).update('\0');
@@ -60,7 +60,7 @@ function fakeSpawn(output, capture) {
 
 test('invoke sends JSON on stdin, ignores request root override and parses one result', async () => {
   const captured = {};
-  const files = { 'checkpoint.py': '# helper\n', 'worker.py': '# worker\n' };
+  const files = { 'checkpoint.py': '# helper\n', 'disk.py': '# disk\n', 'worker.py': '# worker\n' };
   const result = await transport.invoke(target, { action: 'status', root: '/outside', job_id: 'job-1' }, {
     spawn: fakeSpawn('{"ok":true}\n', captured), files, bootstrap: '# trusted bootstrap'
   });
@@ -73,7 +73,7 @@ test('invoke sends JSON on stdin, ignores request root override and parses one r
 
 test('invoke reports bootstrap errors and rejects unknown actions before spawning', async () => {
   const captured = {};
-  const options = { spawn: fakeSpawn('{"error":"deployment conflict"}\n', captured), files: { 'checkpoint.py': '', 'worker.py': '' }, bootstrap: '' };
+  const options = { spawn: fakeSpawn('{"error":"deployment conflict"}\n', captured), files: { 'checkpoint.py': '', 'disk.py': '', 'worker.py': '' }, bootstrap: '' };
   await assert.rejects(transport.invoke(target, { action: 'prepare' }, options), /deployment conflict/);
   await assert.rejects(transport.invoke(target, { action: 'execute_shell' }, options), /action/);
 });
@@ -98,6 +98,12 @@ function runPython(source, input, timeout = 10000) {
 const linuxReady = ['win32', 'linux'].includes(process.platform) && runPython('import sys; print(sys.version_info.major)', '').status === 0;
 const linuxOnly = { skip: linuxReady ? false : 'Repository Linux .venv is unavailable; no global Python fallback' };
 
+test('Linux disk budgets verify allocation receipts, concurrency and checkpoint admission', { ...linuxOnly, timeout: 120000 }, () => {
+  const suite = linuxPath(path.join(__dirname, 'gpu-backfill-disk.py'));
+  const result = runPython('import runpy,sys; runpy.run_path(sys.stdin.read(),run_name="__main__")', suite, 120000);
+  assert.equal(result.status, 0, result.stdout + result.stderr);
+});
+
 test('Linux regressions cover the four GPUBackfill review fixes', { ...linuxOnly, timeout: 120000 }, () => {
   const suite = linuxPath(path.join(__dirname, 'gpu-backfill-review-fixes.py'));
   const result = runPython('import runpy,sys; sys.argv=[sys.stdin.read()]; runpy.run_path(sys.argv[0],run_name="__main__")', suite, 110000);
@@ -108,6 +114,7 @@ test('Linux regressions cover the four GPUBackfill review fixes', { ...linuxOnly
 function runtime(version = 1) {
   return {
     'checkpoint.py': '# test checkpoint module\n',
+    'disk.py': '# test disk module\n',
     'worker.py': 'VERSION = ' + version + '\ndef dispatch(request, release_dir=None):\n    return {"action": request["action"], "release_dir": release_dir, "version": VERSION}\n'
   };
 }
@@ -240,7 +247,9 @@ test('real Linux bundle survives control disconnect and enforces pause and scope
   }
   const stopAware = 'import os,time; from pathlib import Path; stop=Path(os.environ["GPU_BACKFILL_STOP_FILE"]); end=time.monotonic()+12\nwhile time.monotonic()<end and not stop.exists(): time.sleep(0.05)\n';
   function job(jobId, code) {
+    fs.mkdirSync(path.join(item.directory, jobId + '-output'), { recursive: true });
     return { job_id: jobId, cwd: item.root, command: [interpreter, '-I', '-B', '-c', code], memory_mib: 512,
+      disk: { paths: [linuxPath(path.join(item.directory, jobId + '-output'))], growth_mib: 8, checkpoint_mib: 2, safety_mib: 1 },
       max_runtime_seconds: 25, resume: { enabled: false, grace_seconds: 1, max_restarts: 0 } };
   }
   try {
@@ -249,7 +258,10 @@ test('real Linux bundle survives control disconnect and enforces pause and scope
     assert.notEqual(probe.gpus[0].name, probe.gpus[1].name);
     assert.equal(fs.existsSync(path.join(item.directory, '.gpubackfill')), false);
     await call({ action: 'prepare' });
-    assert.deepEqual(await call({ action: 'status' }), { queues: [], jobs: [] });
+    const preparedStatus = await call({ action: 'status' });
+    assert.deepEqual(preparedStatus.jobs, []);
+    assert.deepEqual(preparedStatus.queues, []);
+    assert.equal(preparedStatus.disk.reserved_mib, 0);
     const queue = await call({ action: 'create_queue', queue_id: 'integration', gpu_uuids: probe.gpus.map(card => card.uuid),
       inventory_id: probe.inventory_id, selection_confirmed: true });
     assert.equal(queue.queue.allow_external, true);

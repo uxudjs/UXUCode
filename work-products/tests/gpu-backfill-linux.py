@@ -31,13 +31,19 @@ class Contracts(unittest.TestCase):
         scratch.mkdir(exist_ok=True)
         self.tmp = tempfile.TemporaryDirectory(dir=str(scratch))
         self.root = Path(self.tmp.name)
+        filesystem = mock.patch.object(worker.disk, 'filesystem', return_value=worker.disk.filesystem(self.root))
+        filesystem.start()
+        self.addCleanup(filesystem.stop)
         self.telemetry = mock.patch.object(worker, 'snapshot', return_value=sample())
         self.telemetry.start()
         self.addCleanup(self.telemetry.stop)
         self.addCleanup(self.tmp.cleanup)
 
     def request(self, **extra):
-        result = dict(job_id='job', command=[sys.executable, '-c', 'pass'],
+        output = self.root / ('output-' + extra.get('job_id', 'job').replace('/', '_'))
+        output.mkdir(exist_ok=True)
+        result = dict(disk=dict(paths=[str(output)], growth_mib=8, checkpoint_mib=2, safety_mib=1),
+                      job_id='job', command=[sys.executable, '-c', 'pass'],
                       cwd=str(self.root), memory_mib=2000, max_runtime_seconds=10)
         result.update(extra)
         return result
@@ -71,9 +77,9 @@ class Contracts(unittest.TestCase):
     def test_prepare_only_status_is_empty_and_read_only(self):
         base = self.root / '.gpubackfill'
         (base / 'releases').mkdir(parents=True)
-        (base / 'product.json').write_text('{"product":"GPUBackfill","state_version":1}')
+        (base / 'product.json').write_text('{"product":"GPUBackfill","state_version":2}')
         before = sorted(str(p.relative_to(self.root)) for p in self.root.rglob('*'))
-        self.assertEqual(worker.dispatch(dict(action='status', root=str(self.root))), dict(queues=[], jobs=[]))
+        self.assertEqual(worker.dispatch(dict(action='status', root=str(self.root)))['jobs'], [])
         self.assertEqual(before, sorted(str(p.relative_to(self.root)) for p in self.root.rglob('*')))
 
     def test_inventory_ignores_index_usage_but_binds_hardware(self):

@@ -112,6 +112,10 @@ node OpenClaw/scripts/install-profile.js --workspace "<請替換為OpenClaw工�
 
 用 `gpu_submit` 提交 `queue_id` 與任務：`job_id`、命令參數陣列 `command`、`cwd`、全部程序的峰值 `memory_mib` 和 `max_runtime_seconds`（正數或明確 `null`）。預設額外保留 1024 MiB，允許外部任務共卡；可在建立佇列時設定 `allow_external: false`。沒有完整斷點協定的任務只在空卡上獨占執行。單卡暫忙時等待；僅需求超過任一所選單卡安全容量且任務已有顯存切分適配時，才按宣告的卡數、逐卡顯存預算和相容型號組合申請同機多卡，不把顯存簡單相加或自動改寫訓練腳本。
 
+磁碟必須提供 `job.disk`，例如 `{paths: ["/project/run-output"], growth_mib: 512, checkpoint_mib: 256, safety_mib: 128}`，所需額外空閒為三項之和，即 896 MiB。提交前按實際任務、完整斷點代數/暫存副本、結果/日誌/快取成長和停止寬限期核算；已有檔案不重複計入新增需求。沒有統一 12 GiB 或省略時 1 MiB 的預設值。`paths` 為現存、獨享且不重疊的任務寫入目錄；協調目錄由排程器管理。首版需同一可驗證 ext2/ext3/ext4/tmpfs 檔案系統及已有 `findmnt`，不支援配額、連結或巢狀掛載。
+
+動態適配從 `GPU_BACKFILL_HELPER_DIR` 載入 `disk.py`，使用 `DiskBudget.from_environment().reserve(growth_mib, checkpoint_mib, {"step": n, "files": [絕對輸出檔案路徑]})` 等待確認後再進行超出舊額度的寫入。`files` 提供仍存在的累計兌現輸出憑據；只按核實的實際配置區塊減額，稀疏長度、硬連結和外部檔案不抵扣。斷點 helper 在寫入新內容前核對並申請所需儲存額度；拒絕/逾時不能繼續該次寫入，適配器須處理拒絕並沿 STOP 協議儲存讓路。儲存額度缺少較小未來狀態的證明時不減額。未接執行報告的任務按自身宣告峰值預留，不能宣稱自動縮減。狀態顯示有效分項、依據概要、序號及空閒/總預留；5.2.0 使用新狀態版本，舊欄位/舊協調根明確拒絕，升級須另行核驗全部 consumer 和完整斷點後交接，不熱改或收養舊 worker。
+
 支援恢復的任務需透過 STOP 檔案、checkpoint 目錄、請求/attempt 身分及 resume 路徑協作；完整儲存後以退出碼 75 讓路。多卡任務自行保證全部 rank 一致儲存，內容完整性驗證不證明訓練狀態語義完整。`gpu_status` 查詢狀態，`gpu_cancel` 只取消自己的指定任務，`gpu_queue_control` 暫停/恢復佇列；暫停阻止新啟動，外部任務不被停止。佇列、日誌和斷點持久化，關閉聊天或 SSH 斷線後繼續背景執行；worker 被強制終止或伺服器重啟後需核驗，不靜默從零重訓。
 
 `command[0]` 必須是現存可執行檔的絕對路徑，Python 任務使用專案既有解譯器。多卡請求必須填寫非空、無重複的 `multi_gpu.compatible_models`，使用探測清單的完整型號名稱，實際分配僅限這些型號。恢復預設關閉；僅在任務接好完整儲存/恢復後設定 `resume: {enabled: true}`，可宣告 `grace_seconds`（1—600）和 `max_restarts`。Python 適配器從環境 `GPU_BACKFILL_HELPER_DIR` 載入 `checkpoint.py`，呼叫 `Checkpoint.from_environment()`；`load_bytes()` 回傳狀態位元組與進度，`save_bytes(payload, {"step": n})` 提交完整狀態，`exit_if_requested(save_callback)` 在 STOP 時儲存並以 75 退出。任務自行序列化並恢復模型、最佳化器、資料游標等全部狀態。

@@ -3,7 +3,7 @@
 
 const { invoke } = require('./transport');
 
-const VERSION = '5.1.2';
+const VERSION = '5.2.0';
 const PROTOCOL_VERSION = '2025-11-25';
 const MAX_FRAME = 1024 * 1024;
 const instructions = 'GPUBackfill runs authorized jobs on Linux NVIDIA GPUs via local execution or SSH. First call gpu_probe, show the GPU inventory, and ask the user to choose specific cards or all listed cards. Never select cards for the user. Only after their answer call gpu_create_queue with explicit UUIDs, inventory_id and selection_confirmed=true. Default external sharing is enabled. Non-checkpoint jobs require an idle exclusive GPU. Multi-GPU requires existing memory-sharding support and explicit compatible GPU models. Updates never authorize training. Use one coordination root per server. Obtain the server, project root, existing absolute Python interpreter, task command and budgets from the user or their authorized project contract. A successful checkpoint integrity check does not prove training-state completeness. Closing a chat leaves submitted jobs running; worker crashes or server reboots require manual review.';
@@ -23,14 +23,16 @@ const job = object({
   resume: object({ enabled: { type: 'boolean' }, grace_seconds: positive, max_restarts: nonnegative }, ['enabled']),
   multi_gpu: object({ sharding_supported: { const: true }, gpu_count: { ...positive, minimum: 2 }, memory_mib_per_gpu: { type: 'array', items: positive, minItems: 2 }, compatible_models: { type: 'array', items: text, minItems: 1, uniqueItems: true } }, ['sharding_supported', 'gpu_count', 'memory_mib_per_gpu', 'compatible_models']),
   host_memory_mib: positive,
-  disk_free_mib: positive
-}, ['job_id', 'command', 'cwd', 'memory_mib', 'max_runtime_seconds']);
+  disk: object({ paths: { type: 'array', items: { ...text, pattern: '^/[^\u0000]*$' }, minItems: 1, uniqueItems: true },
+    growth_mib: nonnegative, checkpoint_mib: nonnegative, safety_mib: nonnegative },
+  ['paths', 'growth_mib', 'checkpoint_mib', 'safety_mib'])
+}, ['job_id', 'command', 'cwd', 'memory_mib', 'max_runtime_seconds', 'disk']);
 
 const definitions = [
   ['gpu_probe', 'probe', 'Read-only: list all visible NVIDIA GPUs and inventory_id on the specified Linux host. Show this inventory and ask the user which cards to select before creating a queue. This does not upload scripts.', {}, [], true],
   ['gpu_prepare', 'prepare', 'Upload and verify the bundled Linux worker in the selected project, using immutable releases and an atomic active-version pointer. Does not start jobs or restart existing workers.', {}, [], false],
   ['gpu_create_queue', 'create_queue', 'After the user chooses cards, persist a queue bound to their exact GPU UUID set and current inventory_id. Expands neither all-cards nor new hardware automatically. External-task sharing defaults to true. Prepares the bundled worker if needed.', { queue_id: identifier, gpu_uuids: { type: 'array', items: text, minItems: 1, uniqueItems: true }, inventory_id: text, selection_confirmed: { const: true }, allow_external: { type: 'boolean', default: true } }, ['queue_id', 'gpu_uuids', 'inventory_id', 'selection_confirmed'], false],
-  ['gpu_submit', 'submit', 'Submit an explicitly authorized argv command with a peak memory budget to an existing queue. Starts a detached Linux worker. No-checkpoint jobs wait for exclusive idle cards. Multi-GPU is only for tasks already supporting memory sharding with explicitly declared compatible models when no selected single card can fit the job.', { queue_id: identifier, job }, ['queue_id', 'job'], false],
+  ['gpu_submit', 'submit', 'Submit an explicitly authorized argv command with peak memory and a required task-specific disk contract. Estimate disk growth, complete checkpoint copies and safety from the actual task; never invent a fixed free-space default. Managed paths must be exclusive directories on the same supported filesystem. Adapted tasks use disk.DiskBudget.reserve before extra writes and exact allocated-file receipts to reduce growth reservations. Starts a detached Linux worker. No-checkpoint jobs wait for exclusive idle cards. Multi-GPU requires existing sharding and explicit compatible models when no selected single card can fit.', { queue_id: identifier, job }, ['queue_id', 'job'], false],
   ['gpu_status', 'status', 'Read-only: inspect persistent jobs/queue state. Optional queue_id and job_id filter results. Never restarts or adopts abandoned workers.', { queue_id: identifier, job_id: identifier }, [], true],
   ['gpu_cancel', 'cancel', 'Cancel only the specified GPUBackfill job. A running task receives its own STOP request and may be terminated after its grace period. Never signals external processes and never restarts a cancelled job.', { job_id: identifier }, ['job_id'], false],
   ['gpu_queue_control', 'queue_control', 'Pause or resume admission for an existing queue. Running jobs continue; paused queues start no further attempts until resumed.', { queue_id: identifier, paused: { type: 'boolean' } }, ['queue_id', 'paused'], false]

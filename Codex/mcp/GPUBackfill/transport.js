@@ -6,7 +6,7 @@ const crypto = require('node:crypto');
 const childProcess = require('node:child_process');
 
 const ACTIONS = new Set(['probe', 'prepare', 'create_queue', 'submit', 'status', 'cancel', 'queue_control']);
-const FILES = ['checkpoint.py', 'worker.py'];
+const FILES = ['checkpoint.py', 'disk.py', 'worker.py'];
 const MAX_OUTPUT = 4 * 1024 * 1024;
 
 function linuxPath(value, name) {

@@ -1,48 +1,38 @@
-# GPUBackfill 实施计划
+# GPUBackfill 动态磁盘预算实施计划
 
-依据：SPEC 第 15 节及当前会话逐项确认。用户最初要求确认后制作，2026-11-02 已确认最后两项；本计划记录已授权实施，不扩大外部权限。
-
+依据：SPEC 第16节；用户2026-11-14明确同意按方案实施并完成测试。该指令已授权此稳定方案的完整仓库实施，不另请求同范围批准。
 执行策略：serial
 fast 请求：否
-安全并发上限：1（任务级）
-串行退化原因：按阶段集成；T1 内只委派冻结接口下互不重叠的组件写集，全部返回后统一验收。
-计划生成基线版本：5.0.26
-批准实施目标候选版本：5.1.0
+安全并发上限：1
+串行原因：请求、helper、账本和打包共享接口，统一完成一个可验证纵向任务；不委派子代理。
+候选版本：5.2.0（提交接口和状态合同不兼容升级）
 
-## T1：实现并集成 GPUBackfill
+## D1：动态磁盘预算完整切片
 
-- 依赖：无；波次 W1；启动条件：需求确认、原始字节基线保存。
-- 读取：SPEC、当前插件合同/文档、FedLoRA 调度器（仅只读参考）、下述冻结接口。
-- 写入：`Codex/mcp/GPUBackfill/`、`Claude/mcp/GPUBackfill/`；两宿主 `.mcp.json`、plugin manifest、marketplace、validator；`README.md`、三语言 `docs/USAGE.*.md`、`.gitignore`、`scripts/validate-all.js`；`work-products/tests/gpu-backfill-*`；`work-products/debug/gpu-backfill/`；项目内 `.venv/`。
-- 委派边界：Linux 组件只写 Codex 核心 worker.py/checkpoint.py 与 Linux 测试；插件组件只写双宿主 manifests/marketplaces/validators、.mcp.json、README/三语言指南及打包测试；主 Agent 写 MCP/传输/bootstrap、协议与部署测试、统一入口、环境忽略规则，并在屏障后同步 Claude 核心。
-- 共享可变资源：版本、核心副本、统一入口与 todo 在屏障后由主 Agent 核对；各组件不读写另一组件的未完成输出，不写 plan/todo/基线。
-- 验收：工具实际可调用；不限 4090 或卡数；后端强制选择集合；默认外部共卡；无断点独占；多卡仅切分适配且原子准入；持久任务、版本部署和受限取消符合 SPEC。
-- 验证：目标 Node 测试、项目 `.venv/` 下 Linux 隔离测试、统一门禁；不连接实际服务器、不运行 GPU 训练。
-- 回滚：仅撤销本任务归属修改，保留基线及失败证据，不覆盖用户改动。
-- 基线根：`work-products/debug/gpu-backfill/execution-baseline/`，create-new/no-replace；展开完整路径集合，保存原始字节及 present/missing 状态；首次写前逐字节核验，漂移即停止。
-- 主 Agent 独占集成、todo 原子更新与最终验证。
+- 目标/验收：落实SPEC16全部规则，任务必须声明需求，写前增额与有证据减额共用准入锁，状态可解释；旧语义明确拒绝，无外部迁移。
+- 依赖：无；波次：W1；启动条件：规格已批准、精确原字节基线完成。
+- 读取：SPEC16、GPUBackfill核心、双宿主配置/校验器、指南及目标测试；原有未跟踪sampling测试只读保留。
+- 写入：baseline/paths.json所列路径及两宿主disk.py、新disk测试；过程证据仅work-products/debug/gpu-backfill-disk-demand/，环境仅仓库.venv/。
+- 共享可变资源：双宿主同字节副本、版本事实面、请求/schema/预留格式；均由主agent串行集成。
+- owner：/root；attempt：D1-01；snapshot：work-products/debug/gpu-backfill-disk-demand/baseline/；no_replace：true。
+- 基线：paths.json完整排序路径集，逐文件原始字节，present/missing/目录状态；首次产品写入前复核全部原字节及后代集合，漂移停止。
+- 验证：缺磁盘合同RED→GREEN、Python磁盘行为回归、原Linux回归及MCP/打包回归、统一门禁和diff检查。测试引用相对最终位置；验证不与产品编辑并行。
+- 并行验证：否。当前Windows项目环境已在原.venv/原位修复；Linux执行目标待用户提供，不以模拟锁或跳过伪装Linux验证。
+- 失败保留/回滚：保留RED和运行日志；只撤回本任务归属修改，保留原sampling文件；不改安装缓存、下游、服务器或训练。
+- 主agent：独占plan/todo与所有集成；通过全部门禁才将D1标completed。
 
-## T2：独立审查与验收
+W1：就绪D1；冻结其他任务；屏障为上述验证；无下游任务。
 
-- 依赖 T1；波次 W2；启动条件：所有组件返回、目标测试通过。
-- 读取：完整 diff、测试、SPEC。
-- 写入：`work-products/debug/gpu-backfill/review.md`；修复仅限 T1 写集且先保存修复前原始字节。
-- 共享资源：主 Agent 独占 todo/最终门禁；审查者只读。
-- 验收：发现得到修复或明确报告限制；统一门禁与 diff 检查通过，隔离与真实 GPU/宿主证据分开报告。
-- 验证：`node scripts/validate-all.js`、`git -c safe.directory=C:/Code/UXUCode diff --check`，不能与写入并行。
-- 回滚：保留现场；不自动提交、安装或发布。
-- 基线根：`work-products/debug/gpu-backfill/review-baseline/`，create-new/no-replace，规则同 T1。
+## M1：安装与原任务安全交接（新增明确授权）
 
-## 冻结接口
+依据 SPEC17 与用户“更新安装到5.2.0并安全交接现有任务”的当前指令。owner=/root，attempt=M1-01，串行执行。
 
-- 服务 GPUBackfill；本地 server.js、transport.js、bootstrap.py；Linux worker.py、checkpoint.py。均只用标准库。
-- 工具：gpu_probe、gpu_prepare、gpu_create_queue、gpu_submit、gpu_status、gpu_cancel、gpu_queue_control。
-- 每工具含 target: {host?: string, root: string, python: string}。服务取出 target，远端请求为 {action, root, ...其余参数}。
-- worker.dispatch(request, release_dir=None) 返回 JSON 对象；action 为 probe/create_queue/submit/status/cancel/queue_control。prepare 归 bootstrap；CLI 为 run ROOT JOB_ID（ROOT 为项目根），从固定安装版本启动。
-- probe 返回 {gpus: [{index, uuid, name, memory_total_mib, memory_free_mib, utilization, processes}], inventory_id}。清单身份仅绑定 UUID/型号/总显存，不绑定序号或瞬时占用。
-- create_queue 输入 queue_id、gpu_uuids、inventory_id、selection_confirmed；allow_external 默认 true。硬件身份变化拒绝，选择集合不可变，暂停状态单独保存。
-- submit 输入 queue_id、job: {job_id, command: string[], cwd, memory_mib, max_runtime_seconds, resume?: {enabled, grace_seconds?, max_restarts?}, multi_gpu?: {sharding_supported, gpu_count, memory_mib_per_gpu: number[], compatible_models?: string[]}, host_memory_mib?, disk_free_mib?}；max_runtime_seconds 为正数或显式 null。
-- status 可选 queue_id/job_id；cancel 必须 job_id；queue_control 必须 queue_id/paused。
-- checkpoint helper 保存/验证 opaque bytes，绑定不可变请求和 attempt；任务环境和退出码协议由 worker 及测试固定。
-- bootstrap 从 stdin 接收 {request, files, release_id}；files 仅 worker.py/checkpoint.py 的 UTF-8 内容，release_id 为固定清单内容完整性身份。probe/status 零写入；prepare/create_queue/submit 可准备匹配版本。版本在 ROOT/.gpubackfill/releases/，state/locks/jobs/queues 稳定保留。
-- 全部协作队列使用同一服务器协调根；新版本不接管/重启旧 worker，主机重启或硬杀后需核验，不自动重投。
+1. 原生安装与新宿主只读探针 → 验证版本5.2.0、7工具、disk必填、用户配置保字节。
+2. FedLoRA 独立集成候选及合成交接 → 验证共用旧锁、双账本一致、原身份不变、STOP/exit75及累计进度恢复；持久测试放work-products/tests。
+3. 刷新 exact-set 预检并冻结执行合同 → 验证当前两个原身份及预算依据，排除终态和并发变更。
+4. 暂停准入、完整保存退出、同inode租约交接和一致版本切换 → 验证新worker在暂停状态继承原计数与CP，恢复原队列状态后实际前进。
+5. 下游源码文档落地、检查及归属安全清理 → 验证原科学字节/历史/锁未变，删除仅临时CPU目录，出具收据。
+
+写集：当前debug目录；SPEC/plan/todo；FedLoRA/GPUBackfill及其持久测试/运维说明；服务器原协调根的新版release、执行合同、版本标记、可恢复历史归档及交接记录。原请求、STARTED、科学配置/源码和checkpoint有效载荷只读。
+
+失败策略：不清零、不从零训练；不自动重放交接。停止后失败保留HOLD和完整断点，记录阶段、原始状态与恢复条件。另一聊天部署仍在变动时只做独立准备，切换前必须重新确认所有权和exact-set。

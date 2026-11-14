@@ -241,6 +241,7 @@ const failures = [];
 if (!Array.isArray(guides) || guides.length !== files.length) {
   return ['expected exactly three language guides'];
 }
+guides = guides.map((guide) => guide.replace(/\r\n/g, '\n'));
 const baselineLevels = headingLevels(guides[0]);
 
 guides.forEach((guide, index) => {

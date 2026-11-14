@@ -21,7 +21,7 @@ const fragmentPath = path.join(root, 'AGENTS.fragment.md');
 const templateNames = ['SOUL.md', 'IDENTITY.md'];
 
 function canonicalFragment() {
-  return fs.readFileSync(fragmentPath, 'utf8');
+  return fs.readFileSync(fragmentPath, 'utf8').replace(/\r\n/g, '\n');
 }
 
 function expectFailure(content, expectedMessage) {

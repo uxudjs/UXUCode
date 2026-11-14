@@ -11,9 +11,9 @@ import sys
 import types
 import uuid
 
-FILES = ("checkpoint.py", "worker.py")
+FILES = ("checkpoint.py", "disk.py", "worker.py")
 ACTIONS = ("probe", "prepare", "create_queue", "submit", "status", "cancel", "queue_control")
-PRODUCT = {"product": "GPUBackfill", "state_version": 1}
+PRODUCT = {"product": "GPUBackfill", "state_version": 2}
 
 
 def identity(files):

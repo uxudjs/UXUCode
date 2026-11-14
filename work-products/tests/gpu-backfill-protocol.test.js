@@ -20,7 +20,7 @@ test('stdio exposes GPUBackfill tools with explicit GPU selection and error resu
   const replies = result.stdout.trim().split('\n').map(JSON.parse);
   const byId = new Map(replies.map((reply) => [reply.id, reply]));
   assert.equal(byId.get(1).result.serverInfo.name, 'GPUBackfill');
-  assert.equal(byId.get(1).result.serverInfo.version, '5.1.2');
+  assert.equal(byId.get(1).result.serverInfo.version, '5.2.0');
   assert.match(byId.get(1).result.instructions, /ask.*user/i);
   assert.deepEqual(byId.get(2).result.tools.map((tool) => tool.name).sort(), ['gpu_probe', 'gpu_prepare', 'gpu_create_queue', 'gpu_submit', 'gpu_status', 'gpu_cancel', 'gpu_queue_control'].sort());
   assert.equal(byId.get(3).error.code, -32602);
@@ -38,7 +38,7 @@ test('schema validates nested budgets before any target execution', async () => 
   const handle = createHandler(async (_target, request) => { calls++; return request; });
   await handle({ jsonrpc: '2.0', id: 1, method: 'initialize', params: { protocolVersion: '2025-11-25', capabilities: {}, clientInfo: { name: 'test', version: '1' } } });
   await handle({ jsonrpc: '2.0', method: 'notifications/initialized' });
-  const base = { target: { root: '/project', python: '/env/bin/python' }, queue_id: 'q', job: { job_id: 'j', command: ['/env/bin/python', 'train.py'], cwd: '/project', memory_mib: 4096, max_runtime_seconds: null } };
+  const base = { target: { root: '/project', python: '/env/bin/python' }, queue_id: 'q', job: { job_id: 'j', command: ['/env/bin/python', 'train.py'], cwd: '/project', memory_mib: 4096, max_runtime_seconds: null, disk: { paths: ['/project/output'], growth_mib: 8, checkpoint_mib: 2, safety_mib: 1 } } };
   const invoke = (args) => handle({ jsonrpc: '2.0', id: 2, method: 'tools/call', params: { name: 'gpu_submit', arguments: args } });
   assert.equal((await invoke({ ...base, job: { ...base.job, memory_mib: true } })).error.code, -32602);
   assert.equal((await invoke({ ...base, job: { ...base.job, multi_gpu: { sharding_supported: false, gpu_count: 2, memory_mib_per_gpu: [2048, 2048], compatible_models: ['NVIDIA A100'] } } })).error.code, -32602);
@@ -59,7 +59,7 @@ for (const [label, models] of [['missing', undefined], ['empty', []], ['duplicat
     if (models !== undefined) multi.compatible_models = models;
     const response = await handle({ jsonrpc: '2.0', id: 2, method: 'tools/call', params: { name: 'gpu_submit', arguments: {
       target: { root: '/project', python: '/env/bin/python' }, queue_id: 'q',
-      job: { job_id: 'j', command: ['/env/bin/python', 'train.py'], cwd: '/project', memory_mib: 140000, max_runtime_seconds: null, multi_gpu: multi }
+      job: { job_id: 'j', command: ['/env/bin/python', 'train.py'], cwd: '/project', memory_mib: 140000, max_runtime_seconds: null, disk: { paths: ['/project/output'], growth_mib: 8, checkpoint_mib: 2, safety_mib: 1 }, multi_gpu: multi }
     } } });
     assert.equal(response.error?.code, -32602);
     assert.match(response.error.message, /compatible_models/);
@@ -75,7 +75,7 @@ test('multi-GPU passes an explicit compatible model set to the target', async ()
   const multi = { sharding_supported: true, gpu_count: 2, memory_mib_per_gpu: [70000, 70000], compatible_models: ['NVIDIA A100', 'NVIDIA H100'] };
   const response = await handle({ jsonrpc: '2.0', id: 2, method: 'tools/call', params: { name: 'gpu_submit', arguments: {
     target: { root: '/project', python: '/env/bin/python' }, queue_id: 'q',
-    job: { job_id: 'j', command: ['/env/bin/python', 'train.py'], cwd: '/project', memory_mib: 140000, max_runtime_seconds: null, multi_gpu: multi }
+    job: { job_id: 'j', command: ['/env/bin/python', 'train.py'], cwd: '/project', memory_mib: 140000, max_runtime_seconds: null, disk: { paths: ['/project/output'], growth_mib: 8, checkpoint_mib: 2, safety_mib: 1 }, multi_gpu: multi }
   } } });
   assert.equal(response.result.isError, false);
   assert.deepEqual(response.result.structuredContent.job.multi_gpu, multi);

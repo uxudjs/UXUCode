@@ -7,9 +7,9 @@ const { validateGuides } = require('../../scripts/validate-guide-parity');
 const { validateReadme } = require('../../scripts/validate-readme-scope');
 
 const root = path.resolve(__dirname, '..', '..');
-const readme = fs.readFileSync(path.join(root, 'README.md'), 'utf8');
+const readme = fs.readFileSync(path.join(root, 'README.md'), 'utf8').replace(/\r\n/g, '\n');
 const guideFiles = ['USAGE.zh-CN.md', 'USAGE.zh-TW.md', 'USAGE.en.md'];
-const guides = guideFiles.map((file) => fs.readFileSync(path.join(root, 'docs', file), 'utf8'));
+const guides = guideFiles.map((file) => fs.readFileSync(path.join(root, 'docs', file), 'utf8').replace(/\r\n/g, '\n'));
 const multilineCommandContracts = [
   [
     '除 `mode` 和 `clean` 外，一般公开命令把命令入口和可选内联参数写在首行；后续行属于同一命令的任务正文。',
@@ -55,6 +55,10 @@ function moveToken(section, token, before) {
 test('documentation validators accept the canonical README and guides', () => {
   assert.deepEqual(validateReadme(readme), []);
   assert.deepEqual(validateGuides(guides, readme), []);
+});
+
+test('guide validation accepts equivalent LF and Windows CRLF multi-line commands', () => {
+  assert.deepEqual(validateGuides(guides.map((guide) => guide.replace(/\n/g, '\r\n')), readme), []);
 });
 
 test('canonical guides align multiline task bodies and strict single-line exceptions', () => {

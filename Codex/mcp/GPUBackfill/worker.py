@@ -16,13 +16,14 @@ import time
 import uuid
 
 import checkpoint
+import disk
 
 MARGIN_MIB = 1024
 STARTUP_TIMEOUT_SECONDS = 60
-PRODUCT = {'product': 'GPUBackfill', 'state_version': 1}
+PRODUCT = {'product': 'GPUBackfill', 'state_version': 2}
 TERMINAL = {'completed', 'failed', 'cancelled', 'needs_verification'}
 JOB_FIELDS = {'job_id', 'command', 'cwd', 'memory_mib', 'max_runtime_seconds',
-              'resume', 'multi_gpu', 'host_memory_mib', 'disk_free_mib'}
+              'resume', 'multi_gpu', 'host_memory_mib', 'disk'}
 
 
 def _id(value):
@@ -212,7 +213,7 @@ def _paused(base, queue_id):
 def validate_job(job, root, queue):
     if not isinstance(job, dict) or set(job) - JOB_FIELDS:
         raise ValueError('unknown task fields')
-    required = {'job_id', 'command', 'cwd', 'memory_mib', 'max_runtime_seconds'}
+    required = {'job_id', 'command', 'cwd', 'memory_mib', 'max_runtime_seconds', 'disk'}
     if not required.issubset(job):
         raise ValueError('missing task fields')
     result = dict(job)
@@ -227,8 +228,8 @@ def validate_job(job, root, queue):
     _number(job['memory_mib'], 1)
     if job['max_runtime_seconds'] is not None:
         _number(job['max_runtime_seconds'], 0.001)
-    for key in ('host_memory_mib', 'disk_free_mib'):
-        result[key] = _number(job.get(key, 1), 1)
+    result['host_memory_mib'] = _number(job.get('host_memory_mib', 1), 1)
+    result['disk_basis'] = disk.prepare(_path(root, directory=True), job['disk'])
     resume = job.get('resume', {'enabled': False})
     if not isinstance(resume, dict) or set(resume) - {'enabled', 'grace_seconds', 'max_restarts'} or type(resume.get('enabled')) is not bool:
         raise ValueError('invalid resume declaration')
@@ -279,8 +280,8 @@ def _active(base):
     for path in sorted((base / 'state/reservations').glob('*.json')):
         value = _read(path)
         required = {'version', 'reservation_id', 'job_id', 'attempt', 'gpus', 'exclusive',
-                    'host_memory_mib', 'disk_free_mib', 'pgid'}
-        if (not isinstance(value, dict) or set(value) != required or value['version'] != 1
+                    'host_memory_mib', 'disk', 'pgid'}
+        if (not isinstance(value, dict) or set(value) != required or value['version'] != 2
                 or value['reservation_id'] != path.stem or not re.fullmatch(r'[0-9a-f]{32}', path.stem)
                 or type(value['exclusive']) is not bool or not isinstance(value['gpus'], list) or not value['gpus']):
             raise ValueError('invalid reservation ledger')
@@ -293,8 +294,8 @@ def _active(base):
             _number(gpu['memory_mib'], 1)
         if len(set(g['uuid'] for g in value['gpus'])) != len(value['gpus']):
             raise ValueError('duplicate reserved GPU')
-        for key in ('host_memory_mib', 'disk_free_mib'):
-            _number(value[key], 1)
+        _number(value['host_memory_mib'], 1)
+        disk.validate_state(value['disk'])
         if value['pgid'] is not None and (type(value['pgid']) is not int or value['pgid'] <= 0):
             raise ValueError('invalid reservation process group')
         probe = _lock(path.with_suffix('.lock'), shared=True, existing=True)
@@ -346,6 +347,7 @@ class Reservation:
         self.uuids = [g['uuid'] for g in record['gpus']]
         self.gpu_locks, self.slot_lock = gpu_locks, slot_lock
         self.path = base / 'state/reservations' / (record['reservation_id'] + '.json')
+        self.pending_disk = None
 
     @property
     def fds(self):
@@ -374,9 +376,14 @@ class Reservation:
 def _capacities(request, sample, active):
     if _inventory(sample['gpus']) != request['inventory_id']:
         raise ValueError('hardware inventory changed; select again')
-    for key in ('host_memory_mib', 'disk_free_mib'):
-        if _number(sample[key]) - sum(r[key] for r in active) < request[key]:
-            return []
+    if (_number(sample['host_memory_mib']) - sum(r['host_memory_mib'] for r in active)
+            < request['host_memory_mib']):
+        return []
+    if (_number(sample['disk_free_mib']) - sum(disk.total(r['disk']) for r in active)
+            < disk.total(request['disk'])):
+        return []
+    if any(disk.conflicts(request['disk']['paths'], r['disk']['paths']) for r in active):
+        return []
     result = []
     for card in sample['gpus']:
         if card['uuid'] not in request['gpu_uuids']:
@@ -403,13 +410,19 @@ def _capacities(request, sample, active):
     return sorted(result, key=lambda item: (-item[1], item[0]['uuid']))
 
 
-def acquire(root, request, attempt):
+def acquire(root, request, attempt, disk_state=None):
     base = _base(root, create=True)
     gate = _lock(base / 'locks/admission.lock')
     if gate is None:
         return None
     handles, slot = [], None
     try:
+        basis = disk.prepare(Path(root), request['disk'])
+        if basis['filesystem'] != request['disk_basis']['filesystem']:
+            raise ValueError('disk filesystem changed since submission')
+        effective = disk_state or disk.initial(request['disk'], request['disk_basis'])
+        disk.validate_state(effective)
+        request = dict(request, disk=effective)
         candidates = _capacities(request, snapshot(root), _active(base))
         budgets = ([request['memory_mib']] if request['gpu_count'] == 1
                    else request['multi_gpu']['memory_mib_per_gpu'])
@@ -432,9 +445,9 @@ def acquire(root, request, attempt):
             return None
         identifier = uuid.uuid4().hex
         slot = _lock(base / 'state/reservations' / (identifier + '.lock'))
-        record = dict(version=1, reservation_id=identifier, job_id=request['job_id'], attempt=attempt,
+        record = dict(version=2, reservation_id=identifier, job_id=request['job_id'], attempt=attempt,
                       gpus=chosen, exclusive=not request['resume']['enabled'], pgid=None,
-                      host_memory_mib=request['host_memory_mib'], disk_free_mib=request['disk_free_mib'])
+                      host_memory_mib=request['host_memory_mib'], disk=dict(effective, sequence=0))
         _write(base / 'state/reservations' / (identifier + '.json'), record, exclusive=True)
         reservation = Reservation(base, record, handles, slot)
         handles, slot = [], None
@@ -452,9 +465,12 @@ def _pressure(root, request, reservation):
     active = _active(reservation.base)
     if not any(r['reservation_id'] == reservation.record['reservation_id'] for r in active):
         return 'reservation_missing'
-    for key in ('host_memory_mib', 'disk_free_mib'):
-        if _number(sample[key]) < sum(r[key] for r in active):
-            return key + '_headroom'
+    if _number(sample['host_memory_mib']) < sum(r['host_memory_mib'] for r in active):
+        return 'host_memory_mib_headroom'
+    if disk.filesystem(root) != reservation.record['disk']['filesystem']:
+        return 'disk_filesystem_changed'
+    if _number(sample['disk_free_mib']) < sum(disk.total(r['disk']) for r in active):
+        return 'disk_free_mib_headroom'
     cards = {g['uuid']: g for g in sample['gpus']}
     for selected in reservation.record['gpus']:
         card = cards.get(selected['uuid'])
@@ -473,6 +489,73 @@ def _pressure(root, request, reservation):
         if card['memory_free_mib'] - remaining < MARGIN_MIB:
             return 'GPU_memory_headroom'
     return None
+
+
+def _disk_status(root, reservation=None):
+    active = _active(_base(root))
+    return dict(sampled_at=time.time(), free_mib=shutil.disk_usage(str(root)).free / disk.MIB,
+                reserved_mib=sum(disk.total(r['disk']) for r in active),
+                effective=_disk_view(reservation.record['disk']) if reservation else None)
+
+
+def _disk_view(value):
+    view = dict((key, value[key]) for key in ('paths', 'filesystem', 'growth_mib', 'checkpoint_mib',
+                                            'safety_mib', 'sequence', 'step', 'mode'))
+    return dict(view, total_mib=disk.total(value), basis=dict(files=len(value['baseline']),
+                allocated_bytes=sum(v['allocated_bytes'] for v in value['baseline'].values())))
+
+
+def _disk_update(root, request, reservation, attempt):
+    path = attempt / 'disk-request.json'
+    if not path.exists():
+        return None
+    report = _read(path)
+    identity = dict(job_id=request['job_id'], request_id=checkpoint.request_identity(request),
+                    attempt=attempt.name)
+    if (not isinstance(report, dict) or set(report) != set(identity) | {'growth_mib', 'checkpoint_mib', 'progress'}
+            or any(report[k] != v for k, v in identity.items())):
+        raise ValueError('disk report request or attempt identity changed')
+    sequence = report['progress'].get('sequence') if isinstance(report['progress'], dict) else None
+    response_path = attempt / 'disk-response.json'
+    previous = _read(response_path)
+    if type(sequence) is int and sequence == previous['sequence']:
+        if previous.get('report_id') != checkpoint.request_identity(report):
+            raise ValueError('disk report replay changed bytes')
+        return None
+    gate = _lock(reservation.base / 'locks/admission.lock')
+    if gate is None:
+        return None
+    try:
+        state = reservation.record['disk']
+        if type(sequence) is not int or sequence != state['sequence'] + 1:
+            raise ValueError('stale disk update sequence')
+        accepted, reason, candidate = False, None, None
+        try:
+            candidate = disk.revise(state, request['disk'], {k: report[k] for k in ('growth_mib', 'checkpoint_mib', 'progress')})
+            active = _active(reservation.base)
+            if not any(r['reservation_id'] == reservation.record['reservation_id'] for r in active):
+                raise ValueError('disk reservation lease missing')
+            available = shutil.disk_usage(str(root)).free / disk.MIB
+            others = sum(disk.total(r['disk']) for r in active
+                         if r['reservation_id'] != reservation.record['reservation_id'])
+            if available < others + disk.total(candidate):
+                reason = 'disk_headroom'
+                reservation.pending_disk = candidate
+            else:
+                accepted = True
+        except (OSError, ValueError, subprocess.SubprocessError) as error:
+            reason = str(error)
+        effective = candidate if accepted else dict(state, sequence=sequence)
+        reservation.record = dict(reservation.record, disk=effective)
+        _write(reservation.path, reservation.record)
+        if not accepted:
+            stop = attempt / 'STOP'
+            _write(stop, dict(reason='disk_update_denied: ' + str(reason)), exclusive=not stop.exists())
+        _write(response_path, dict(identity, sequence=sequence, accepted=accepted, reason=reason,
+                                   disk=effective, report_id=checkpoint.request_identity(report)))
+        return None if accepted else 'disk_update_denied: ' + str(reason)
+    finally:
+        gate.close()
 
 
 def _signal(child, signum):
@@ -498,6 +581,7 @@ def run_job(root, job_id, poll_interval=5):
     reservation = child = None
     previous_signals, stopped = {}, []
     runtime, attempts = 0.0, 0
+    disk_demand = None
     request = _read(job / 'request.json')
     request_id = checkpoint.request_identity(request)
     if _read(job / 'identity.json') != {'request_id': request_id} or request['job_id'] != job_id:
@@ -511,6 +595,12 @@ def run_job(root, job_id, poll_interval=5):
 
     def update(status, reason=None, **details):
         state.update(status=status, reason=reason, runtime_seconds=runtime, **details)
+        try:
+            state['disk'] = _disk_status(root, reservation)
+            if reservation is None:
+                state['disk']['effective'] = _disk_view(disk_demand or disk.initial(request['disk'], request['disk_basis']))
+        except (OSError, ValueError) as error:
+            state['disk'] = dict(unavailable=str(error))
         _write(job / 'status.json', state)
 
     def cancelled():
@@ -534,7 +624,7 @@ def run_job(root, job_id, poll_interval=5):
                 continue
             name = 'attempt-%04d' % (attempts + 1)
             try:
-                reservation = acquire(root, request, name)
+                reservation = acquire(root, request, name, disk_demand)
             except (OSError, ValueError, subprocess.SubprocessError) as error:
                 update('waiting', 'resource_or_ledger_unavailable', detail=str(error))
             if reservation is None:
@@ -562,12 +652,15 @@ def run_job(root, job_id, poll_interval=5):
             attempt.parent.mkdir(exist_ok=True)
             attempt.mkdir(exist_ok=False)
             stop_file = attempt / 'STOP'
+            _write(attempt / 'disk-response.json', dict(job_id=job_id, request_id=request_id,
+                   attempt=name, sequence=0, accepted=True, reason=None, disk=reservation.record['disk']), exclusive=True)
             env = dict(os.environ, PYTHONDONTWRITEBYTECODE='1', CUDA_VISIBLE_DEVICES=','.join(reservation.uuids),
                        GPU_BACKFILL_JOB_ID=job_id, GPU_BACKFILL_REQUEST_ID=request_id,
                        GPU_BACKFILL_ATTEMPT=name, GPU_BACKFILL_CHECKPOINT_DIR=str(cp_dir),
                        GPU_BACKFILL_STOP_FILE=str(stop_file), GPU_BACKFILL_RESUME=str(int(attempts > 0)),
                        GPU_BACKFILL_RESUME_PATH=str(cp_dir / 'latest.json') if manifest else '',
                        GPU_BACKFILL_HELPER_DIR=str(Path(__file__).resolve().parent))
+            env['GPU_BACKFILL_DISK_DIR'] = str(attempt)
             _write(attempt / 'selected.json', dict(gpu_uuids=reservation.uuids, request_id=request_id), exclusive=True)
             start = time.monotonic()
             with (attempt / 'stdout.log').open('xb') as output, (attempt / 'stderr.log').open('xb') as errors:
@@ -588,7 +681,17 @@ def run_job(root, job_id, poll_interval=5):
                     reason = 'cancelled'
                 elif limit is not None and elapsed >= max(0, limit - (cfg['grace_seconds'] + 5 if cfg['enabled'] else 0)):
                     reason = 'runtime_budget'
-                elif now >= next_sample:
+                if reason is None:
+                    try:
+                        disk_sequence = reservation.record['disk']['sequence']
+                        disk_reason = _disk_update(root, request, reservation, attempt)
+                        if disk_reason:
+                            reason = disk_reason
+                        elif reservation.record['disk']['sequence'] != disk_sequence:
+                            update('running')
+                    except (OSError, ValueError, subprocess.SubprocessError) as error:
+                        reason = 'disk_update_unavailable: ' + str(error)
+                if reason is None and now >= next_sample:
                     try:
                         pressure = _pressure(root, request, reservation)
                     except (OSError, ValueError, subprocess.SubprocessError) as error:
@@ -609,6 +712,7 @@ def run_job(root, job_id, poll_interval=5):
                 time.sleep(min(poll_interval, 0.2))
             code = child.wait()
             runtime += time.monotonic() - start
+            disk_demand = reservation.pending_disk or reservation.record['disk']
             reservation.close()
             if not reservation.released():
                 # The reaped leader's PGID may be reused. Never signal it after wait().
@@ -712,6 +816,7 @@ def dispatch(request, release_dir=None):
             return dict(queues=queues, jobs=jobs)
         queue_id = _id(request['queue_id']) if 'queue_id' in request else None
         job_id = _id(request['job_id']) if 'job_id' in request else None
+        active = _active(base)
         paths = [base / 'queues' / (queue_id + '.json')] if queue_id else sorted((base / 'queues').glob('*.json'))
         for path in paths:
             queue = _queue(base, path.stem)
@@ -755,8 +860,11 @@ def dispatch(request, release_dir=None):
                                 value = dict(value, status='needs_verification', reason='worker_or_host_stopped')
                         finally:
                             lease.close()
+            live = next((r for r in active if r['job_id'] == directory.name), None)
+            if live is not None:
+                value = dict(value, disk=dict(sampled_at=time.time(), effective=_disk_view(live['disk'])))
             jobs.append(value)
-        return dict(queues=queues, jobs=jobs)
+        return dict(queues=queues, jobs=jobs, disk=_disk_status(root))
     if action == 'cancel':
         directory = _path(base / 'jobs' / _id(request['job_id']), root, directory=True)
         job = _read(directory / 'request.json')

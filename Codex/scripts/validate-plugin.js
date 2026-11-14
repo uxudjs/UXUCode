@@ -27,7 +27,7 @@ const mcp = readJson('.mcp.json');
 
 if (manifest) {
   if (manifest.name !== 'uxu-code') fail('manifest: unexpected plugin name');
-  if (manifest.version !== '5.1.2') fail('manifest: expected version 5.1.2');
+  if (manifest.version !== '5.2.0') fail('manifest: expected version 5.2.0');
   if (manifest.skills !== './skills/') fail('manifest: skills must be ./skills/');
   if (manifest.hooks !== './hooks/hooks.json') fail('manifest: hooks must be ./hooks/hooks.json');
   if (manifest.mcpServers !== './.mcp.json') fail('manifest: mcpServers must be ./.mcp.json');
@@ -44,7 +44,7 @@ const gpuBackfill = mcp?.mcpServers?.GPUBackfill;
 if (gpuBackfill?.type !== 'stdio' || gpuBackfill.command !== 'node' ||
     JSON.stringify(gpuBackfill.args) !== '["./mcp/GPUBackfill/server.js"]' ||
     gpuBackfill.cwd !== './') fail('MCP: GPUBackfill must use plugin-relative entry and cwd');
-for (const file of ['server.js', 'transport.js', 'bootstrap.py', 'worker.py', 'checkpoint.py']) {
+for (const file of ['server.js', 'transport.js', 'bootstrap.py', 'worker.py', 'checkpoint.py', 'disk.py']) {
   const relativePath = path.join('mcp', 'GPUBackfill', file);
   requirePath(relativePath);
   if (fs.existsSync(path.join(root, relativePath))) {

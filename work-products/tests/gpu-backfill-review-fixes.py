@@ -13,7 +13,7 @@ sys.path.insert(0, str(SOURCE))
 import checkpoint
 import worker
 
-PRODUCT = {'product': 'GPUBackfill', 'state_version': 1}
+PRODUCT = {'product': 'GPUBackfill', 'state_version': 2}
 TMP = Path(__file__).resolve().parent / '.tmp'
 BOOT_A = '11111111-1111-4111-8111-111111111111'
 BOOT_B = '22222222-2222-4222-8222-222222222222'
@@ -36,6 +36,9 @@ class ReviewFixes(unittest.TestCase):
         self.tmp = tempfile.TemporaryDirectory(prefix='review-fixes-', dir=str(TMP))
         self.addCleanup(self.tmp.cleanup)
         self.root = Path(self.tmp.name)
+        filesystem = mock.patch.object(worker.disk, 'filesystem', return_value=worker.disk.filesystem(self.root))
+        filesystem.start()
+        self.addCleanup(filesystem.stop)
         self.cards = [gpu()]
         self.sample = dict(gpus=self.cards, host_memory_mib=64000, disk_free_mib=64000)
         self.telemetry = mock.patch.object(worker, 'snapshot', return_value=self.sample)
@@ -58,7 +61,10 @@ class ReviewFixes(unittest.TestCase):
                                     selection_confirmed=True))['queue']
 
     def job(self, **changes):
-        result = dict(job_id='job', command=[sys.executable, '-c', 'pass'], cwd=str(self.root),
+        output = self.root / ('output-' + changes.get('job_id', 'job').replace('/', '_'))
+        output.mkdir(exist_ok=True)
+        result = dict(disk=dict(paths=[str(output)], growth_mib=8, checkpoint_mib=2, safety_mib=1),
+                      job_id='job', command=[sys.executable, '-c', 'pass'], cwd=str(self.root),
                       memory_mib=2000, max_runtime_seconds=None)
         result.update(changes)
         return result
@@ -114,7 +120,7 @@ class ReviewFixes(unittest.TestCase):
         base.mkdir()
         worker._write(base / 'product.json', dict(PRODUCT, state_version=True), exclusive=True)
         files = {name: (SOURCE / name).read_text(encoding='utf-8')
-                 for name in ('checkpoint.py', 'worker.py')}
+                 for name in ('checkpoint.py', 'disk.py', 'worker.py')}
         import bootstrap
         request = dict(action=action, root=str(self.root), queue_id='queue',
                        gpu_uuids=['GPU-a'], inventory_id=worker._inventory(self.cards),

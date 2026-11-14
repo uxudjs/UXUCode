@@ -151,6 +151,13 @@ class Checkpoint:
                     if old_path.exists() or old_path.is_symlink() else None)
         if previous and progress['step'] < previous['progress']['step']:
             raise ValueError('checkpoint progress cannot move backwards')
+        if 'GPU_BACKFILL_DISK_DIR' in os.environ:
+            from disk import DiskBudget
+            budget = DiskBudget.from_environment()
+            if (budget.identity != dict(job_id=self.job_id, request_id=self.request_id, attempt=self.attempt)
+                    or self.directory != _directory(os.environ['GPU_BACKFILL_CHECKPOINT_DIR'])):
+                raise ValueError('checkpoint disk budget belongs to another request or directory')
+            budget.check_checkpoint(len(data), progress, previous)
         root = _directory(self.directory, create=True)
         name = 'state-' + uuid.uuid4().hex + '.bin'
         _new(root / name, data)
