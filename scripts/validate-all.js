@@ -26,6 +26,7 @@ const steps = [
       '--test',
       'work-products/tests/clean-contract.test.js',
       'work-products/tests/environment-isolation-contract.test.js',
+      'work-products/tests/task-cost-contract.test.js',
       'work-products/tests/plan-fast-execution-contract.test.js',
       'work-products/tests/subagent-cross-validation-contract.test.js',
       'work-products/tests/workflow-contract.test.js',

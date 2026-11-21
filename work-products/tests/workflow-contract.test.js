@@ -781,6 +781,7 @@ test('unified validation covers every repository gate and propagates the first f
       '--test',
       'work-products/tests/clean-contract.test.js',
       'work-products/tests/environment-isolation-contract.test.js',
+      'work-products/tests/task-cost-contract.test.js',
       'work-products/tests/plan-fast-execution-contract.test.js',
       'work-products/tests/subagent-cross-validation-contract.test.js',
       'work-products/tests/workflow-contract.test.js',
@@ -947,8 +948,8 @@ test('audit and performance guidance stays ecosystem-neutral and evidence-gated'
   assert.match(notices, /Excluded from adoption:/);
 });
 
-test('release metadata and maintenance workflows enforce the 5.2.0 version contract', () => {
-  const expectedVersion = '5.2.0';
+test('release metadata and maintenance workflows enforce the 5.3.0 version contract', () => {
+  const expectedVersion = '5.3.0';
   const claudeManifest = JSON.parse(
     fs.readFileSync(path.join(root, 'Claude', '.claude-plugin', 'plugin.json'), 'utf8')
   );

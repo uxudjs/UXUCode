@@ -27,6 +27,13 @@ UXUCode incorporates ideas and modified material from the projects listed below.
 - Copyright (c) 2026 Julius Brussee
 - License: MIT
 
+## microsoft/TokenEconomizer
+
+- Reviewed commit `1bfeccdcecf48333b22762ad1dd9e36c6dc065df`.
+- UXUCode adopted the ideas of charging failed work to the task and redirecting repetitive failures when progress stalls. The implementation is native to UXUCode.
+- Copyright (c) 2026 Microsoft
+- License: MIT
+
 ## MIT License Text
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:

@@ -274,7 +274,7 @@ git pull --ff-only
 
 #### Codex CLI
 
-本機儲存庫更新完成後重新啟動 Codex，使其重新載入外掛。
+本機儲存庫更新後，在系統終端執行 `codex plugin add uxu-code@uxu-code-codex`，再啟動新工作階段。使用 `codex plugin list --marketplace uxu-code-codex --json` 核對已安裝版本。
 
 #### OpenClaw
 
@@ -315,6 +315,30 @@ Claude Code 與 Codex 在 Windows 使用 `%APPDATA%\uxucode\config.json`，在 m
 ### 10.2 工作階段狀態與輸出
 
 工作階段啟動時，Codex 輸出 `UXUCODE:<MODE>`，Claude Code 輸出 `UXUCode is active in <mode> mode.`。這些資訊只確認目前策略模式，不代表任務已完成或測試已通過。使用 `status` 查看任務與門禁狀態。
+
+**配對比較任務成本**
+
+向 `@stats` 或 `/uxu-code:stats` 提供一個 UTF-8 JSON 檔。每個 `id` 標示同一任務與重複序號的兩次執行。固定宿主、模型、推理層級、工具、任務順序與快取條件，並使用相同驗收標準。以下是格式範例。
+
+```json
+{
+  "pairs": [{
+    "id": "review-01",
+    "baseline": {
+      "accepted": true, "costUsd": 0.04,
+      "host": "codex/demo", "model": "model-A", "effort": "medium",
+      "tools": "review-set", "cache": "cold", "workload": "suite-A/order-1"
+    },
+    "candidate": {
+      "accepted": true, "costUsd": 0.03,
+      "host": "codex/demo", "model": "model-A", "effort": "medium",
+      "tools": "review-set", "cache": "cold", "workload": "suite-A/order-1"
+    }
+  }]
+}
+```
+
+`accepted` 為必填。每次執行以字串記錄實測 `host`（含版本）、`model`、`effort`、`tools`、`cache` 和 `workload`（任務樣本、順序與驗收標準）。缺少或不同的條件列入 `unmatchedConditions`，節省比例為 `null`。`costUsd` 使用整次任務實測的美元費用，包含失敗重試、子代理及額外判斷呼叫。可另填互不重疊的 `freshInputTokens`、`cacheReadTokens`、`cacheWriteTokens`、`outputTokens`。未知項目省略或填 `null`。每組總費用除以其通過驗收的任務數，即為單位成功任務成本。費用缺失、分母為零或有任務從通過變成失敗時，節省比例顯示為 `null`。
 
 ## 11. OpenClaw
 

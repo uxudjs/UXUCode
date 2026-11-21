@@ -18,7 +18,7 @@ for (const host of hosts) {
   test(`${host.name} distributes GPUBackfill inside its own plugin root`, () => {
     const pluginRoot = path.join(root, host.name);
     const manifest = readJson(path.join(pluginRoot, host.manifest));
-    assert.equal(manifest.version, '5.2.0');
+    assert.equal(manifest.version, '5.3.0');
     assert.equal(manifest.mcpServers, './.mcp.json');
     const configuration = readJson(path.join(pluginRoot, '.mcp.json'));
     assert.deepEqual(Object.keys(configuration.mcpServers), ['GPUBackfill']);
@@ -45,7 +45,7 @@ test('both hosts distribute the same complete GPUBackfill runtime', () => {
       fs.readFileSync(path.join(root, 'Claude/mcp/GPUBackfill', file))
     ), `${file} differs between host packages`);
   }
-  assert.equal(readJson(path.join(root, 'Claude/.claude-plugin/marketplace.json')).plugins[0].version, '5.2.0');
+  assert.equal(readJson(path.join(root, 'Claude/.claude-plugin/marketplace.json')).plugins[0].version, '5.3.0');
 });
 
 test('source validation ignores generated runtimes while still rejecting forbidden product entries', () => {

@@ -18,6 +18,8 @@
 
 UXUCode 把需求澄清、计划、实现、调试、测试、评审、简化和发布门禁串成一套可验证的工作流，帮助你在 Claude Code 或 Codex 中持续完成软件工程任务。
 
+5.3.0 缩短了 Claude Code 和 Codex 的共用 Hook 提示。在 `standard` 模式下，两套宿主的评审路由文本用 `o200k_base` 计数均由 253 降至 212 token。调试遇到重复失败且没有新证据时，会转而验证另一个假设。向 `@stats` 或 `/uxu-code:stats` 提供配对任务记录，可查看包含失败尝试的单位成功任务成本，以及哪些任务的验收结果出现退化。[复测 Hook 输入](work-products/tests/measure-hook-input.py)
+
 Codex 和 Claude Code 插件同时内置 `GPUBackfill` MCP：自动探测指定 Linux 机器上的 NVIDIA GPU，由 AI 询问你选择哪些卡或全选，再利用空闲容量调度任务。客户端需要已有 Node.js 20+；远程使用已配置的 SSH。更新后重载宿主即可发现工具，遵循启用和信任设置，不会自动开始训练。OpenClaw 不接入此 MCP。
 
 当任务需要先明确范围时，可以从 `spec` 开始；需求已经清楚时，也可以直接进入 `plan`。推荐流程：
@@ -140,7 +142,7 @@ git pull --ff-only
 
 ### Codex CLI
 
-本地仓库更新完成后重启 Codex，使其重新加载插件。
+本地仓库更新后，在系统终端运行 `codex plugin add uxu-code@uxu-code-codex`，再启动新会话。用 `codex plugin list --marketplace uxu-code-codex --json` 核对已安装版本。
 
 ### OpenClaw
 
@@ -156,6 +158,7 @@ git pull --ff-only
 - [JuliusBrussee/caveman](https://github.com/JuliusBrussee/caveman)
 - [addyosmani/agent-skills](https://github.com/addyosmani/agent-skills)
 - [multica-ai/andrej-karpathy-skills](https://github.com/multica-ai/andrej-karpathy-skills)
+- [microsoft/TokenEconomizer](https://github.com/microsoft/TokenEconomizer)
 
 ---
 
@@ -164,6 +167,8 @@ git pull --ff-only
 ## 產品用途
 
 UXUCode 把需求釐清、計畫、實作、除錯、測試、評審、簡化和發佈門禁串成一套可驗證的工作流程，協助你在 Claude Code 或 Codex 中持續完成軟體工程任務。
+
+5.3.0 縮短了 Claude Code 和 Codex 的共用 Hook 提示。在 `standard` 模式下，兩套宿主的評審路由文字以 `o200k_base` 計數均由 253 降至 212 token。偵錯遇到重複失敗且沒有新證據時，會改為驗證另一個假設。向 `@stats` 或 `/uxu-code:stats` 提供配對任務紀錄，可查看包含失敗嘗試的單位成功任務成本，以及哪些任務的驗收結果出現退化。[重測 Hook 輸入](work-products/tests/measure-hook-input.py)
 
 Codex 和 Claude Code 外掛同時內建 `GPUBackfill` MCP：自動探測指定 Linux 機器上的 NVIDIA GPU，由 AI 詢問你選擇哪些卡或全選，再利用閒置容量排程任務。用戶端需要既有 Node.js 20+；遠端使用已設定的 SSH。更新後重新載入宿主即可發現工具，遵循啟用和信任設定，不會自動開始訓練。OpenClaw 不接入此 MCP。
 
@@ -287,7 +292,7 @@ git pull --ff-only
 
 ### Codex CLI
 
-本機儲存庫更新完成後重新啟動 Codex，使其重新載入外掛。
+本機儲存庫更新後，在系統終端執行 `codex plugin add uxu-code@uxu-code-codex`，再啟動新工作階段。使用 `codex plugin list --marketplace uxu-code-codex --json` 核對已安裝版本。
 
 ### OpenClaw
 
@@ -303,6 +308,7 @@ git pull --ff-only
 - [JuliusBrussee/caveman](https://github.com/JuliusBrussee/caveman)
 - [addyosmani/agent-skills](https://github.com/addyosmani/agent-skills)
 - [multica-ai/andrej-karpathy-skills](https://github.com/multica-ai/andrej-karpathy-skills)
+- [microsoft/TokenEconomizer](https://github.com/microsoft/TokenEconomizer)
 
 ---
 
@@ -311,6 +317,8 @@ git pull --ff-only
 ## What It Does
 
 UXUCode connects requirement clarification, planning, implementation, debugging, testing, review, simplification, and release gates into one verifiable workflow for ongoing software-engineering work in Claude Code or Codex.
+
+Version 5.3.0 shortens the policy sent by Claude Code and Codex hooks. In `standard` mode, the review route text dropped from 253 to 212 tokens on both hosts using `o200k_base`. When a failure repeats without new evidence, the debugging workflow tests a different hypothesis. Give `@stats` or `/uxu-code:stats` paired task records to see cost per accepted task, including failed work, and which tasks regressed. [Reproduce the hook measurement](work-products/tests/measure-hook-input.py)
 
 The Codex and Claude Code plugins include the `GPUBackfill` MCP: it discovers NVIDIA GPUs on a specified Linux machine, lets the AI ask you to select some or all cards, and schedules tasks into available capacity. The client requires an existing Node.js 20+ installation and configured SSH for remote use. Reload the host after updating to discover the tools, subject to enablement and trust settings; updating does not start training. This MCP is not integrated with OpenClaw.
 
@@ -434,7 +442,7 @@ After entering the Claude Code session, run:
 
 ### Codex CLI
 
-After updating the local repository, restart Codex so it reloads the plugin.
+After updating the local repository, run `codex plugin add uxu-code@uxu-code-codex` in a terminal and start a new session. Verify the installed version with `codex plugin list --marketplace uxu-code-codex --json`.
 
 ### OpenClaw
 
@@ -450,6 +458,7 @@ In a system terminal, rerun the installer for each target workspace: preview wit
 - [JuliusBrussee/caveman](https://github.com/JuliusBrussee/caveman)
 - [addyosmani/agent-skills](https://github.com/addyosmani/agent-skills)
 - [multica-ai/andrej-karpathy-skills](https://github.com/multica-ai/andrej-karpathy-skills)
+- [microsoft/TokenEconomizer](https://github.com/microsoft/TokenEconomizer)
 
 ---
 

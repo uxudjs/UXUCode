@@ -274,7 +274,7 @@ After entering the Claude Code session, run:
 
 #### Codex CLI
 
-After updating the local repository, restart Codex so it reloads the plugin.
+After updating the local repository, run `codex plugin add uxu-code@uxu-code-codex` in a terminal and start a new session. Verify the installed version with `codex plugin list --marketplace uxu-code-codex --json`.
 
 #### OpenClaw
 
@@ -315,6 +315,30 @@ Claude Code and Codex use `%APPDATA%\uxucode\config.json` on Windows and `~/.con
 ### 10.2 Session State and Output
 
 At session start, Codex prints `UXUCODE:<MODE>` and Claude Code prints `UXUCode is active in <mode> mode.` These messages only confirm the current policy mode; they do not mean a task is complete or its tests passed. Use `status` for task and gate state.
+
+**Compare the cost of paired tasks**
+
+Supply `@stats` or `/uxu-code:stats` with a UTF-8 JSON file. Each `id` identifies the same task and repetition in both runs. Match the host, model, reasoning effort, tools, task order, cache conditions and acceptance criteria. The following example shows the file format.
+
+```json
+{
+  "pairs": [{
+    "id": "review-01",
+    "baseline": {
+      "accepted": true, "costUsd": 0.04,
+      "host": "codex/demo", "model": "model-A", "effort": "medium",
+      "tools": "review-set", "cache": "cold", "workload": "suite-A/order-1"
+    },
+    "candidate": {
+      "accepted": true, "costUsd": 0.03,
+      "host": "codex/demo", "model": "model-A", "effort": "medium",
+      "tools": "review-set", "cache": "cold", "workload": "suite-A/order-1"
+    }
+  }]
+}
+```
+
+Each run requires a boolean `accepted`. Record observed string identifiers for `host` (including version), `model`, `effort`, `tools`, `cache`, and `workload` (fixtures, order and acceptance criteria). Missing or different conditions appear in `unmatchedConditions` and suppress the reduction. Use the observed USD charge for the whole task in `costUsd`, including retries, subagents and controller calls. Optional disjoint counters are `freshInputTokens`, `cacheReadTokens`, `cacheWriteTokens`, and `outputTokens`. Omit unknown values or use `null`. Each side’s total cost divided by its accepted task count gives cost per accepted task. The reduction is `null` when fees are missing, a denominator is zero, or a previously accepted task fails.
 
 ## 11. OpenClaw
 

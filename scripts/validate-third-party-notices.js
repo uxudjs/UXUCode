@@ -10,14 +10,16 @@ const required = [
   'RGlldHJpY2hHZWJlcnQvcG9ueXRhaWw=',
   'YWRkeW9zbWFuaS9hZ2VudC1za2lsbHM=',
   'bXVsdGljYS1haS9hbmRyZWota2FycGF0aHktc2tpbGxz',
-  'SnVsaXVzQnJ1c3NlZS9jYXZlbWFu'
+  'SnVsaXVzQnJ1c3NlZS9jYXZlbWFu',
+  'bWljcm9zb2Z0L1Rva2VuRWNvbm9taXplcg=='
 ].map((value) => Buffer.from(value, 'base64').toString('utf8'));
 const failures = [];
 const requiredCommits = [
   '16f29800fd2681bdf24f3eb4ccffe38be3baec6b',
   '7829ffd90d973b6325f5f12f1b1226dcace74443',
   '2c606141936f1eeef17fa3043a72095b4765b9c2',
-  '0d95a81d35a9f2d123a5e9430d1cfc43d55f1bb0'
+  '0d95a81d35a9f2d123a5e9430d1cfc43d55f1bb0',
+  '1bfeccdcecf48333b22762ad1dd9e36c6dc065df'
 ];
 
 for (const project of required) {
