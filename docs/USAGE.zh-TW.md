@@ -276,6 +276,8 @@ git pull --ff-only
 
 本機儲存庫更新後，在系統終端執行 `codex plugin add uxu-code@uxu-code-codex`，再啟動新工作階段。使用 `codex plugin list --marketplace uxu-code-codex --json` 核對已安裝版本。
 
+若 Hook 顯示為已修改，請在 Codex 的「設定 → Hooks」中核對此外掛的 SessionStart、UserPromptSubmit 和 SubagentStart，選擇信任後啟動新工作階段。[Codex Hook 信任說明](https://learn.chatgpt.com/docs/hooks)
+
 #### OpenClaw
 
 在系統終端針對每個目標 workspace 重新執行 `OpenClaw/scripts/install-profile.js`：先使用 `--dry-run` 預覽，再使用該 workspace 已選模式執行安裝，最後啟動新工作階段。

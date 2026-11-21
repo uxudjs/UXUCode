@@ -276,6 +276,8 @@ git pull --ff-only
 
 本地仓库更新后，在系统终端运行 `codex plugin add uxu-code@uxu-code-codex`，再启动新会话。用 `codex plugin list --marketplace uxu-code-codex --json` 核对已安装版本。
 
+若 Hook 显示为已修改，在 Codex 的「设置 → Hooks」中核对本插件的 SessionStart、UserPromptSubmit 和 SubagentStart，选择信任后启动新会话。[Codex Hook 信任说明](https://learn.chatgpt.com/docs/hooks)
+
 #### OpenClaw
 
 在系统终端针对每个目标 workspace 重新运行 `OpenClaw/scripts/install-profile.js`：先使用 `--dry-run` 预览，再使用该 workspace 已选模式执行安装，最后启动新会话。

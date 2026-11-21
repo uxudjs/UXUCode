@@ -276,6 +276,8 @@ After entering the Claude Code session, run:
 
 After updating the local repository, run `codex plugin add uxu-code@uxu-code-codex` in a terminal and start a new session. Verify the installed version with `codex plugin list --marketplace uxu-code-codex --json`.
 
+If Codex marks hooks as modified, review this plugin’s SessionStart, UserPromptSubmit and SubagentStart in Settings → Hooks. Trust the reviewed definitions and start a fresh session. [Codex hook trust](https://learn.chatgpt.com/docs/hooks)
+
 #### OpenClaw
 
 In a system terminal, rerun `OpenClaw/scripts/install-profile.js` for each target workspace: preview with `--dry-run`, install with that workspace's selected mode, then start a new session.

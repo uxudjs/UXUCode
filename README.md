@@ -144,6 +144,8 @@ git pull --ff-only
 
 本地仓库更新后，在系统终端运行 `codex plugin add uxu-code@uxu-code-codex`，再启动新会话。用 `codex plugin list --marketplace uxu-code-codex --json` 核对已安装版本。
 
+若 Hook 显示为已修改，在 Codex 的「设置 → Hooks」中核对本插件的 SessionStart、UserPromptSubmit 和 SubagentStart，选择信任后启动新会话。[Codex Hook 信任说明](https://learn.chatgpt.com/docs/hooks)
+
 ### OpenClaw
 
 在系统终端针对每个目标 workspace 重新运行安装器：先使用 `OpenClaw/scripts/install-profile.js` 和 `--dry-run` 预览，再使用该 workspace 已选模式执行安装，然后启动新会话。移除与回滚步骤见 [OpenClaw 指南](OpenClaw/README.md)。
@@ -294,6 +296,8 @@ git pull --ff-only
 
 本機儲存庫更新後，在系統終端執行 `codex plugin add uxu-code@uxu-code-codex`，再啟動新工作階段。使用 `codex plugin list --marketplace uxu-code-codex --json` 核對已安裝版本。
 
+若 Hook 顯示為已修改，請在 Codex 的「設定 → Hooks」中核對此外掛的 SessionStart、UserPromptSubmit 和 SubagentStart，選擇信任後啟動新工作階段。[Codex Hook 信任說明](https://learn.chatgpt.com/docs/hooks)
+
 ### OpenClaw
 
 在系統終端針對每個目標 workspace 重新執行安裝器：先使用 `OpenClaw/scripts/install-profile.js` 和 `--dry-run` 預覽，再使用該 workspace 已選模式執行安裝，然後啟動新工作階段。移除與復原步驟請見 [OpenClaw 指南](OpenClaw/README.md)。
@@ -443,6 +447,8 @@ After entering the Claude Code session, run:
 ### Codex CLI
 
 After updating the local repository, run `codex plugin add uxu-code@uxu-code-codex` in a terminal and start a new session. Verify the installed version with `codex plugin list --marketplace uxu-code-codex --json`.
+
+If Codex marks hooks as modified, review this plugin’s SessionStart, UserPromptSubmit and SubagentStart in Settings → Hooks. Trust the reviewed definitions and start a fresh session. [Codex hook trust](https://learn.chatgpt.com/docs/hooks)
 
 ### OpenClaw
 
